@@ -1,0 +1,44 @@
+[client]
+
+  # The maximum amount of references the client can send to test against (@todo)
+  #referencesMax = 100
+  # The maximum length (in bytes) of the "input" field, to accept to the finder.
+  #inputLengthMax = 50
+
+[CORS]
+  # Not defining allowedOrigins will use wildcard '*', meaning all clients are allowed.
+  #allowedOrigins = [
+  #  "http://example.org",
+  #  "https://api.example.com",
+  #]
+
+[server]
+  # The interface and port to listen on, "0.0.0.0" means all interfaces
+  listenOn = "0.0.0.0:1337"
+
+  headers = [
+    {name = "Strict-Transport-Security", value = "max-age=31536000; includeSubDomains"},
+    {name = "Content-Security-Policy", value = "default-src 'none'"},
+    {name = "X-Frame-Options", value = "DENY"},
+    {name = "X-XSS-Protection", value = "1; mode=block"},
+    {name = "X-Content-Type-Options", value = "nosniff"},
+    {name = "Referrer-Policy", value = "strict-origin"}
+  ]
+
+  [server.log]
+    # The minimum logging level to report, @see https://github.com/Sirupsen/logrus#level-logging
+    level = "debug"
+
+  [server.profiler]
+    enable = false
+    prefix = "debug"
+
+
+
+# The list of references
+[references]
+  domains = [
+  ]
+
+  test = [
+  ]
