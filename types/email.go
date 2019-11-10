@@ -1,9 +1,8 @@
 package types
 
 import (
+	"errors"
 	"strings"
-
-	"github.com/Dynom/ERI/inspector"
 )
 
 func NewEmailParts(emailAddress string) (EmailParts, error) {
@@ -24,7 +23,7 @@ type EmailParts struct {
 func splitLocalAndDomain(input string) (EmailParts, error) {
 	i := strings.LastIndex(input, "@")
 	if 0 >= i || i >= len(input) {
-		return EmailParts{}, inspector.ErrInvalidEmailAddress
+		return EmailParts{}, ErrInvalidEmailAddress
 	}
 
 	return EmailParts{
@@ -33,3 +32,7 @@ func splitLocalAndDomain(input string) (EmailParts, error) {
 		Domain:  strings.ToLower(input[i+1:]),
 	}, nil
 }
+
+var (
+	ErrInvalidEmailAddress = errors.New("invalid e-mail address, address is missing @")
+)

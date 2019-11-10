@@ -5,13 +5,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Dynom/ERI/inspector/types"
+	"github.com/Dynom/ERI/types"
 )
 
 func Test_Check(t *testing.T) {
-	validationResult := Validations(0)
-	validationResult |= VFValid
-	validationResult |= VFMXLookup
+	validationResult := types.Validations(0)
+	validationResult |= types.VFValid
+	validationResult |= types.VFMXLookup
 
 	insp := New(WithValidators(
 		validateStub(validationResult),
@@ -29,16 +29,16 @@ func Test_Check(t *testing.T) {
 }
 
 // validateStub is a stub validator
-func validateStub(v Validations) Validator {
+func validateStub(v types.Validations) Validator {
 	var err error
-	if v&VFValid == 0 {
+	if v&types.VFValid == 0 {
 		err = errors.New("stuff failed")
 	}
 
 	return func(ctx context.Context, e types.EmailParts) Result {
 		return Result{
 			Error:       err,
-			Timings:     make(Timings, 0),
+			Timings:     make(types.Timings, 0),
 			Validations: v,
 		}
 	}

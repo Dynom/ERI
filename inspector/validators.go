@@ -10,70 +10,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dynom/ERI/inspector/types"
+	"github.com/Dynom/ERI/types"
 )
 
 const (
-
-	// Validation Flags, these flags represent successful validation steps. Depending on how far you want to go, you can
-	// classify a validation as valid enough, for your use-case.
-	VFValid       Validations = 1 << iota // The e-mail is considered valid (1) or not (0)
-	VFSyntax      Validations = 1 << iota // e-mail address follows a (reasonably) valid syntax
-	VFMXLookup    Validations = 1 << iota // e-mail domain has MX records
-	VFHostConnect Validations = 1 << iota // MX accepts connections
-	VFValidRCPT   Validations = 1 << iota // MX acknowledges that the RCPT exists
+	DefaultRecipient = "eri@tysug.net"
 )
 
 var (
-	ErrInvalidHost   = errors.New("invalid host")
-	DefaultRecipient = "eri@tysug.net"
+	ErrInvalidHost = errors.New("invalid host")
 )
 
 // Validator is the type all validators must conform to
 type Validator func(ctx context.Context, e types.EmailParts) Result
 
-// Validations holds the validation steps performed.
-type Validations uint64
-
-// IsValid returns true if the Validations are considered successful
-func (v Validations) IsValid() bool {
-	return v&VFValid == 1
-}
-
-// Merge appends to Validations are returns the result. If the new validations do not consider the validation successful
-// it will mark the new Validations as unsuccessful as well.
-func (v Validations) Merge(new Validations) Validations {
-
-	v.MarkAsInvalid()
-	return v | new
-}
-
-// MarkAsInvalid clears the CFValid bit and marks the Validations as invalid
-func (v *Validations) MarkAsInvalid() {
-	*v &^= VFValid
-}
-
-// MarkAsValid sets the CFValid bit and marks the Validations as valid
-func (v *Validations) MarkAsValid() {
-	*v |= VFValid
-}
-
 // Result is the validation result
 type Result struct {
 	Error error
-	Timings
-	Validations
-}
-
-type Timings []Timing
-
-func (t *Timings) Add(l string, d time.Duration) {
-	*t = append(*t, Timing{Label: l, Duration: d})
-}
-
-type Timing struct {
-	Label    string
-	Duration time.Duration
+	types.Timings
+	types.Validations
 }
 
 // ValidateMXAndRCPT validates if the mailbox exists. You can control the timeout by using context
@@ -91,7 +46,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 		}
 
 		result := Result{
-			Timings: make(Timings, 0, 4),
+			Timings: make(types.Timings, 0, 4),
 			Error:   nil,
 		}
 
@@ -106,7 +61,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 			return result
 		}
 
-		result.Validations |= VFMXLookup
+		result.Validations |= types.VFMXLookup
 
 		ports := []string{"25", "587", "2525", "465"}
 		var conn net.Conn
@@ -125,7 +80,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 			}
 		}
 
-		result.Validations |= VFHostConnect
+		result.Validations |= types.VFHostConnect
 
 		if conn == nil {
 			result.Validations.MarkAsInvalid()
@@ -173,7 +128,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 			return result
 		}
 
-		result.Validations |= VFValidRCPT
+		result.Validations |= types.VFValidRCPT
 
 		if err := ctx.Err(); err != nil {
 			result.Validations.MarkAsInvalid()
@@ -190,10 +145,10 @@ func ValidateMXAndRCPT(recipient string) Validator {
 
 		result.Timings.Add("Rcpt", time.Since(start))
 
-		result.Validations |= VFValidRCPT
+		result.Validations |= types.VFValidRCPT
 
 		// Flag the validation as Valid
-		result.Validations |= VFValid
+		result.Validations |= types.VFValid
 
 		return result
 	}
@@ -210,14 +165,14 @@ func ValidateMX() Validator {
 		var start time.Time
 
 		result := Result{
-			Timings: make(Timings, 0, 1),
+			Timings: make(types.Timings, 0, 1),
 			Error:   nil,
 		}
 
 		start = time.Now()
 		_, err := fetchMXHost(ctx, &resolver, e.Domain)
 		result.Timings.Add("LookupMX", time.Since(start))
-		result.Validations |= VFMXLookup
+		result.Validations |= types.VFMXLookup
 
 		if err != nil {
 			result.Validations.MarkAsInvalid()
@@ -225,7 +180,7 @@ func ValidateMX() Validator {
 			return result
 		}
 
-		result.Validations |= VFValid
+		result.Validations |= types.VFValid
 
 		return result
 	}
@@ -237,21 +192,21 @@ func ValidateSyntax() Validator {
 		var start time.Time
 
 		result := Result{
-			Timings: make(Timings, 0, 1),
+			Timings: make(types.Timings, 0, 1),
 			Error:   nil,
 		}
 
 		start = time.Now()
 		_, err := mail.ParseAddress(e.Address)
 		result.Timings.Add("Structure", time.Since(start))
-		result.Validations = 1 | VFSyntax
+		result.Validations = 1 | types.VFSyntax
 
 		if err != nil {
 			result.Error = err
 			return result
 		}
 
-		result.Validations = 1 | VFValid
+		result.Validations = 1 | types.VFValid
 		return result
 	}
 }

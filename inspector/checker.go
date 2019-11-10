@@ -2,14 +2,9 @@ package inspector
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/Dynom/ERI/inspector/types"
-)
-
-var (
-	ErrInvalidEmailAddress = errors.New("invalid e-mail address, address is missing @")
+	"github.com/Dynom/ERI/types"
 )
 
 // New creates a new Checker and applies any specified functional Option argument
@@ -36,15 +31,15 @@ func (c Checker) Check(ctx context.Context, email string) Result {
 	}
 
 	var result = Result{
-		Timings:     make(Timings, 0, len(c.validators)),
-		Validations: 0 | VFValid,
+		Timings:     make(types.Timings, 0, len(c.validators)),
+		Validations: 0 | types.VFValid,
 	}
 
 	for _, v := range c.validators {
 		r := v(ctx, e)
 
 		// Set Validators used
-		wasValid := result.Validations&VFValid == 1
+		wasValid := result.Validations&types.VFValid == 1
 		result.Validations |= r.Validations
 
 		// Re-set validator result
@@ -74,7 +69,7 @@ func (c Checker) Check(ctx context.Context, email string) Result {
 
 func newErrorResult(err error) Result {
 	return Result{
-		Timings: Timings{},
+		Timings: types.Timings{},
 		Error:   err,
 	}
 }

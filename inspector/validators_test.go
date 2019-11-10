@@ -2,33 +2,35 @@ package inspector
 
 import (
 	"testing"
+
+	"github.com/Dynom/ERI/types"
 )
 
 func Test_MaskTest(t *testing.T) {
 
 	t.Run("Flag values", func(t *testing.T) {
-		t.Logf("VFValid       %d", VFValid)
-		t.Logf("VFSyntax      %d", VFSyntax)
-		t.Logf("VFMXLookup    %d", VFMXLookup)
-		t.Logf("VFHostConnect %d", VFHostConnect)
-		t.Logf("VFValidRCPT   %d", VFValidRCPT)
+		t.Logf("VFValid       %d", types.VFValid)
+		t.Logf("VFSyntax      %d", types.VFSyntax)
+		t.Logf("VFMXLookup    %d", types.VFMXLookup)
+		t.Logf("VFHostConnect %d", types.VFHostConnect)
+		t.Logf("VFValidRCPT   %d", types.VFValidRCPT)
 	})
 
 	t.Run("Setting", func(t *testing.T) {
-		var v Validations
+		var v types.Validations
 
 		t.Logf("initial      %08b", v)
 		// Setting MX?
 		//v = 1 | VFMXLookup
-		v |= VFMXLookup
+		v |= types.VFMXLookup
 		t.Logf("set mx?      %08b", v)
 		//t.Logf("is valid? %08b", v&VFValid)
 
-		v |= VFValid
-		t.Logf("valid masked %08b", v&VFValid)
+		v |= types.VFValid
+		t.Logf("valid masked %08b", v&types.VFValid)
 		t.Logf("is valid?    %08b", v)
 
-		v = 0 &^ VFValid
+		v = 0 &^ types.VFValid
 		t.Logf("valid clear? %08b", v)
 
 	})
