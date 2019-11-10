@@ -28,6 +28,11 @@ X-Authentication: ..
     {"email":  "john.doe@grr.la", "validations": <mask>}
 
     {"email":  "jack@example.org", "validations": <mask>}
+    
+    {
+      "valid": ["grr.la"],
+      "invalid": ["gmail.con"]
+    }
 
 Responses:
     {"status": "OK", "total_entries": 123124, ...}

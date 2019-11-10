@@ -9,6 +9,8 @@ import (
 	"net/smtp"
 	"strings"
 	"time"
+
+	"github.com/Dynom/ERI/inspector/types"
 )
 
 const (
@@ -28,7 +30,7 @@ var (
 )
 
 // Validator is the type all validators must conform to
-type Validator func(ctx context.Context, e email) Result
+type Validator func(ctx context.Context, e types.EmailParts) Result
 
 // Validations holds the validation steps performed.
 type Validations uint64
@@ -38,9 +40,22 @@ func (v Validations) IsValid() bool {
 	return v&VFValid == 1
 }
 
-// setInvalid clears the CFValid bit and marsk the Validations as invalid
-func (v *Validations) setInvalid() {
+// Merge appends to Validations are returns the result. If the new validations do not consider the validation successful
+// it will mark the new Validations as unsuccessful as well.
+func (v Validations) Merge(new Validations) Validations {
+
+	v.MarkAsInvalid()
+	return v | new
+}
+
+// MarkAsInvalid clears the CFValid bit and marks the Validations as invalid
+func (v *Validations) MarkAsInvalid() {
 	*v &^= VFValid
+}
+
+// MarkAsValid sets the CFValid bit and marks the Validations as valid
+func (v *Validations) MarkAsValid() {
+	*v |= VFValid
 }
 
 // Result is the validation result
@@ -68,7 +83,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 	resolver := net.Resolver{}
 	dialer := net.Dialer{}
 
-	return func(ctx context.Context, e email) Result {
+	return func(ctx context.Context, e types.EmailParts) Result {
 
 		dialer := dialer
 		if deadline, set := ctx.Deadline(); set {
@@ -81,11 +96,11 @@ func ValidateMXAndRCPT(recipient string) Validator {
 		}
 
 		start = time.Now()
-		mxHost, err := fetchMXHost(ctx, &resolver, e.partDomain)
+		mxHost, err := fetchMXHost(ctx, &resolver, e.Domain)
 		result.Timings.Add("LookupMX", time.Since(start))
 
 		if err != nil {
-			result.Validations.setInvalid()
+			result.Validations.MarkAsInvalid()
 
 			result.Error = err
 			return result
@@ -113,7 +128,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 		result.Validations |= VFHostConnect
 
 		if conn == nil {
-			result.Validations.setInvalid()
+			result.Validations.MarkAsInvalid()
 
 			result.Error = fmt.Errorf("dailing MX host %q failed %w", mxHost, err)
 			return result
@@ -128,7 +143,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 			return result
 		}
 
-		client, err := smtp.NewClient(conn, e.partDomain)
+		client, err := smtp.NewClient(conn, e.Domain)
 
 		if err != nil {
 			// @todo should this reflect badly on the verification process?
@@ -141,7 +156,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 		}()
 
 		if err := ctx.Err(); err != nil {
-			result.Validations.setInvalid()
+			result.Validations.MarkAsInvalid()
 
 			result.Error = err
 			return result
@@ -152,7 +167,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 		result.Timings.Add("Mail", time.Since(start))
 
 		if err != nil {
-			result.Validations.setInvalid()
+			result.Validations.MarkAsInvalid()
 
 			result.Error = fmt.Errorf("sending MAIL to host failed %w", err)
 			return result
@@ -161,14 +176,14 @@ func ValidateMXAndRCPT(recipient string) Validator {
 		result.Validations |= VFValidRCPT
 
 		if err := ctx.Err(); err != nil {
-			result.Validations.setInvalid()
+			result.Validations.MarkAsInvalid()
 
 			result.Error = err
 			return result
 		}
 
 		start = time.Now()
-		err = client.Rcpt(e.address)
+		err = client.Rcpt(e.Address)
 		if err != nil {
 			result.Error = fmt.Errorf("sending RCPT to host failed %w", err)
 		}
@@ -191,7 +206,7 @@ func ValidateMX() Validator {
 
 	resolver := net.Resolver{}
 
-	return func(ctx context.Context, e email) Result {
+	return func(ctx context.Context, e types.EmailParts) Result {
 		var start time.Time
 
 		result := Result{
@@ -200,12 +215,12 @@ func ValidateMX() Validator {
 		}
 
 		start = time.Now()
-		_, err := fetchMXHost(ctx, &resolver, e.partDomain)
+		_, err := fetchMXHost(ctx, &resolver, e.Domain)
 		result.Timings.Add("LookupMX", time.Since(start))
 		result.Validations |= VFMXLookup
 
 		if err != nil {
-			result.Validations.setInvalid()
+			result.Validations.MarkAsInvalid()
 			result.Error = err
 			return result
 		}
@@ -218,7 +233,7 @@ func ValidateMX() Validator {
 
 // ValidateSyntax performs the most basic of checks: Does the syntax seem somewhat plausible.
 func ValidateSyntax() Validator {
-	return func(ctx context.Context, e email) Result {
+	return func(ctx context.Context, e types.EmailParts) Result {
 		var start time.Time
 
 		result := Result{
@@ -227,7 +242,7 @@ func ValidateSyntax() Validator {
 		}
 
 		start = time.Now()
-		_, err := mail.ParseAddress(e.address)
+		_, err := mail.ParseAddress(e.Address)
 		result.Timings.Add("Structure", time.Since(start))
 		result.Validations = 1 | VFSyntax
 

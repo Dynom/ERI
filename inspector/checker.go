@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
+
+	"github.com/Dynom/ERI/inspector/types"
 )
 
 var (
@@ -27,15 +28,9 @@ type Checker struct {
 	validators []Validator
 }
 
-type email struct {
-	address    string
-	partLocal  string
-	partDomain string
-}
-
 // Check runs various validators on the input and produces a Result
 func (c Checker) Check(ctx context.Context, email string) Result {
-	e, err := splitLocalAndDomain(email)
+	e, err := types.NewEmailParts(email)
 	if err != nil {
 		return newErrorResult(err)
 	}
@@ -54,7 +49,7 @@ func (c Checker) Check(ctx context.Context, email string) Result {
 
 		// Re-set validator result
 		if !r.Validations.IsValid() || !wasValid {
-			result.Validations.setInvalid()
+			result.Validations.MarkAsInvalid()
 		}
 
 		// Append to timers
@@ -75,19 +70,6 @@ func (c Checker) Check(ctx context.Context, email string) Result {
 	}
 
 	return result
-}
-
-func splitLocalAndDomain(input string) (email, error) {
-	i := strings.LastIndex(input, "@")
-	if 0 >= i || i >= len(input) {
-		return email{}, ErrInvalidEmailAddress
-	}
-
-	return email{
-		address:    input,
-		partLocal:  input[:i],
-		partDomain: strings.ToLower(input[i+1:]),
-	}, nil
 }
 
 func newErrorResult(err error) Result {

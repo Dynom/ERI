@@ -30,14 +30,19 @@ type lookup struct {
 
 func newHitList() HitList {
 	return HitList{
-		Set:  make(map[string]map[string]lookup),
+		Set:  make(map[string]Domain),
 		lock: sync.RWMutex{},
 	}
 }
 
 type HitList struct {
-	Set  map[string]map[string]lookup
+	Set  map[string]Domain
 	lock sync.RWMutex
+}
+
+type Domain struct {
+	inspector.Validations
+	RCPTs map[string]lookup
 }
 
 func (HitList) splitParts(email string) (string, string, error) {
@@ -67,12 +72,12 @@ func (h *HitList) GetValidAndUsageSortedDomains() []string {
 	var d = make([]stats, len(h.Set))
 
 	var index int
-	for domain, leafs := range h.Set {
+	for domain, details := range h.Set {
 		var usage int
 
 		// Count "valid" usage. If a domain has 0 valid leafs, the domain isn't valid
-		for _, leaf := range leafs {
-			if leaf.ValidUntil.After(now) && leaf.Validations&inspector.VFValid == 1 {
+		for _, leaf := range details.RCPTs {
+			if leaf.ValidUntil.After(now) && leaf.Validations.IsValid() {
 				usage++
 			}
 		}
@@ -117,7 +122,7 @@ func (h *HitList) GetForEmail(email string) (lookup, error) {
 	}
 
 	h.lock.RLock()
-	r, ok := h.Set[domain][rcpt]
+	r, ok := h.Set[domain].RCPTs[rcpt]
 	h.lock.RUnlock()
 
 	if !ok || time.Since(r.ValidUntil) > 0 {
@@ -130,37 +135,58 @@ func (h *HitList) GetForEmail(email string) (lookup, error) {
 
 // LearnEmailAddress records validations for a particular e-mail address. LearnEmailAddress clears previously seen
 // validators if you want to merge, first fetch, merge and pass the resulting Validations to LearnEmailAddress()
-func (h *HitList) LearnEmailAddress(address string, v inspector.Validations) error {
+func (h *HitList) LearnEmailAddress(address string, validations inspector.Validations) error {
 
 	rcpt, domain, err := h.splitParts(address)
 	if err != nil {
 		return err
 	}
 
+	if !h.HasDomain(domain) {
+		v := validations
+		if !isValidationsForValidDomain(v) {
+			v.MarkAsInvalid()
+		}
+
+		err := h.LearnDomain(domain, v)
+		if err != nil {
+			return err
+		}
+	}
+
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	if _, ok := h.Set[domain]; !ok {
-		h.Set[domain] = make(map[string]lookup, 1)
-	}
-
-	h.Set[domain][rcpt] = lookup{
+	h.Set[domain].RCPTs[rcpt] = lookup{
 		ValidUntil:  time.Now().Add(time.Second * 60),
-		Validations: v,
+		Validations: h.Set[domain].RCPTs[rcpt].Validations.Merge(validations),
 	}
 
 	return nil
 }
 
-func (h *HitList) LearnDomain(domain string /*, v inspector.Validations*/) error {
+// LearnDomain learns of a domain and it's validity.
+func (h *HitList) LearnDomain(domain string, validations inspector.Validations) error {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	if _, ok := h.Set[domain]; !ok {
-		h.Set[domain] = make(map[string]lookup)
+	if v, ok := h.Set[domain]; !ok {
+		h.Set[domain] = Domain{
+			RCPTs:       make(map[string]lookup),
+			Validations: validations,
+		}
+	} else {
+		v.Validations = v.Validations.Merge(validations)
+		h.Set[domain] = v
 	}
 
 	return nil
+}
+
+// isValidationsForValidDomain checks if a set of validations really marks a domain as valid.
+func isValidationsForValidDomain(validations inspector.Validations) bool {
+	// @todo figure out what we consider "valid", perhaps we should drop the notion of "valid" and instead be more explicit .HasValidSyntax, etc.
+	return validations&inspector.VFMXLookup == 1
 }
 
 func main() {
@@ -179,7 +205,7 @@ func main() {
 
 	checker := inspector.New(inspector.WithValidators(
 		inspector.ValidateSyntax(),
-		//inspector.ValidateMX(),
+		inspector.ValidateMXAndRCPT(inspector.DefaultRecipient),
 	))
 
 	hl := newHitList()
@@ -313,7 +339,66 @@ func main() {
 	})
 
 	mux.HandleFunc("/dumphl", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = fmt.Fprintf(w, "%+v", hl.Set)
+		_, _ = fmt.Fprintf(w, "%+v\n", hl.Set)
+		_, _ = fmt.Fprintf(w, "%+v\n", hl.GetValidAndUsageSortedDomains())
+	})
+
+	mux.HandleFunc("/learn", func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		var req learnRequest
+
+		defer r.Body.Close()
+
+		body, err := getBodyFromHTTPRequest(r)
+		if err != nil {
+			logger.WithFields(logrus.Fields{"error": err}).Errorf("Error handling request %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("Request failed"))
+			return
+		}
+
+		err = json.Unmarshal(body, &req)
+		if err != nil {
+			logger.WithFields(logrus.Fields{"error": err}).Errorf("Error handling request body %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("Request failed, unable to parse request body. Did you send JSON?"))
+			return
+		}
+
+		for _, toLearn := range req.Emails {
+			var v inspector.Validations
+			if toLearn.Valid {
+				v.MarkAsValid()
+			}
+
+			err := hl.LearnEmailAddress(toLearn.Value, v)
+			if err != nil {
+				logger.WithFields(logrus.Fields{
+					"value": toLearn.Value,
+					"error": err.Error(),
+				}).Warn("Unable to learn e-mail address")
+			}
+		}
+
+		for _, toLearn := range req.Domains {
+			var v inspector.Validations
+			if toLearn.Valid {
+				v.MarkAsValid()
+			}
+
+			err := hl.LearnDomain(toLearn.Value, v)
+			if err != nil {
+				logger.WithFields(logrus.Fields{
+					"value": toLearn.Value,
+					"error": err.Error(),
+				}).Warn("Unable to learn domain")
+			}
+		}
+
+		logger.Info("Refreshing domains")
+		l := hl.GetValidAndUsageSortedDomains()
+		myFinder.Refresh(l)
+		logger.WithFields(logrus.Fields{"domain_amount": len(l)}).Info("Refreshed domains")
 	})
 
 	server := &http.Server{
@@ -342,6 +427,16 @@ type checkResponse struct {
 type checkRequest struct {
 	Email        string `json:"email"`
 	Alternatives bool   `json:"with_alternatives"`
+}
+
+type learnRequest struct {
+	Emails  []ToLearn `json:"emails"`
+	Domains []ToLearn `json:"domains"`
+}
+
+type ToLearn struct {
+	Value string `json:"value"`
+	Valid bool   `json:"valid"`
 }
 
 var (

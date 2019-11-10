@@ -2,44 +2,44 @@ package inspector
 
 import (
 	"context"
+	"errors"
 	"testing"
-	"time"
+
+	"github.com/Dynom/ERI/inspector/types"
 )
 
-func TestFoo(t *testing.T) {
-	ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*3000)
+func Test_Check(t *testing.T) {
+	validationResult := Validations(0)
+	validationResult |= VFValid
+	validationResult |= VFMXLookup
 
-	v := New(WithValidators(
-		ValidateSyntax(),
-		ValidateMXAndRCPT(DefaultRecipient),
+	insp := New(WithValidators(
+		validateStub(validationResult),
 	))
 
-	result := v.Check(ctx, "mark@grr.la")
+	result := insp.Check(context.Background(), "foo@bar")
 
 	if result.Error != nil {
 		t.Errorf("Error: %+v", result.Error)
 	}
 
-	t.Logf("Result is: %+v", result)
+	if !result.IsValid() {
+		t.Errorf("Expecting a valid resulit, instead I got %+v", result)
+	}
 }
 
-func Test_splitLocalAndDomain(t *testing.T) {
-	type expect struct {
-		local  string
-		domain string
-	}
-	tests := []struct {
-		input  string
-		expect expect
-	}{
-		{input: "john@example.org", expect: expect{local: "john", domain: "example.org"}},
-		{input: "john.doe@example.org", expect: expect{local: "john.doe", domain: "example.org"}},
+// validateStub is a stub validator
+func validateStub(v Validations) Validator {
+	var err error
+	if v&VFValid == 0 {
+		err = errors.New("stuff failed")
 	}
 
-	for _, test := range tests {
-		d, err := splitLocalAndDomain(test.input)
-		if d.partLocal != test.expect.local || d.partDomain != test.expect.domain {
-			t.Errorf("Expected %+v instead it was %+v (%v)", test.expect, d, err)
+	return func(ctx context.Context, e types.EmailParts) Result {
+		return Result{
+			Error:       err,
+			Timings:     make(Timings, 0),
+			Validations: v,
 		}
 	}
 }
