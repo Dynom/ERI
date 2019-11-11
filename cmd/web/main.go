@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/Dynom/ERI/cmd/web/config"
+
+	"github.com/Dynom/ERI/cmd/web/erihttp"
+
+	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
 
 	"github.com/Dynom/ERI/types"
 
@@ -22,12 +25,22 @@ import (
 var Version = "dev"
 
 func main() {
+	var config config.Config
 	var err error
+
+	config, err = buildConfig("config.toml")
+	if err != nil {
+		panic(err)
+	}
 
 	logger := logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
 	logger.Out = os.Stdout
-	logger.Level = logrus.DebugLevel
+	logger.Level, err = logrus.ParseLevel(config.Server.Log.Level)
+
+	if err != nil {
+		panic(err)
+	}
 
 	logger.WithFields(logrus.Fields{
 		"version": Version,
@@ -53,11 +66,11 @@ func main() {
 
 	mux.HandleFunc("/check", func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		var req checkRequest
+		var req erihttp.CheckRequest
 
 		defer r.Body.Close()
 
-		body, err := getBodyFromHTTPRequest(r)
+		body, err := erihttp.GetBodyFromHTTPRequest(r)
 		if err != nil {
 			logger.WithFields(logrus.Fields{"error": err}).Errorf("Error handling request %s", err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -119,7 +132,7 @@ func main() {
 			}
 		}
 
-		var res = checkResponse{
+		var res = erihttp.CheckResponse{
 			Valid: result.Validations.IsValid(),
 		}
 
@@ -177,11 +190,11 @@ func main() {
 
 	mux.HandleFunc("/learn", func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		var req learnRequest
+		var req erihttp.LearnRequest
 
 		defer r.Body.Close()
 
-		body, err := getBodyFromHTTPRequest(r)
+		body, err := erihttp.GetBodyFromHTTPRequest(r)
 		if err != nil {
 			logger.WithFields(logrus.Fields{"error": err}).Errorf("Error handling request %s", err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -233,69 +246,11 @@ func main() {
 		logger.WithFields(logrus.Fields{"domain_amount": len(l)}).Info("Refreshed domains")
 	})
 
-	server := &http.Server{
-		ReadHeaderTimeout: 2 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second, // Is overridden, when the profiler is enabled.
-		IdleTimeout:       60 * time.Second,
-		MaxHeaderBytes:    1 << 19, // 512 kb
-		Handler:           mux,
-		Addr:              "localhost:1338",
-	}
+	err = erihttp.BuildHTTPServer(mux, config,
+		handlers.WithHeaders(sliceToHTTPHeaders(config.Server.Headers)),
+	).ListenAndServe()
 
-	err = server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}
-}
-
-//{"valid": false, "reason": "bad_domain",         "alternative": "john.doe@gmail.com"}
-type checkResponse struct {
-	Valid       bool   `json:"valid"`
-	Reason      string `json:"reason,omitempty"`
-	Alternative string `json:"alternative,omitempty"`
-}
-
-type checkRequest struct {
-	Email        string `json:"email"`
-	Alternatives bool   `json:"with_alternatives"`
-}
-
-type learnRequest struct {
-	Emails  []ToLearn `json:"emails"`
-	Domains []ToLearn `json:"domains"`
-}
-
-type ToLearn struct {
-	Value string `json:"value"`
-	Valid bool   `json:"valid"`
-}
-
-var (
-	ErrMissingBody    = errors.New("missing body")
-	ErrInvalidRequest = errors.New("request is invalid")
-	ErrBodyTooLarge   = errors.New("request body too large")
-)
-
-func getBodyFromHTTPRequest(r *http.Request) ([]byte, error) {
-	var empty []byte
-	const maxSizePlusOne int64 = 1<<20 + 1
-
-	if r.Body == nil {
-		return empty, ErrMissingBody
-	}
-
-	b, err := ioutil.ReadAll(io.LimitReader(r.Body, maxSizePlusOne))
-	if err != nil {
-		if err == io.EOF {
-			return empty, ErrMissingBody
-		}
-		return empty, ErrInvalidRequest
-	}
-
-	if int64(len(b)) == maxSizePlusOne {
-		return empty, ErrBodyTooLarge
-	}
-
-	return b, nil
 }

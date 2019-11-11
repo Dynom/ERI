@@ -24,14 +24,26 @@ ERI design goals:
 POST /learn
 X-Authentication: ..
 
+    // One-off's, detailed
     {"domain": "grr.la",          "validations": <mask>}
     {"email":  "john.doe@grr.la", "validations": <mask>}
 
     {"email":  "jack@example.org", "validations": <mask>}
     
+    // Bulk, not-so-detailed
     {
-      "valid": ["grr.la"],
-      "invalid": ["gmail.con"]
+        "emails":[
+            {"value":"foo@gmail.com", "valid": true},
+            {"value":"bar@gmail.com", "valid": true},
+            {"value":"baz@gmail.con", "valid": false}
+        ],
+        "domains": [
+            {"value": "gmail.com", "valid": true},
+            {"value": "tysug.net", "valid": true},
+            
+            {"value": "gmail.con",   "valid": false},
+            {"value": "hotmail.con", "valid": false},
+        ]
     }
 
 Responses:

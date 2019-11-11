@@ -33,13 +33,10 @@ type Result struct {
 
 // ValidateMXAndRCPT validates if the mailbox exists. You can control the timeout by using context
 func ValidateMXAndRCPT(recipient string) Validator {
-	var start time.Time
-
 	resolver := net.Resolver{}
 	dialer := net.Dialer{}
 
 	return func(ctx context.Context, e types.EmailParts) Result {
-
 		dialer := dialer
 		if deadline, set := ctx.Deadline(); set {
 			dialer.Deadline = deadline
@@ -47,56 +44,37 @@ func ValidateMXAndRCPT(recipient string) Validator {
 
 		result := Result{
 			Timings: make(types.Timings, 0, 4),
-			Error:   nil,
 		}
 
-		start = time.Now()
-		mxHost, err := fetchMXHost(ctx, &resolver, e.Domain)
-		result.Timings.Add("LookupMX", time.Since(start))
+		// Assuming the worst
+		result.Validations.MarkAsInvalid()
 
-		if err != nil {
-			result.Validations.MarkAsInvalid()
+		var mxHost string
+		result = validateStep(result, "LookupMX", types.VFMXLookup, func() error {
+			var err error
+			mxHost, err = fetchMXHost(ctx, &resolver, e.Domain)
 
-			result.Error = err
+			return err
+		})
+
+		if result.Error != nil {
 			return result
 		}
 
-		result.Validations |= types.VFMXLookup
-
-		ports := []string{"25", "587", "2525", "465"}
 		var conn net.Conn
-		for _, port := range ports {
+		result = validateStep(result, "Dial", types.VFHostConnect, func() error {
 			var err error
+			conn, err = getConnection(ctx, dialer, mxHost)
+			return err
+		})
 
-			// @todo Should we check multiple ports, and do this in parallel?
-			// @todo Do we want to force ipv4/6?
-
-			start = time.Now()
-			conn, err = dialer.DialContext(ctx, "tcp", mxHost+":"+port)
-			result.Timings.Add("Dial "+port, time.Since(start))
-
-			if err != nil && strings.Contains(err.Error(), "connection refused") {
-				continue
-			}
-		}
-
-		result.Validations |= types.VFHostConnect
-
-		if conn == nil {
-			result.Validations.MarkAsInvalid()
-
-			result.Error = fmt.Errorf("dailing MX host %q failed %w", mxHost, err)
+		if result.Error != nil || conn == nil {
 			return result
 		}
 
 		defer func() {
 			_ = conn.Close()
 		}()
-
-		if err := ctx.Err(); err != nil {
-			result.Error = err
-			return result
-		}
 
 		client, err := smtp.NewClient(conn, e.Domain)
 
@@ -110,45 +88,17 @@ func ValidateMXAndRCPT(recipient string) Validator {
 			_ = client.Quit()
 		}()
 
-		if err := ctx.Err(); err != nil {
-			result.Validations.MarkAsInvalid()
+		result = validateStep(result, "Mail", types.VFValidRCPT, func() error {
+			return client.Mail(recipient)
+		})
 
-			result.Error = err
+		if result.Error != nil {
 			return result
 		}
 
-		start = time.Now()
-		err = client.Mail(recipient)
-		result.Timings.Add("Mail", time.Since(start))
-
-		if err != nil {
-			result.Validations.MarkAsInvalid()
-
-			result.Error = fmt.Errorf("sending MAIL to host failed %w", err)
-			return result
-		}
-
-		result.Validations |= types.VFValidRCPT
-
-		if err := ctx.Err(); err != nil {
-			result.Validations.MarkAsInvalid()
-
-			result.Error = err
-			return result
-		}
-
-		start = time.Now()
-		err = client.Rcpt(e.Address)
-		if err != nil {
-			result.Error = fmt.Errorf("sending RCPT to host failed %w", err)
-		}
-
-		result.Timings.Add("Rcpt", time.Since(start))
-
-		result.Validations |= types.VFValidRCPT
-
-		// Flag the validation as Valid
-		result.Validations |= types.VFValid
+		result = validateStep(result, "Rcpt", types.VFValidRCPT|types.VFValid, func() error {
+			return client.Rcpt(e.Address)
+		})
 
 		return result
 	}
@@ -257,4 +207,44 @@ func fetchMXHost(ctx context.Context, resolver *net.Resolver, domain string) (st
 	}
 
 	return "", fmt.Errorf("tried %d MX host(s), all were invalid %w", len(mxs), ErrInvalidHost)
+}
+
+func getConnection(ctx context.Context, dialer net.Dialer, mxHost string) (net.Conn, error) {
+	var conn net.Conn
+	var err error
+
+	ports := []string{"25", "587", "2525", "465"}
+	for _, port := range ports {
+		port := port
+
+		// @todo Should we check multiple ports, and do this in parallel?
+		// @todo Do we want to force ipv4/6?
+
+		var dialErr error
+		conn, dialErr = dialer.DialContext(ctx, "tcp", mxHost+":"+port)
+		if dialErr == nil {
+			break
+		}
+
+		if !strings.Contains(dialErr.Error(), "connection refused") {
+			err = fmt.Errorf("%s %w", err, dialErr)
+		}
+	}
+
+	return conn, err
+}
+
+// validateStep encapsulates some boilerplate. If the callback returns with a nil error, the flags are applied
+func validateStep(result Result, stepName string, flag types.Validations, fn func() error) Result {
+	start := time.Now()
+	err := fn()
+	result.Timings.Add(stepName, time.Since(start))
+
+	if err != nil {
+		result.Error = fmt.Errorf("step %s failed, error: %w", stepName, err)
+	} else {
+		result.Validations |= flag
+	}
+
+	return result
 }

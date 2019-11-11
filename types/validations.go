@@ -8,6 +8,7 @@ const (
 	VFMXLookup    Validations = 1 << iota // e-mail domain has MX records
 	VFHostConnect Validations = 1 << iota // MX accepts connections
 	VFValidRCPT   Validations = 1 << iota // MX acknowledges that the RCPT exists
+	VFDisposable  Validations = 1 << iota // Address / Domain is considered a disposable e-mail trap
 )
 
 // Validations holds the validation steps performed.

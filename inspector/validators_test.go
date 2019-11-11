@@ -1,19 +1,52 @@
 package inspector
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/Dynom/ERI/types"
 )
 
+func TestTimer(t *testing.T) {
+	tt := time.NewTicker(time.Second * 1)
+	defer tt.Stop()
+
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
+
+	done := make(chan bool, 0)
+	go func() {
+		for {
+			select {
+			case <-tt.C:
+
+				// context deadline check
+				if err := ctx.Err(); err != nil {
+					t.Log("Deadline exceeded")
+					return
+				}
+
+			case <-done:
+				t.Log("Done, stopping ticket")
+				tt.Stop()
+				return
+			}
+		}
+	}()
+	time.Sleep(time.Second * 2)
+	done <- true
+	close(done)
+}
+
 func Test_MaskTest(t *testing.T) {
 
 	t.Run("Flag values", func(t *testing.T) {
-		t.Logf("VFValid       %d", types.VFValid)
-		t.Logf("VFSyntax      %d", types.VFSyntax)
-		t.Logf("VFMXLookup    %d", types.VFMXLookup)
-		t.Logf("VFHostConnect %d", types.VFHostConnect)
-		t.Logf("VFValidRCPT   %d", types.VFValidRCPT)
+		t.Logf("VFValid        %08b %d", types.VFValid, types.VFValid)
+		t.Logf("VFSyntax       %08b %d", types.VFSyntax, types.VFSyntax)
+		t.Logf("VFMXLookup     %08b %d", types.VFMXLookup, types.VFMXLookup)
+		t.Logf("VFHostConnect  %08b %d", types.VFHostConnect, types.VFHostConnect)
+		t.Logf("VFValidRCPT    %08b %d", types.VFValidRCPT, types.VFValidRCPT)
+		t.Logf("VFDisposable   %08b %d", types.VFDisposable, types.VFDisposable)
 	})
 
 	t.Run("Setting", func(t *testing.T) {
@@ -37,7 +70,7 @@ func Test_MaskTest(t *testing.T) {
 
 }
 
-func Test_looksLikeAHost(t *testing.T) {
+func Test_mightBeAHostOrIP(t *testing.T) {
 	type args struct {
 		h string
 	}

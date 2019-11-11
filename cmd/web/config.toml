@@ -14,7 +14,7 @@
 
 [server]
   # The interface and port to listen on, "0.0.0.0" means all interfaces
-  listenOn = "0.0.0.0:1337"
+  listenOn = "0.0.0.0:1338"
 
   headers = [
     {name = "Strict-Transport-Security", value = "max-age=31536000; includeSubDomains"},
