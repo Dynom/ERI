@@ -5,6 +5,16 @@ import (
 	"strings"
 )
 
+var (
+	ErrInvalidEmailAddress = errors.New("invalid e-mail address, address is missing @")
+)
+
+// NewEmailFromParts reconstructs EmailParts from two parts
+func NewEmailFromParts(local, domain string) (EmailParts, error) {
+	return NewEmailParts(local + `@` + domain)
+}
+
+// NewEmailParts takes an e-mail address and returns it in two parts, including the original
 func NewEmailParts(emailAddress string) (EmailParts, error) {
 	p, err := splitLocalAndDomain(emailAddress)
 	if err != nil {
@@ -21,18 +31,21 @@ type EmailParts struct {
 }
 
 func splitLocalAndDomain(input string) (EmailParts, error) {
-	i := strings.LastIndex(input, "@")
+	var i int
+
+	if len(input) <= 253 {
+		i = strings.LastIndex(input, "@")
+	}
+
 	if 0 >= i || i >= len(input) {
 		return EmailParts{}, ErrInvalidEmailAddress
 	}
 
+	input = strings.ToLower(input)
+
 	return EmailParts{
 		Address: input,
 		Local:   input[:i],
-		Domain:  strings.ToLower(input[i+1:]),
+		Domain:  input[i+1:],
 	}, nil
 }
-
-var (
-	ErrInvalidEmailAddress = errors.New("invalid e-mail address, address is missing @")
-)

@@ -1,4 +1,4 @@
-package types
+package hitlist
 
 import (
 	"errors"
@@ -6,31 +6,37 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Dynom/ERI/types"
+)
+
+var (
+	ErrNotPresent      = errors.New("value not present")
+	ErrNotAValidDomain = errors.New("argument doesn't appear to be a valid domain name")
 )
 
 func NewHitList() HitList {
 	return HitList{
-		Set:  make(map[string]Domain),
+		Set:  make(map[string]domain),
 		lock: sync.RWMutex{},
 	}
 }
 
+// HitList is an opinionated nearly-flat tree structured type that captures e-mail address validity on two levels
 type HitList struct {
-	Set  map[string]Domain
+	Set  map[string]domain
 	lock sync.RWMutex
 }
 
-type Lookup struct {
-	Validations           // The type of validations performed (bit mask)
-	ValidUntil  time.Time // The TTL
+type Hit struct {
+	types.Validations           // The type of validations performed (bit mask)
+	ValidUntil        time.Time // The TTL
 }
 
-type Domain struct {
-	Validations
-	RCPTs map[string]Lookup
+type domain struct {
+	types.Validations
+	RCPTs map[string]Hit
 }
-
-var ErrNotPresent = errors.New("value not present")
 
 // GetValidAndUsageSortedDomains returns the used domains, sorted by their usage
 func (h *HitList) GetValidAndUsageSortedDomains() []string {
@@ -89,20 +95,20 @@ func (h *HitList) HasDomain(d string) bool {
 	return ok
 }
 
-func (h *HitList) GetForEmail(email string) (Lookup, error) {
+func (h *HitList) GetForEmail(email string) (Hit, error) {
 
-	rcpt, domain, err := splitParts(email)
+	parts, err := types.NewEmailParts(email)
 	if err != nil {
-		return Lookup{}, err
+		return Hit{}, err
 	}
 
 	h.lock.RLock()
-	r, ok := h.Set[domain].RCPTs[rcpt]
+	r, ok := h.Set[parts.Domain].RCPTs[parts.Local]
 	h.lock.RUnlock()
 
-	if !ok || time.Since(r.ValidUntil) > 0 {
+	if !ok || r.ValidUntil.After(time.Now()) {
 		// @todo improve error situation
-		return Lookup{}, ErrNotPresent
+		return Hit{}, ErrNotPresent
 	}
 
 	return r, nil
@@ -110,20 +116,20 @@ func (h *HitList) GetForEmail(email string) (Lookup, error) {
 
 // LearnEmailAddress records validations for a particular e-mail address. LearnEmailAddress clears previously seen
 // validators if you want to merge, first fetch, merge and pass the resulting Validations to LearnEmailAddress()
-func (h *HitList) LearnEmailAddress(address string, validations Validations) error {
+func (h *HitList) LearnEmailAddress(address string, validations types.Validations) error {
 
-	rcpt, domain, err := splitParts(address)
+	parts, err := types.NewEmailParts(address)
 	if err != nil {
 		return err
 	}
 
-	if !h.HasDomain(domain) {
+	if !h.HasDomain(parts.Domain) {
 		v := validations
 		if !isValidationsForValidDomain(v) {
 			v.MarkAsInvalid()
 		}
 
-		err := h.LearnDomain(domain, v)
+		err := h.LearnDomain(parts.Domain, v)
 		if err != nil {
 			return err
 		}
@@ -132,46 +138,64 @@ func (h *HitList) LearnEmailAddress(address string, validations Validations) err
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	h.Set[domain].RCPTs[rcpt] = Lookup{
-		ValidUntil:  time.Now().Add(time.Second * 60),
-		Validations: h.Set[domain].RCPTs[rcpt].Validations.Merge(validations),
+	h.Set[parts.Domain].RCPTs[parts.Local] = Hit{
+		// @todo make configurable
+		ValidUntil:  time.Now().Add(time.Hour * 60),
+		Validations: h.Set[parts.Domain].RCPTs[parts.Local].Validations.Merge(validations),
 	}
 
 	return nil
 }
 
 // LearnDomain learns of a domain and it's validity.
-func (h *HitList) LearnDomain(domain string, validations Validations) error {
+func (h *HitList) LearnDomain(d string, validations types.Validations) error {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	if v, ok := h.Set[domain]; !ok {
-		h.Set[domain] = Domain{
-			RCPTs:       make(map[string]Lookup),
+	if !mightBeAHostOrIP(d) {
+		return ErrNotAValidDomain
+	}
+
+	if v, ok := h.Set[d]; !ok {
+		h.Set[d] = domain{
+			RCPTs:       make(map[string]Hit),
 			Validations: validations,
 		}
 	} else {
 		v.Validations = v.Validations.Merge(validations)
-		h.Set[domain] = v
+		h.Set[d] = v
 	}
 
 	return nil
 }
 
 // isValidationsForValidDomain checks if a set of validations really marks a domain as valid.
-func isValidationsForValidDomain(validations Validations) bool {
+func isValidationsForValidDomain(validations types.Validations) bool {
 	// @todo figure out what we consider "valid", perhaps we should drop the notion of "valid" and instead be more explicit .HasValidSyntax, etc.
-	return validations&VFMXLookup == 1
+	return validations&types.VFMXLookup == 1
 }
 
-func splitParts(email string) (string, string, error) {
-	i := strings.LastIndex(email, "@")
-	if i <= 0 || i >= len(email) {
+// mightBeAHostOrIP is a very rudimentary check to see if the argument could be either a host name or IP address
+// It aims on speed and not for RFC compliance.
+//nolint:gocyclo
+func mightBeAHostOrIP(h string) bool {
 
-		// @todo improve error situation
-		return "", "", errors.New("argument is not an e-mail address")
+	// Normally we can assume that host names have a tld or consists at least out of 4 characters
+	if l := len(h); 4 >= l || l > 255 {
+		return false
 	}
 
-	email = strings.ToLower(email)
-	return email[:i], email[i+1:], nil
+	for _, c := range h {
+		switch {
+		case 48 <= c && c <= 57 /* 0-9 */ :
+		case 65 <= c && c <= 90 /* A-Z */ :
+		case 97 <= c && c <= 122 /* a-z */ :
+		case c == 45 /* dash - */ :
+		case c == 46 /* dot . */ :
+		default:
+			return false
+		}
+	}
+
+	return true
 }

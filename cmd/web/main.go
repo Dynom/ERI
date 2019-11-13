@@ -8,6 +8,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/Dynom/ERI/cmd/web/hitlist"
+
+	"github.com/Dynom/ERI/cmd/web/services"
+
 	"github.com/Dynom/ERI/cmd/web/config"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp"
@@ -25,10 +29,10 @@ import (
 var Version = "dev"
 
 func main() {
-	var config config.Config
+	var conf config.Config
 	var err error
 
-	config, err = buildConfig("config.toml")
+	conf, err = config.NewConfig("config.toml")
 	if err != nil {
 		panic(err)
 	}
@@ -36,7 +40,7 @@ func main() {
 	logger := logrus.New()
 	logger.Formatter = &logrus.JSONFormatter{}
 	logger.Out = os.Stdout
-	logger.Level, err = logrus.ParseLevel(config.Server.Log.Level)
+	logger.Level, err = logrus.ParseLevel(conf.Server.Log.Level)
 
 	if err != nil {
 		panic(err)
@@ -53,9 +57,9 @@ func main() {
 		inspector.ValidateMXAndRCPT(inspector.DefaultRecipient),
 	))
 
-	hl := types.NewHitList()
+	cache := hitlist.NewHitList()
 	myFinder, err := finder.New(
-		hl.GetValidAndUsageSortedDomains(),
+		cache.GetValidAndUsageSortedDomains(),
 		finder.WithLengthTolerance(0.2),
 		finder.WithAlgorithm(finder.NewJaroWinklerDefaults()),
 	)
@@ -64,15 +68,22 @@ func main() {
 		panic(err)
 	}
 
+	checkSvc := services.NewCheckService(&cache, myFinder, checker)
+
 	mux.HandleFunc("/check", func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var req erihttp.CheckRequest
 
-		defer r.Body.Close()
+		defer func() {
+			// Body's can be nil on GET requests
+			if r.Body != nil {
+				_ = r.Body.Close()
+			}
+		}()
 
 		body, err := erihttp.GetBodyFromHTTPRequest(r)
 		if err != nil {
-			logger.WithFields(logrus.Fields{"error": err}).Errorf("Error handling request %s", err)
+			logger.WithError(err).Errorf("Error handling request %s", err)
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte("Request failed"))
 			return
@@ -80,7 +91,7 @@ func main() {
 
 		err = json.Unmarshal(body, &req)
 		if err != nil {
-			logger.WithFields(logrus.Fields{"error": err}).Errorf("Error handling request body %s", err)
+			logger.WithError(err).Errorf("Error handling request body %s", err)
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte("Request failed, unable to parse request body. Did you send JSON?"))
 			return
@@ -90,87 +101,36 @@ func main() {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*500)
 		defer cancel()
 
-		l, err := hl.GetForEmail(req.Email)
-		if err == types.ErrNotPresent {
-			// @todo perform domain check
+		// -
+		email, err := types.NewEmailParts(req.Email)
+		if err != nil {
+			logger.WithError(err).Errorf("Email address can't be decomposed %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("Request failed, unable to decompose e-mail address"))
+			return
 		}
 
-		var result inspector.Result
-		var cached bool
-		if err == nil {
-			cached = true
-			result = inspector.Result{
-				Error:       nil,
-				Timings:     nil,
-				Validations: l.Validations,
-			}
-		} else {
-			result = checker.Check(ctx, req.Email)
-
-			// @todo Learn from this lookup, if configured as such
-			// @todo Only learn when it's worth learning. A simple syntax-validation shouldn't be enough
-			err = hl.LearnEmailAddress(req.Email, result.Validations)
-			if err != nil {
-				logger.WithFields(logrus.Fields{
-					"result": result,
-					"error":  err,
-				}).Error("Failed to learn about the check")
-			}
-		}
-
-		if !cached && result.IsValid() {
-			// @todo add "update" thing to finder
-			myFinder, err = finder.New(
-				hl.GetValidAndUsageSortedDomains(),
-				finder.WithLengthTolerance(0.2),
-				finder.WithAlgorithm(finder.NewJaroWinklerDefaults()),
-			)
-
-			// @todo fix
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		var res = erihttp.CheckResponse{
-			Valid: result.Validations.IsValid(),
-		}
-
-		if req.Alternatives {
-			// @todo context might've expired, but alt's were requested. Split timeouts
-			ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*500)
-			defer cancel()
-
-			// @todo provide alternatives
-			local, domain, err := splitLocalAndDomain(req.Email)
-			if err == nil {
-				alt, score, _ := myFinder.FindCtx(ctx, domain)
-				alt = local + "@" + alt
-
-				logger.WithFields(logrus.Fields{
-					"alternative": alt,
-					"original":    req.Email,
-					"score":       score,
-				}).Debug("Alternative search result")
-
-				if score > finder.WorstScoreValue {
-					res.Alternative = alt
-				}
-			}
-		}
-
-		logger.WithFields(logrus.Fields{
-			"result":    result,
-			"request":   req,
-			"cache_hit": cached,
-			"lookup":    l,
-		}).Debugf("Sent a reply for %q", req.Email)
-
-		response, err := json.Marshal(res)
+		checkResult, err := checkSvc.HandleCheckRequest(ctx, email, req.Alternatives)
 		if err != nil {
 			logger.WithFields(logrus.Fields{
-				"result":   result,
-				"response": res,
+				"result": checkResult,
+				"error":  err,
+			}).Error("Failed to check e-mail address")
+
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("Unable to produce a response"))
+			return
+		}
+
+		response, err := json.Marshal(erihttp.CheckResponse{
+			Valid:       checkResult.Valid,
+			Reason:      "",
+			Alternative: checkResult.Alternative,
+		})
+		if err != nil {
+			logger.WithFields(logrus.Fields{
+				"result":   checkResult,
+				"response": response,
 				"error":    err,
 			}).Error("Failed to marshal the response")
 
@@ -179,13 +139,18 @@ func main() {
 			return
 		}
 
+		logger.WithFields(logrus.Fields{
+			"cache_ttl_sec": int(checkResult.CacheHitTTL.Seconds()),
+			"result":        checkResult,
+		}).Debugf("Done performing check")
+
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(response)
 	})
 
 	mux.HandleFunc("/dumphl", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = fmt.Fprintf(w, "%+v\n", hl.Set)
-		_, _ = fmt.Fprintf(w, "%+v\n", hl.GetValidAndUsageSortedDomains())
+		_, _ = fmt.Fprintf(w, "%+v\n", cache.Set)
+		_, _ = fmt.Fprintf(w, "%+v\n", cache.GetValidAndUsageSortedDomains())
 	})
 
 	mux.HandleFunc("/learn", func(w http.ResponseWriter, r *http.Request) {
@@ -216,7 +181,7 @@ func main() {
 				v.MarkAsValid()
 			}
 
-			err := hl.LearnEmailAddress(toLearn.Value, v)
+			err := cache.LearnEmailAddress(toLearn.Value, v)
 			if err != nil {
 				logger.WithFields(logrus.Fields{
 					"value": toLearn.Value,
@@ -231,7 +196,7 @@ func main() {
 				v.MarkAsValid()
 			}
 
-			err := hl.LearnDomain(toLearn.Value, v)
+			err := cache.LearnDomain(toLearn.Value, v)
 			if err != nil {
 				logger.WithFields(logrus.Fields{
 					"value": toLearn.Value,
@@ -241,16 +206,25 @@ func main() {
 		}
 
 		logger.Info("Refreshing domains")
-		l := hl.GetValidAndUsageSortedDomains()
+		l := cache.GetValidAndUsageSortedDomains()
 		myFinder.Refresh(l)
 		logger.WithFields(logrus.Fields{"domain_amount": len(l)}).Info("Refreshed domains")
 	})
 
-	err = erihttp.BuildHTTPServer(mux, config,
-		handlers.WithHeaders(sliceToHTTPHeaders(config.Server.Headers)),
-	).ListenAndServe()
+	lw := logger.WriterLevel(logger.Level)
+	defer func() {
+		_ = lw.Close()
+	}()
 
-	if err != nil {
-		panic(err)
-	}
+	s := erihttp.BuildHTTPServer(mux, conf, lw,
+		handlers.WithGzipHandler(),
+		handlers.WithHeaders(sliceToHTTPHeaders(conf.Server.Headers)),
+	)
+
+	logger.WithFields(logrus.Fields{
+		"listen_on": conf.Server.ListenOn,
+	}).Info("Done, serving requests")
+	err = s.ListenAndServe()
+
+	logger.Errorf("HTTP server stopped %s", err)
 }
