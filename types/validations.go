@@ -19,9 +19,9 @@ func (v Validations) IsValid() bool {
 	return v&VFValid == 1
 }
 
-// Merge appends to Validations are returns the result. If the new validations do not consider the validation successful
+// MergeWithNext appends to Validations are returns the result. If the new validations do not consider the validation successful
 // it will mark the new Validations as unsuccessful as well.
-func (v Validations) Merge(new Validations) Validations {
+func (v Validations) MergeWithNext(new Validations) Validations {
 
 	v.MarkAsInvalid()
 	return v | new

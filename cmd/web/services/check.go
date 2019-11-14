@@ -11,15 +11,15 @@ import (
 	"github.com/Dynom/TySug/finder"
 )
 
-func NewCheckService(cache *hitlist.HitList, f *finder.Finder, checker inspector.Checker) Check {
-	return Check{
+func NewCheckService(cache *hitlist.HitList, f *finder.Finder, checker inspector.Checker) CheckSvc {
+	return CheckSvc{
 		cache:   cache,
 		finder:  f,
 		checker: checker,
 	}
 }
 
-type Check struct {
+type CheckSvc struct {
 	cache   *hitlist.HitList
 	finder  *finder.Finder
 	checker inspector.Checker
@@ -31,20 +31,14 @@ type CheckResult struct {
 	CacheHitTTL time.Duration
 }
 
-/*
-	1. Check the cache, reply with the result if not a miss
-	2. Perform the check
-	3. If alternative were requested, invoke Finder for the domain
-	4. Reply
-*/
-func (c *Check) HandleCheckRequest(ctx context.Context, email types.EmailParts, includeAlternatives bool) (CheckResult, error) {
+func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailParts, includeAlternatives bool) (CheckResult, error) {
 	var res CheckResult
 	var result inspector.Result
 	var now = time.Now()
 
 	l, err := c.cache.GetForEmail(email.Address)
 	if err == nil {
-		res.Valid = result.Validations.Merge(l.Validations).IsValid()
+		res.Valid = result.Validations.MergeWithNext(l.Validations).IsValid()
 		res.CacheHitTTL = l.ValidUntil.Sub(now)
 
 	} else {

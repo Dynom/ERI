@@ -31,21 +31,14 @@ func (c Checker) Check(ctx context.Context, email string) Result {
 	}
 
 	var result = Result{
-		Timings:     make(types.Timings, 0, len(c.validators)),
-		Validations: 0 | types.VFValid,
+		Timings: make(types.Timings, 0, len(c.validators)),
 	}
 
 	for _, v := range c.validators {
 		r := v(ctx, e)
 
-		// Set Validators used
-		wasValid := result.Validations&types.VFValid == 1
-		result.Validations |= r.Validations
-
-		// Re-set validator result
-		if !r.Validations.IsValid() || !wasValid {
-			result.Validations.MarkAsInvalid()
-		}
+		// Set Validations used
+		result.Validations = result.Validations.MergeWithNext(r.Validations)
 
 		// Append to timers
 		for _, t := range r.Timings {
@@ -55,12 +48,10 @@ func (c Checker) Check(ctx context.Context, email string) Result {
 		// Wrap the error
 		if r.Error != nil {
 			result.Error = wrapError(result.Error, r.Error)
-			return result
 		}
 
 		if ctx.Err() != nil {
 			result.Error = wrapError(result.Error, ctx.Err())
-			return result
 		}
 	}
 

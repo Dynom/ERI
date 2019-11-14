@@ -243,7 +243,7 @@ func validateStep(result Result, stepName string, flag types.Validations, fn fun
 	if err != nil {
 		result.Error = fmt.Errorf("step %s failed, error: %w", stepName, err)
 	} else {
-		result.Validations |= flag
+		result.Validations = result.Validations.MergeWithNext(flag)
 	}
 
 	return result

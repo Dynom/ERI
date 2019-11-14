@@ -106,7 +106,7 @@ func (h *HitList) GetForEmail(email string) (Hit, error) {
 	r, ok := h.Set[parts.Domain].RCPTs[parts.Local]
 	h.lock.RUnlock()
 
-	if !ok || r.ValidUntil.After(time.Now()) {
+	if !ok || r.ValidUntil.Before(time.Now()) {
 		// @todo improve error situation
 		return Hit{}, ErrNotPresent
 	}
@@ -141,7 +141,7 @@ func (h *HitList) LearnEmailAddress(address string, validations types.Validation
 	h.Set[parts.Domain].RCPTs[parts.Local] = Hit{
 		// @todo make configurable
 		ValidUntil:  time.Now().Add(time.Hour * 60),
-		Validations: h.Set[parts.Domain].RCPTs[parts.Local].Validations.Merge(validations),
+		Validations: h.Set[parts.Domain].RCPTs[parts.Local].Validations.MergeWithNext(validations),
 	}
 
 	return nil
@@ -162,7 +162,7 @@ func (h *HitList) LearnDomain(d string, validations types.Validations) error {
 			Validations: validations,
 		}
 	} else {
-		v.Validations = v.Validations.Merge(validations)
+		v.Validations = v.Validations.MergeWithNext(validations)
 		h.Set[d] = v
 	}
 
