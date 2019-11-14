@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/minio/highwayhash"
+
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 
 	"github.com/Dynom/ERI/cmd/web/services"
@@ -54,7 +56,12 @@ func main() {
 		inspector.ValidateMXAndRCPT(inspector.DefaultRecipient),
 	))
 
-	cache := hitlist.NewHitList()
+	h, err := highwayhash.New128([]byte(`a1C2d3oi4uctnqo3utlNcwtqlmwH!rtl`))
+	if err != nil {
+		panic(err)
+	}
+
+	cache := hitlist.NewHitList(h)
 	myFinder, err := finder.New(
 		cache.GetValidAndUsageSortedDomains(),
 		finder.WithLengthTolerance(0.2),
@@ -65,7 +72,7 @@ func main() {
 		panic(err)
 	}
 
-	checkSvc := services.NewCheckService(&cache, myFinder, checker)
+	checkSvc := services.NewCheckService(&cache, myFinder, checker, logger)
 	learnSvc := services.NewLearnService(&cache, myFinder)
 
 	mux.HandleFunc("/check", NewCheckHandler(logger, checkSvc))
@@ -80,13 +87,15 @@ func main() {
 		for _, domain := range domains {
 			_, _ = fmt.Fprintf(w, "%s\n", domain)
 
-			rcpts := make([]string, 0, len(cache.Set[domain].RCPTs))
+			rcpts := make([]hitlist.RCPT, 0, len(cache.Set[domain].RCPTs))
 			for rcpt := range cache.Set[domain].RCPTs {
 				rcpts = append(rcpts, rcpt)
 			}
 
 			if len(rcpts) > 0 {
-				sort.Strings(rcpts)
+				sort.Slice(rcpts, func(i, j int) bool {
+					return rcpts[i] < rcpts[j]
+				})
 				_, _ = fmt.Fprint(w, "\tValidations      | cache ttl                 | recipient \n")
 
 				for _, rcpt := range rcpts {

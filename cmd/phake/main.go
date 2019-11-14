@@ -16,14 +16,20 @@ func main() {
 		numberOfAddresses int64
 		domain            = "example.org"
 		eriHost           = "http://localhost:1338"
+		generateDomain    bool
 	)
 
 	flag.Int64Var(&numberOfAddresses, "num-addr", 10, "Number of e-mail addresses to generate")
+	flag.BoolVar(&generateDomain, "gen-domain", false, "Pass the flag to generate the domain name")
 	flag.Parse()
 
 	if numberOfAddresses <= 0 {
 		flag.PrintDefaults()
 		os.Exit(2)
+	}
+
+	if generateDomain {
+		domain = ""
 	}
 
 	client := http.DefaultClient
@@ -62,7 +68,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		_, _ = fmt.Fprintf(os.Stderr, "Sending batch number %d/%d\n", batchIndex, numberOfAddresses)
+		_, _ = fmt.Fprintf(os.Stderr, "Sending batch [%d/%d]\n", batchIndex, numberOfAddresses)
 		res, err := client.Do(req)
 		if err != nil || res.StatusCode < 200 || res.StatusCode > 299 {
 			_, _ = fmt.Fprintf(os.Stderr, "boom, headshot %s\n%v", err, res)
@@ -73,12 +79,24 @@ func main() {
 
 }
 
-const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const alnum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const letters = "abcdefghijklmnopqrstuvwxyz"
 
 func newEmailAddress(length uint, domain string) string {
 	var b = make([]byte, length)
 	for i := uint(0); i < length; i++ {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = alnum[rand.Intn(len(alnum))]
+	}
+
+	if len(domain) == 0 {
+		var d = make([]byte, 20+rand.Intn(38))
+
+		d[0] = letters[rand.Intn(len(letters))]
+		for i, j := 1, len(d); i < j; i++ {
+			d[i] = alnum[rand.Intn(len(alnum))]
+		}
+
+		domain = string(d) + `.test`
 	}
 
 	return string(b) + `@` + domain

@@ -1,7 +1,9 @@
 package hitlist
 
 import (
+	"encoding/hex"
 	"errors"
+	"hash"
 	"sort"
 	"strings"
 	"sync"
@@ -15,10 +17,11 @@ var (
 	ErrNotAValidDomain = errors.New("argument doesn't appear to be a valid domain name")
 )
 
-func NewHitList() HitList {
+func NewHitList(h hash.Hash) HitList {
 	return HitList{
 		Set:  make(map[string]domain),
 		lock: sync.RWMutex{},
+		h:    h,
 	}
 }
 
@@ -26,6 +29,7 @@ func NewHitList() HitList {
 type HitList struct {
 	Set  map[string]domain
 	lock sync.RWMutex
+	h    hash.Hash
 }
 
 type Hit struct {
@@ -35,7 +39,13 @@ type Hit struct {
 
 type domain struct {
 	types.Validations
-	RCPTs map[string]Hit
+	RCPTs map[RCPT]Hit
+}
+
+type RCPT string
+
+func (rcpt RCPT) String() string {
+	return hex.EncodeToString([]byte(rcpt))
 }
 
 // GetValidAndUsageSortedDomains returns the used domains, sorted by their usage
@@ -102,8 +112,10 @@ func (h *HitList) GetForEmail(email string) (Hit, error) {
 		return Hit{}, err
 	}
 
+	safeLocal := RCPT(h.h.Sum([]byte(parts.Local)))
+
 	h.lock.RLock()
-	r, ok := h.Set[parts.Domain].RCPTs[parts.Local]
+	r, ok := h.Set[parts.Domain].RCPTs[safeLocal]
 	h.lock.RUnlock()
 
 	if !ok || r.ValidUntil.Before(time.Now()) {
@@ -123,6 +135,8 @@ func (h *HitList) LearnEmailAddress(address string, validations types.Validation
 		return err
 	}
 
+	safeLocal := RCPT(h.h.Sum([]byte(parts.Local)))
+
 	if !h.HasDomain(parts.Domain) {
 		v := validations
 		if !isValidationsForValidDomain(v) {
@@ -138,10 +152,10 @@ func (h *HitList) LearnEmailAddress(address string, validations types.Validation
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	h.Set[parts.Domain].RCPTs[parts.Local] = Hit{
+	h.Set[parts.Domain].RCPTs[safeLocal] = Hit{
 		// @todo make configurable
 		ValidUntil:  time.Now().Add(time.Hour * 60),
-		Validations: h.Set[parts.Domain].RCPTs[parts.Local].Validations.MergeWithNext(validations),
+		Validations: h.Set[parts.Domain].RCPTs[safeLocal].Validations.MergeWithNext(validations),
 	}
 
 	return nil
@@ -158,7 +172,7 @@ func (h *HitList) LearnDomain(d string, validations types.Validations) error {
 
 	if v, ok := h.Set[d]; !ok {
 		h.Set[d] = domain{
-			RCPTs:       make(map[string]Hit),
+			RCPTs:       make(map[RCPT]Hit),
 			Validations: validations,
 		}
 	} else {
