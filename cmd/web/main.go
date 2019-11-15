@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/Dynom/ERI/cmd/web/inspector/validators"
+
 	"github.com/minio/highwayhash"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
@@ -52,8 +54,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	checker := inspector.New(inspector.WithValidators(
-		inspector.ValidateSyntax(),
-		inspector.ValidateMXAndRCPT(inspector.DefaultRecipient),
+		validators.ValidateSyntax(),
+		validators.ValidateMXAndRCPT(validators.DefaultRecipient),
 	))
 
 	h, err := highwayhash.New128([]byte(`a1C2d3oi4uctnqo3utlNcwtqlmwH!rtl`))

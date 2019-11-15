@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/Dynom/ERI/cmd/web/inspector/validators"
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
@@ -37,7 +39,7 @@ type CheckResult struct {
 
 func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailParts, includeAlternatives bool) (CheckResult, error) {
 	var res CheckResult
-	var result inspector.Result
+	var result validators.Result
 	var now = time.Now()
 
 	l, err := c.cache.GetForEmail(email.Address)

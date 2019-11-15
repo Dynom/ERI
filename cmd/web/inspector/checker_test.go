@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Dynom/ERI/cmd/web/inspector/validators"
+
 	"github.com/Dynom/ERI/cmd/web/types"
 )
 
@@ -29,14 +31,14 @@ func Test_Check(t *testing.T) {
 }
 
 // validateStub is a stub validator
-func validateStub(v types.Validations) Validator {
+func validateStub(v types.Validations) validators.Validator {
 	var err error
 	if v&types.VFValid == 0 {
 		err = errors.New("validateStub returning an error")
 	}
 
-	return func(ctx context.Context, e types.EmailParts) Result {
-		return Result{
+	return func(ctx context.Context, e types.EmailParts) validators.Result {
+		return validators.Result{
 			Error:       err,
 			Timings:     make(types.Timings, 0),
 			Validations: v,
@@ -47,20 +49,20 @@ func validateStub(v types.Validations) Validator {
 func TestChecker_CheckIncrementalValidators(t *testing.T) {
 	tests := []struct {
 		name          string
-		validators    []Validator
+		validators    []validators.Validator
 		shouldBeValid bool
 	}{
 		{
 			name:          "single validator",
 			shouldBeValid: true,
-			validators: []Validator{
+			validators: []validators.Validator{
 				validateStub(0 | types.VFValid), // Valid
 			},
 		},
 		{
 			name:          "multi validator, start invalid end with valid",
 			shouldBeValid: true,
-			validators: []Validator{
+			validators: []validators.Validator{
 				validateStub(0), // Invalid
 				validateStub(0 | types.VFSyntax | types.VFValid), // Valid
 			},
@@ -68,7 +70,7 @@ func TestChecker_CheckIncrementalValidators(t *testing.T) {
 		{
 			name:          "multi validator, start valid end with invalid",
 			shouldBeValid: false,
-			validators: []Validator{
+			validators: []validators.Validator{
 				validateStub(0 | types.VFSyntax | types.VFValid),    // Valid
 				validateStub(0 | types.VFSyntax | types.VFMXLookup), // Invalid
 			},
