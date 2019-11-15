@@ -11,9 +11,9 @@ import (
 )
 
 func Test_Check(t *testing.T) {
-	validationResult := types.Validations(0)
-	validationResult |= types.VFValid
-	validationResult |= types.VFMXLookup
+	validationResult := validators.Validations(0)
+	validationResult |= validators.VFValid
+	validationResult |= validators.VFMXLookup
 
 	insp := New(WithValidators(
 		validateStub(validationResult),
@@ -31,9 +31,9 @@ func Test_Check(t *testing.T) {
 }
 
 // validateStub is a stub validator
-func validateStub(v types.Validations) validators.Validator {
+func validateStub(v validators.Validations) validators.Validator {
 	var err error
-	if v&types.VFValid == 0 {
+	if v&validators.VFValid == 0 {
 		err = errors.New("validateStub returning an error")
 	}
 
@@ -56,7 +56,7 @@ func TestChecker_CheckIncrementalValidators(t *testing.T) {
 			name:          "single validator",
 			shouldBeValid: true,
 			validators: []validators.Validator{
-				validateStub(0 | types.VFValid), // Valid
+				validateStub(0 | validators.VFValid), // Valid
 			},
 		},
 		{
@@ -64,15 +64,15 @@ func TestChecker_CheckIncrementalValidators(t *testing.T) {
 			shouldBeValid: true,
 			validators: []validators.Validator{
 				validateStub(0), // Invalid
-				validateStub(0 | types.VFSyntax | types.VFValid), // Valid
+				validateStub(0 | validators.VFSyntax | validators.VFValid), // Valid
 			},
 		},
 		{
 			name:          "multi validator, start valid end with invalid",
 			shouldBeValid: false,
 			validators: []validators.Validator{
-				validateStub(0 | types.VFSyntax | types.VFValid),    // Valid
-				validateStub(0 | types.VFSyntax | types.VFMXLookup), // Invalid
+				validateStub(0 | validators.VFSyntax | validators.VFValid),    // Valid
+				validateStub(0 | validators.VFSyntax | validators.VFMXLookup), // Invalid
 			},
 		},
 	}

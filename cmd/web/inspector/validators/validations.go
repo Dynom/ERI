@@ -1,4 +1,4 @@
-package types
+package validators
 
 const (
 	// Validation Flags, these flags represent successful validation steps. Depending on how far you want to go, you can

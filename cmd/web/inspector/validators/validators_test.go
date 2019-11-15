@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/Dynom/ERI/cmd/web/types"
 )
 
 func TestTimer(t *testing.T) {
@@ -41,29 +39,29 @@ func TestTimer(t *testing.T) {
 func Test_MaskTest(t *testing.T) {
 
 	t.Run("Flag values", func(t *testing.T) {
-		t.Logf("VFValid        %08b %d", types.VFValid, types.VFValid)
-		t.Logf("VFSyntax       %08b %d", types.VFSyntax, types.VFSyntax)
-		t.Logf("VFMXLookup     %08b %d", types.VFMXLookup, types.VFMXLookup)
-		t.Logf("VFHostConnect  %08b %d", types.VFHostConnect, types.VFHostConnect)
-		t.Logf("VFValidRCPT    %08b %d", types.VFValidRCPT, types.VFValidRCPT)
-		t.Logf("VFDisposable   %08b %d", types.VFDisposable, types.VFDisposable)
+		t.Logf("VFValid        %08b %d", VFValid, VFValid)
+		t.Logf("VFSyntax       %08b %d", VFSyntax, VFSyntax)
+		t.Logf("VFMXLookup     %08b %d", VFMXLookup, VFMXLookup)
+		t.Logf("VFHostConnect  %08b %d", VFHostConnect, VFHostConnect)
+		t.Logf("VFValidRCPT    %08b %d", VFValidRCPT, VFValidRCPT)
+		t.Logf("VFDisposable   %08b %d", VFDisposable, VFDisposable)
 	})
 
 	t.Run("Setting", func(t *testing.T) {
-		var v types.Validations
+		var v Validations
 
 		t.Logf("initial      %08b", v)
 		// Setting MX?
 		//v = 1 | VFMXLookup
-		v |= types.VFMXLookup
+		v |= VFMXLookup
 		t.Logf("set mx?      %08b", v)
 		//t.Logf("is valid? %08b", v&VFValid)
 
-		v |= types.VFValid
-		t.Logf("valid masked %08b", v&types.VFValid)
+		v |= VFValid
+		t.Logf("valid masked %08b", v&VFValid)
 		t.Logf("is valid?    %08b", v)
 
-		v = 0 &^ types.VFValid
+		v = 0 &^ VFValid
 		t.Logf("valid clear? %08b", v)
 
 	})

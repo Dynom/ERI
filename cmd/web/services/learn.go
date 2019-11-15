@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Dynom/ERI/cmd/web/inspector/validators"
+
 	"github.com/Dynom/ERI/cmd/web/erihttp"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
-	"github.com/Dynom/ERI/cmd/web/types"
 	"github.com/Dynom/TySug/finder"
 )
 
@@ -36,7 +37,7 @@ func (l *LearnSvc) HandleLearnRequest(ctx context.Context, req erihttp.LearnRequ
 
 	var learnErrors = make(map[string]error, len(req.Emails)+len(req.Domains))
 	for _, toLearn := range req.Emails {
-		var v types.Validations
+		var v validators.Validations
 		if toLearn.Valid {
 			v.MarkAsValid()
 		}
@@ -48,7 +49,7 @@ func (l *LearnSvc) HandleLearnRequest(ctx context.Context, req erihttp.LearnRequ
 	}
 
 	for _, toLearn := range req.Domains {
-		var v types.Validations
+		var v validators.Validations
 		if toLearn.Valid {
 			v.MarkAsValid()
 		}

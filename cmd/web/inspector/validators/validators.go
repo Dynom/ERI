@@ -28,8 +28,10 @@ type Validator func(ctx context.Context, e types.EmailParts) Result
 type Result struct {
 	Error error
 	types.Timings
-	types.Validations
+	Validations
 }
+
+//func Validate
 
 // ValidateMXAndRCPT validates if the mailbox exists. You can control the timeout by using context
 func ValidateMXAndRCPT(recipient string) Validator {
@@ -50,7 +52,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 		result.Validations.MarkAsInvalid()
 
 		var mxHost string
-		result = validateStep(result, "LookupMX", types.VFMXLookup, func() error {
+		result = validateStep(result, "LookupMX", VFMXLookup, func() error {
 			var err error
 			mxHost, err = fetchMXHost(ctx, &resolver, e.Domain)
 
@@ -62,7 +64,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 		}
 
 		var conn net.Conn
-		result = validateStep(result, "Dial", types.VFHostConnect, func() error {
+		result = validateStep(result, "Dial", VFHostConnect, func() error {
 			var err error
 			conn, err = getConnection(ctx, dialer, mxHost)
 			return err
@@ -88,7 +90,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 			_ = client.Quit()
 		}()
 
-		result = validateStep(result, "Mail", types.VFValidRCPT, func() error {
+		result = validateStep(result, "Mail", VFValidRCPT, func() error {
 			return client.Mail(recipient)
 		})
 
@@ -96,7 +98,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 			return result
 		}
 
-		result = validateStep(result, "Rcpt", types.VFValidRCPT|types.VFValid, func() error {
+		result = validateStep(result, "Rcpt", VFValidRCPT|VFValid, func() error {
 			return client.Rcpt(e.Address)
 		})
 
@@ -122,7 +124,7 @@ func ValidateMX() Validator {
 		start = time.Now()
 		_, err := fetchMXHost(ctx, &resolver, e.Domain)
 		result.Timings.Add("LookupMX", time.Since(start))
-		result.Validations |= types.VFMXLookup
+		result.Validations |= VFMXLookup
 
 		if err != nil {
 			result.Validations.MarkAsInvalid()
@@ -130,7 +132,7 @@ func ValidateMX() Validator {
 			return result
 		}
 
-		result.Validations |= types.VFValid
+		result.Validations |= VFValid
 
 		return result
 	}
@@ -149,14 +151,14 @@ func ValidateSyntax() Validator {
 		start = time.Now()
 		_, err := mail.ParseAddress(e.Address)
 		result.Timings.Add("Structure", time.Since(start))
-		result.Validations = 1 | types.VFSyntax
+		result.Validations = 1 | VFSyntax
 
 		if err != nil {
 			result.Error = err
 			return result
 		}
 
-		result.Validations = 1 | types.VFValid
+		result.Validations = 1 | VFValid
 		return result
 	}
 }
@@ -235,7 +237,7 @@ func getConnection(ctx context.Context, dialer net.Dialer, mxHost string) (net.C
 }
 
 // validateStep encapsulates some boilerplate. If the callback returns with a nil error, the flags are applied
-func validateStep(result Result, stepName string, flag types.Validations, fn func() error) Result {
+func validateStep(result Result, stepName string, flag Validations, fn func() error) Result {
 	start := time.Now()
 	err := fn()
 	result.Timings.Add(stepName, time.Since(start))

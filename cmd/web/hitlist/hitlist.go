@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Dynom/ERI/cmd/web/inspector/validators"
+
 	"github.com/Dynom/ERI/cmd/web/types"
 )
 
@@ -33,12 +35,12 @@ type HitList struct {
 }
 
 type Hit struct {
-	types.Validations           // The type of validations performed (bit mask)
-	ValidUntil        time.Time // The TTL
+	validators.Validations           // The type of validations performed (bit mask)
+	ValidUntil             time.Time // The TTL
 }
 
 type domain struct {
-	types.Validations
+	validators.Validations
 	RCPTs map[RCPT]Hit
 }
 
@@ -128,7 +130,7 @@ func (h *HitList) GetForEmail(email string) (Hit, error) {
 
 // LearnEmailAddress records validations for a particular e-mail address. LearnEmailAddress clears previously seen
 // validators if you want to merge, first fetch, merge and pass the resulting Validations to LearnEmailAddress()
-func (h *HitList) LearnEmailAddress(address string, validations types.Validations) error {
+func (h *HitList) LearnEmailAddress(address string, validations validators.Validations) error {
 
 	parts, err := types.NewEmailParts(address)
 	if err != nil {
@@ -162,7 +164,7 @@ func (h *HitList) LearnEmailAddress(address string, validations types.Validation
 }
 
 // LearnDomain learns of a domain and it's validity.
-func (h *HitList) LearnDomain(d string, validations types.Validations) error {
+func (h *HitList) LearnDomain(d string, validations validators.Validations) error {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
@@ -184,9 +186,9 @@ func (h *HitList) LearnDomain(d string, validations types.Validations) error {
 }
 
 // isValidationsForValidDomain checks if a set of validations really marks a domain as valid.
-func isValidationsForValidDomain(validations types.Validations) bool {
+func isValidationsForValidDomain(validations validators.Validations) bool {
 	// @todo figure out what we consider "valid", perhaps we should drop the notion of "valid" and instead be more explicit .HasValidSyntax, etc.
-	return validations&types.VFMXLookup == 1
+	return validations&validators.VFMXLookup == 1
 }
 
 // mightBeAHostOrIP is a very rudimentary check to see if the argument could be either a host name or IP address
