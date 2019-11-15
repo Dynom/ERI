@@ -8,8 +8,8 @@ import (
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 
-	"github.com/Dynom/ERI/inspector"
-	"github.com/Dynom/ERI/types"
+	"github.com/Dynom/ERI/cmd/web/inspector"
+	"github.com/Dynom/ERI/cmd/web/types"
 	"github.com/Dynom/TySug/finder"
 )
 

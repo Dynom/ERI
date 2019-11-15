@@ -19,7 +19,7 @@ import (
 
 	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
 
-	"github.com/Dynom/ERI/inspector"
+	"github.com/Dynom/ERI/cmd/web/inspector"
 	"github.com/Dynom/TySug/finder"
 	"github.com/sirupsen/logrus"
 )

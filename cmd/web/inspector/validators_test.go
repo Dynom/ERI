@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Dynom/ERI/types"
+	"github.com/Dynom/ERI/cmd/web/types"
 )
 
 func TestTimer(t *testing.T) {

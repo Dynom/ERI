@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Dynom/ERI/types"
+	"github.com/Dynom/ERI/cmd/web/types"
 )
 
 // New creates a new Checker and applies any specified functional Option argument

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Dynom/ERI/types"
+	"github.com/Dynom/ERI/cmd/web/types"
 )
 
 func Test_Check(t *testing.T) {

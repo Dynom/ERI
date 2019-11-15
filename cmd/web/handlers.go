@@ -10,7 +10,7 @@ import (
 	"github.com/Dynom/ERI/cmd/web/services"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp"
-	"github.com/Dynom/ERI/types"
+	"github.com/Dynom/ERI/cmd/web/types"
 	"github.com/sirupsen/logrus"
 )
 

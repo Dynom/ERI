@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dynom/ERI/types"
+	"github.com/Dynom/ERI/cmd/web/types"
 )
 
 const (
