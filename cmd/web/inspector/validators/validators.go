@@ -50,10 +50,10 @@ func ValidateMXAndRCPT(recipient string) Validator {
 		// Assuming the worst
 		result.Validations.MarkAsInvalid()
 
-		var mxHost string
+		var mxHosts []string
 		result = validateStep(result, "LookupMX", VFMXLookup, func() error {
 			var err error
-			mxHost, err = fetchMXHost(ctx, &resolver, e.Domain)
+			mxHosts, err = fetchMXHosts(ctx, &resolver, e.Domain)
 
 			return err
 		})
@@ -65,7 +65,7 @@ func ValidateMXAndRCPT(recipient string) Validator {
 		var conn net.Conn
 		result = validateStep(result, "Dial", VFHostConnect, func() error {
 			var err error
-			conn, err = getConnection(ctx, dialer, mxHost)
+			conn, err = getConnection(ctx, dialer, mxHosts[0])
 			return err
 		})
 
@@ -121,7 +121,7 @@ func ValidateMX() Validator {
 		}
 
 		start = time.Now()
-		_, err := fetchMXHost(ctx, &resolver, e.Domain)
+		_, err := fetchMXHosts(ctx, &resolver, e.Domain)
 		result.Timings.Add("LookupMX", time.Since(start))
 		result.Validations |= VFMXLookup
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// getConnection attempts to connect to a host with one of the common email ports.
 func getConnection(ctx context.Context, dialer *net.Dialer, mxHost string) (net.Conn, error) {
 	var conn net.Conn
 	var err error
@@ -17,6 +18,7 @@ func getConnection(ctx context.Context, dialer *net.Dialer, mxHost string) (net.
 
 		// @todo Should we check multiple ports, and do this in parallel?
 		// @todo Do we want to force ipv4/6?
+		// @todo Configure timeouts specifically for this expensive step?
 
 		var dialErr error
 		conn, dialErr = dialer.DialContext(ctx, "tcp", mxHost+":"+port)
@@ -32,27 +34,39 @@ func getConnection(ctx context.Context, dialer *net.Dialer, mxHost string) (net.
 	return conn, err
 }
 
-// fetchMXHost returns 0 or 1 value that resembles a hostname/ip of the MX records, sorted by preference
-func fetchMXHost(ctx context.Context, resolver *net.Resolver, domain string) (string, error) {
+// fetchMXHosts collects up to 10 MX hosts for a given domain
+func fetchMXHosts(ctx context.Context, resolver *net.Resolver, domain string) ([]string, error) {
 
 	mxs, err := resolver.LookupMX(ctx, domain)
 	if err != nil {
-		return "", fmt.Errorf("MX lookup failed %w", err)
+		return []string{}, fmt.Errorf("MX lookup failed %w", err)
 	}
 
 	if len(mxs) == 0 {
-		return "", fmt.Errorf("no MX records found %w", err)
+		return []string{}, fmt.Errorf("no MX records found %w", err)
 	}
 
-	for _, mx := range mxs {
-		if mightBeAHostOrIP(mx.Host) {
+	// Reading an external source, limiting to a liberal amount
+	var allocateMax = 10
+	if l := len(mxs); l < 10 {
+		allocateMax = l
+	}
 
-			// Hosts may end with a ".", whilst still valid, it might produce problems with lookups
-			return strings.TrimRight(mx.Host, "."), nil
+	var collected = make([]string, 0, allocateMax)
+	for _, mx := range mxs[:allocateMax] {
+
+		// Hosts might end on a "." (which isn't bad) or consist solely out of a "." (which is bad) this produces a canonical test basis
+		host := strings.TrimRight(mx.Host, ".")
+		if mightBeAHostOrIP(host) {
+			collected = append(collected, host)
 		}
 	}
 
-	return "", fmt.Errorf("tried %d MX host(s), all were invalid %w", len(mxs), ErrInvalidHost)
+	if len(collected) == 0 {
+		err = fmt.Errorf("tried %d MX host(s), all were invalid %w", len(mxs), ErrInvalidHost)
+	}
+
+	return collected, err
 }
 
 // mightBeAHostOrIP is a very rudimentary check to see if the argument could be either a host name or IP address

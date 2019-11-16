@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/mail"
 	"net/smtp"
+	"time"
 
 	"github.com/Dynom/ERI/cmd/web/types"
 )
@@ -76,7 +77,10 @@ func (v *SMValidator) CheckEmailAddress(ctx context.Context, addr string) (Artif
 }
 
 func checkSyntax(a *Artifact) error {
+	start := time.Now()
 	_, err := mail.ParseAddress(a.email.Address)
+	a.Timings.Add("checkSyntax", time.Since(start))
+
 	if err != nil {
 		return err
 	}
@@ -87,12 +91,15 @@ func checkSyntax(a *Artifact) error {
 }
 
 func checkIfDomainHasMX(a *Artifact) error {
-	mxHost, err := fetchMXHost(a.ctx, a.resolver, a.email.Domain)
+	start := time.Now()
+	mxs, err := fetchMXHosts(a.ctx, a.resolver, a.email.Domain)
+	a.Timings.Add("checkIfDomainHasMX", time.Since(start))
+
 	if err != nil {
 		return err
 	}
 
-	a.mx = []string{mxHost}
+	a.mx = mxs
 	a.Validations |= VFMXLookup
 	a.next = checkIfMXHasIP
 	return nil
@@ -100,8 +107,12 @@ func checkIfDomainHasMX(a *Artifact) error {
 
 func checkIfMXHasIP(a *Artifact) error {
 	var err error
+
 	for i, domain := range a.mx {
+		start := time.Now()
 		ips, innerErr := a.resolver.LookupIPAddr(a.ctx, domain)
+		a.Timings.Add("checkIfMXHasIP "+domain, time.Since(start))
+
 		if innerErr != nil || len(ips) == 0 {
 			a.mx[i] = ""
 
@@ -121,7 +132,10 @@ func checkIfMXHasIP(a *Artifact) error {
 }
 
 func checkMXAcceptsConnect(a *Artifact) error {
+	start := time.Now()
 	conn, err := getConnection(a.ctx, a.dialer, a.mx[0])
+	a.Timings.Add("checkMXAcceptsConnect", time.Since(start))
+
 	if err != nil {
 		return err
 	}
@@ -133,9 +147,11 @@ func checkMXAcceptsConnect(a *Artifact) error {
 }
 
 func checkRCPT(a *Artifact) error {
-	const recipient = "eri@tysug.net"
+	const fakeSender = "eri@tysug.net"
+	var start time.Time
 
 	client, err := smtp.NewClient(a.conn, a.email.Domain)
+
 	if err != nil {
 		return err
 	}
@@ -144,12 +160,16 @@ func checkRCPT(a *Artifact) error {
 		_ = client.Quit()
 	}()
 
-	err = client.Mail(recipient)
+	start = time.Now()
+	err = client.Mail(fakeSender)
+	a.Timings.Add("checkRCPT Mail", time.Since(start))
 	if err != nil {
 		return err
 	}
 
+	start = time.Now()
 	err = client.Rcpt(a.email.Address)
+	a.Timings.Add("checkRCPT RCPT", time.Since(start))
 
 	if err == nil {
 		a.Validations |= VFValidRCPT

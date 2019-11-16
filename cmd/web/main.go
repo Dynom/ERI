@@ -87,20 +87,20 @@ func main() {
 
 		sort.Strings(domains)
 		for _, domain := range domains {
-			_, _ = fmt.Fprintf(w, "%s\n", domain)
+			_, _ = fmt.Fprintf(w, "%016b | %s \n", cache.Set[domain].Validations, domain)
 
-			rcpts := make([]hitlist.RCPT, 0, len(cache.Set[domain].RCPTs))
+			recipients := make([]hitlist.RCPT, 0, len(cache.Set[domain].RCPTs))
 			for rcpt := range cache.Set[domain].RCPTs {
-				rcpts = append(rcpts, rcpt)
+				recipients = append(recipients, rcpt)
 			}
 
-			if len(rcpts) > 0 {
-				sort.Slice(rcpts, func(i, j int) bool {
-					return rcpts[i] < rcpts[j]
+			if len(recipients) > 0 {
+				sort.Slice(recipients, func(i, j int) bool {
+					return recipients[i] < recipients[j]
 				})
 				_, _ = fmt.Fprint(w, "\tValidations      | cache ttl                 | recipient \n")
 
-				for _, rcpt := range rcpts {
+				for _, rcpt := range recipients {
 					hit := cache.Set[domain].RCPTs[rcpt]
 					_, _ = fmt.Fprintf(w, "\t%016b | %25s | %s \n", hit.Validations, hit.ValidUntil.Format(time.RFC3339), rcpt)
 				}
