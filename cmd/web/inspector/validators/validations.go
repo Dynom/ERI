@@ -6,6 +6,7 @@ const (
 	VFValid       Validations = 1 << iota // The e-mail is considered valid (1) or not (0)
 	VFSyntax      Validations = 1 << iota // e-mail address follows a (reasonably) valid syntax
 	VFMXLookup    Validations = 1 << iota // e-mail domain has MX records
+	VFDomainHasIP Validations = 1 << iota // The domain has IP's
 	VFHostConnect Validations = 1 << iota // MX accepts connections
 	VFValidRCPT   Validations = 1 << iota // MX acknowledges that the RCPT exists
 	VFDisposable  Validations = 1 << iota // Address / Domain is considered a disposable e-mail trap
