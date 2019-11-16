@@ -30,7 +30,19 @@ type Result struct {
 	Validations
 }
 
-//func Validate
+func ValidateFull() Validator {
+	r := &net.Resolver{}
+	d := &net.Dialer{}
+	v := NewSMValidator(r, d)
+	return func(ctx context.Context, e types.EmailParts) Result {
+		a, err := v.CheckEmailAddress(ctx, e.Address)
+		return Result{
+			Error:       err,
+			Timings:     a.Timings,
+			Validations: a.Validations,
+		}
+	}
+}
 
 // ValidateMXAndRCPT validates if the mailbox exists. You can control the timeout by using context
 func ValidateMXAndRCPT(recipient string) Validator {

@@ -54,8 +54,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	checker := inspector.New(inspector.WithValidators(
-		validators.ValidateSyntax(),
-		validators.ValidateMXAndRCPT(validators.DefaultRecipient),
+		validators.ValidateFull(),
 	))
 
 	h, err := highwayhash.New128([]byte(`a1C2d3oi4uctnqo3utlNcwtqlmwH!rtl`))

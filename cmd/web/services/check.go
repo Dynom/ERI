@@ -55,7 +55,7 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 		result = c.checker.Check(ctx, email.Address)
 		res.Valid = result.Validations.IsValid()
 
-		// @todo not sure if this should result in returning an error
+		// @todo depending on the error above, we should cache with a different TTL and optionally even b0rk completely here
 		err := c.cache.LearnEmailAddress(email.Address, result.Validations)
 		if err != nil {
 			return res, err

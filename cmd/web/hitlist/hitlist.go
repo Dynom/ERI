@@ -140,12 +140,8 @@ func (h *HitList) LearnEmailAddress(address string, validations validators.Valid
 	safeLocal := RCPT(h.h.Sum([]byte(parts.Local)))
 
 	if !h.HasDomain(parts.Domain) {
-		v := validations
-		if !isValidationsForValidDomain(v) {
-			v.MarkAsInvalid()
-		}
 
-		err := h.LearnDomain(parts.Domain, v)
+		err := h.LearnDomain(parts.Domain, validations)
 		if err != nil {
 			return err
 		}
@@ -172,6 +168,12 @@ func (h *HitList) LearnDomain(d string, validations validators.Validations) erro
 		return ErrNotAValidDomain
 	}
 
+	if validations.IsValid() || isValidationsForValidDomain(validations) {
+		validations.MarkAsValid()
+	} else {
+		validations.MarkAsInvalid()
+	}
+
 	if v, ok := h.Set[d]; !ok {
 		h.Set[d] = domain{
 			RCPTs:       make(map[RCPT]Hit),
@@ -187,8 +189,13 @@ func (h *HitList) LearnDomain(d string, validations validators.Validations) erro
 
 // isValidationsForValidDomain checks if a set of validations really marks a domain as valid.
 func isValidationsForValidDomain(validations validators.Validations) bool {
-	// @todo figure out what we consider "valid", perhaps we should drop the notion of "valid" and instead be more explicit .HasValidSyntax, etc.
-	return validations&validators.VFMXLookup == 1
+	if validations&validators.VFMXLookup == 1 ||
+		validations&validators.VFDomainHasIP == 1 ||
+		validations&validators.VFHostConnect == 1 {
+		return true
+	}
+
+	return false
 }
 
 // mightBeAHostOrIP is a very rudimentary check to see if the argument could be either a host name or IP address
