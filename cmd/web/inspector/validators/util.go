@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func getConnection(ctx context.Context, dialer net.Dialer, mxHost string) (net.Conn, error) {
+func getConnection(ctx context.Context, dialer *net.Dialer, mxHost string) (net.Conn, error) {
 	var conn net.Conn
 	var err error
 

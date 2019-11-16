@@ -13,18 +13,18 @@ import (
 type Artifact struct {
 	Validations
 	types.Timings
-	Error    error
 	email    types.EmailParts
 	mx       []string
 	ctx      context.Context
-	resolver net.Resolver
-	dialer   net.Dialer
+	resolver *net.Resolver
+	dialer   *net.Dialer
 	conn     net.Conn
+	next     stateFn
 }
 
-type stateFn func(a *Artifact) stateFn
+type stateFn func(a *Artifact) error
 
-func NewSMValidator(resolver net.Resolver, dialer net.Dialer) SMValidator {
+func NewSMValidator(resolver *net.Resolver, dialer *net.Dialer) SMValidator {
 	return SMValidator{
 		resolver: resolver,
 		dialer:   dialer,
@@ -32,15 +32,14 @@ func NewSMValidator(resolver net.Resolver, dialer net.Dialer) SMValidator {
 }
 
 type SMValidator struct {
-	resolver net.Resolver
-	dialer   net.Dialer
+	resolver *net.Resolver
+	dialer   *net.Dialer
 }
 
 func (v *SMValidator) getNewArtifact(ctx context.Context, ep types.EmailParts) Artifact {
 	a := Artifact{
 		Validations: 0,
 		Timings:     make(types.Timings, 10),
-		Error:       nil,
 		email:       ep,
 		mx:          []string{""},
 		ctx:         ctx,
@@ -56,49 +55,50 @@ func (v *SMValidator) getNewArtifact(ctx context.Context, ep types.EmailParts) A
 	return a
 }
 
-func (v *SMValidator) CheckEmailAddress(ctx context.Context, addr string) (error, Artifact) {
+func (v *SMValidator) CheckEmailAddress(ctx context.Context, addr string) (Artifact, error) {
 	p, err := types.NewEmailParts(addr)
 	if err != nil {
-		return err, Artifact{}
+		return Artifact{}, err
 	}
 
 	a := v.getNewArtifact(ctx, p)
 
 	for validator := checkSyntax; validator != nil; {
-		validator = validator(&a)
+		if err := validator(&a); err != nil {
+			return a, err
+		}
+
+		validator = a.next
 	}
 
-	if a.Error == nil {
-		a.Validations |= VFValid
-	}
-
-	return nil, a
+	a.Validations |= VFValid
+	return a, nil
 }
 
-func checkSyntax(a *Artifact) stateFn {
+func checkSyntax(a *Artifact) error {
 	_, err := mail.ParseAddress(a.email.Address)
 	if err != nil {
-		a.Error = err
-		return nil
+		return err
 	}
 
 	a.Validations |= VFSyntax
-	return checkIfDomainHasMX
+	a.next = checkIfDomainHasMX
+	return nil
 }
 
-func checkIfDomainHasMX(a *Artifact) stateFn {
-	mxHost, err := fetchMXHost(a.ctx, &a.resolver, a.email.Domain)
+func checkIfDomainHasMX(a *Artifact) error {
+	mxHost, err := fetchMXHost(a.ctx, a.resolver, a.email.Domain)
 	if err != nil {
-		a.Error = err
-		return nil
+		return err
 	}
 
 	a.mx = []string{mxHost}
 	a.Validations |= VFMXLookup
-	return checkIfMXHasIP
+	a.next = checkIfMXHasIP
+	return nil
 }
 
-func checkIfMXHasIP(a *Artifact) stateFn {
+func checkIfMXHasIP(a *Artifact) error {
 	var err error
 	for i, domain := range a.mx {
 		ips, innerErr := a.resolver.LookupIPAddr(a.ctx, domain)
@@ -112,33 +112,32 @@ func checkIfMXHasIP(a *Artifact) stateFn {
 	}
 
 	if err != nil {
-		a.Error = err
-		return nil
+		return err
 	}
 
 	a.Validations |= VFDomainHasIP
-	return checkMXAcceptsConnect
+	a.next = checkMXAcceptsConnect
+	return nil
 }
 
-func checkMXAcceptsConnect(a *Artifact) stateFn {
+func checkMXAcceptsConnect(a *Artifact) error {
 	conn, err := getConnection(a.ctx, a.dialer, a.mx[0])
 	if err != nil {
-		a.Error = err
-		return nil
+		return err
 	}
 
 	a.conn = conn
 	a.Validations |= VFHostConnect
-	return checkRCPT
+	a.next = checkRCPT
+	return nil
 }
 
-func checkRCPT(a *Artifact) stateFn {
+func checkRCPT(a *Artifact) error {
 	const recipient = "eri@tysug.net"
 
 	client, err := smtp.NewClient(a.conn, a.email.Domain)
 	if err != nil {
-		a.Error = err
-		return nil
+		return err
 	}
 
 	defer func() {
@@ -147,15 +146,14 @@ func checkRCPT(a *Artifact) stateFn {
 
 	err = client.Mail(recipient)
 	if err != nil {
-		a.Error = err
-		return nil
+		return err
 	}
 
-	a.Error = client.Rcpt(a.email.Address)
+	err = client.Rcpt(a.email.Address)
 
-	if a.Error == nil {
+	if err == nil {
 		a.Validations |= VFValidRCPT
 	}
 
-	return nil
+	return err
 }

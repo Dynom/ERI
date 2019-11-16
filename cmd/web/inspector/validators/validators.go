@@ -35,7 +35,7 @@ type Result struct {
 // ValidateMXAndRCPT validates if the mailbox exists. You can control the timeout by using context
 func ValidateMXAndRCPT(recipient string) Validator {
 	resolver := net.Resolver{}
-	dialer := net.Dialer{}
+	dialer := &net.Dialer{}
 
 	return func(ctx context.Context, e types.EmailParts) Result {
 		dialer := dialer
