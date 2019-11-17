@@ -72,6 +72,9 @@ func main() {
 	learnSvc := services.NewLearnService(&cache, myFinder)
 
 	mux.HandleFunc("/check", NewCheckHandler(logger, checkSvc))
+	mux.HandleFunc("/learn", NewLearnHandler(logger, learnSvc))
+
+	// Debug
 	mux.HandleFunc("/dumphl", func(w http.ResponseWriter, r *http.Request) {
 
 		var domains = make([]string, 0, len(cache.Set))
@@ -83,9 +86,10 @@ func main() {
 		for _, domain := range domains {
 			_, _ = fmt.Fprintf(w, "%016b | %s \n", cache.Set[domain].Validations, domain)
 
-			recipients := make([]hitlist.RCPT, 0, len(cache.Set[domain].RCPTs))
-			for rcpt := range cache.Set[domain].RCPTs {
-				recipients = append(recipients, rcpt)
+			recipients, err := cache.GetRCPTsForDomain(domain)
+			if err != nil {
+				_, _ = fmt.Fprintf(w, "err: %s\n", err)
+				continue
 			}
 
 			if len(recipients) > 0 {
@@ -95,7 +99,11 @@ func main() {
 				_, _ = fmt.Fprint(w, "\tValidations      | cache ttl                 | recipient \n")
 
 				for _, rcpt := range recipients {
-					hit := cache.Set[domain].RCPTs[rcpt]
+					hit, err := cache.GetHit(domain, rcpt)
+					if err != nil {
+						_, _ = fmt.Fprintf(w, "err: %s\n", err)
+						continue
+					}
 					_, _ = fmt.Fprintf(w, "\t%016b | %25s | %s \n", hit.Validations, hit.ValidUntil.Format(time.RFC3339), rcpt)
 				}
 			}
@@ -103,7 +111,6 @@ func main() {
 
 		_, _ = fmt.Fprintf(w, "%+v\n", cache.GetValidAndUsageSortedDomains())
 	})
-	mux.HandleFunc("/learn", NewLearnHandler(logger, learnSvc))
 
 	lw := logger.WriterLevel(logger.Level)
 	defer func() {

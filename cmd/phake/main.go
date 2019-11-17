@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"os"
@@ -44,7 +45,7 @@ func main() {
 	fmt.Println(result.String())
 }
 
-func generateAndSendBatches(result *bytes.Buffer, numberOfAddresses int64, domain, eriHost string) {
+func generateAndSendBatches(result io.StringWriter, numberOfAddresses int64, domain, eriHost string) {
 	const learnReq = `{"emails": [%s]}`
 	const learnReqInner = `{"value": "%s", "valid": %t}`
 
@@ -64,7 +65,7 @@ func generateAndSendBatches(result *bytes.Buffer, numberOfAddresses int64, domai
 			addr := newEmailAddress(16, domain)
 
 			toLearn[i] = addr
-			result.WriteString(wrapInJSON(eriHost, addr))
+			_, _ = result.WriteString(wrapInJSON(eriHost, addr))
 		}
 
 		var body string

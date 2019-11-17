@@ -107,6 +107,25 @@ func (h *HitList) HasDomain(d string) bool {
 	return ok
 }
 
+func (h *HitList) GetRCPTsForDomain(d string) ([]RCPT, error) {
+	d = strings.ToLower(d)
+
+	h.lock.RLock()
+	defer h.lock.RUnlock()
+
+	_, ok := h.Set[d]
+	if !ok {
+		return []RCPT{}, ErrNotPresent
+	}
+
+	var recipients = make([]RCPT, 0, len(h.Set[d].RCPTs))
+	for recipient := range h.Set[d].RCPTs {
+		recipients = append(recipients, recipient)
+	}
+
+	return recipients, nil
+}
+
 func (h *HitList) GetForEmail(email string) (Hit, error) {
 
 	parts, err := types.NewEmailParts(email)
@@ -121,6 +140,19 @@ func (h *HitList) GetForEmail(email string) (Hit, error) {
 	h.lock.RUnlock()
 
 	if !ok || r.ValidUntil.Before(time.Now()) {
+		// @todo improve error situation
+		return Hit{}, ErrNotPresent
+	}
+
+	return r, nil
+}
+
+func (h *HitList) GetHit(domain string, rcpt RCPT) (Hit, error) {
+	h.lock.RLock()
+	r, ok := h.Set[domain].RCPTs[rcpt]
+	h.lock.RUnlock()
+
+	if !ok {
 		// @todo improve error situation
 		return Hit{}, ErrNotPresent
 	}
