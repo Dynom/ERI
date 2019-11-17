@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+const batchMaxSize = 5000
+const alnum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const letters = "abcdefghijklmnopqrstuvwxyz"
+
 func main() {
 	var (
 		numberOfAddresses int64
@@ -32,12 +36,18 @@ func main() {
 		domain = ""
 	}
 
-	client := http.DefaultClient
 	_, _ = fmt.Fprintf(os.Stderr, "Sending %d address to /learn on %s\n", numberOfAddresses, eriHost)
 
+	var result bytes.Buffer
+	generateAndSendBatches(&result, numberOfAddresses, domain, eriHost)
+
+	fmt.Println(result.String())
+}
+
+func generateAndSendBatches(result *bytes.Buffer, numberOfAddresses int64, domain, eriHost string) {
 	const learnReq = `{"emails": [%s]}`
 	const learnReqInner = `{"value": "%s", "valid": %t}`
-	const batchMaxSize = 5000
+
 	var batchSize int64
 	if numberOfAddresses > batchMaxSize {
 		batchSize = batchMaxSize
@@ -45,7 +55,7 @@ func main() {
 		batchSize = numberOfAddresses
 	}
 
-	var result bytes.Buffer
+	client := http.DefaultClient
 	for batchIndex := int64(0); batchIndex < numberOfAddresses; batchIndex += batchSize {
 
 		var toLearn = make([]string, batchSize)
@@ -75,12 +85,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Println(result.String())
-
 }
-
-const alnum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-const letters = "abcdefghijklmnopqrstuvwxyz"
 
 func newEmailAddress(length uint, domain string) string {
 	var b = make([]byte, length)
