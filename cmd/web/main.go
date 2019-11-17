@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/http"
-	"os"
 	"sort"
 	"time"
 
@@ -38,11 +38,7 @@ func main() {
 		panic(err)
 	}
 
-	logger := logrus.New()
-	logger.Formatter = &logrus.JSONFormatter{}
-	logger.Out = os.Stdout
-	logger.Level, err = logrus.ParseLevel(conf.Server.Log.Level)
-
+	logger, err := newLogger(conf)
 	if err != nil {
 		panic(err)
 	}
@@ -52,12 +48,11 @@ func main() {
 	}).Info("Starting up...")
 
 	mux := http.NewServeMux()
-
 	checker := inspector.New(inspector.WithValidators(
-		validators.ValidateFull(),
+		validators.ValidateFull(&net.Resolver{}, &net.Dialer{}),
 	))
 
-	h, err := highwayhash.New128([]byte(`a1C2d3oi4uctnqo3utlNcwtqlmwH!rtl`))
+	h, err := highwayhash.New128([]byte(conf.Server.Hash.Key))
 	if err != nil {
 		panic(err)
 	}

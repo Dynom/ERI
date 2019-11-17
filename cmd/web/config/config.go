@@ -38,6 +38,10 @@ type Config struct {
 		Log      struct {
 			Level string `toml:"level"`
 		} `toml:"log"`
+		Hash struct {
+			Key string `toml:"key"`
+			//Enable bool   `toml:"enable"`
+		} `toml:"hash"`
 		Profiler struct {
 			Enable bool   `toml:"enable"`
 			Prefix string `toml:"prefix"`

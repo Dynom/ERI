@@ -56,14 +56,8 @@ func (v *SMValidator) getNewArtifact(ctx context.Context, ep types.EmailParts) A
 	return a
 }
 
-func (v *SMValidator) CheckEmailAddress(ctx context.Context, addr string) (Artifact, error) {
-	p, err := types.NewEmailParts(addr)
-	if err != nil {
-		return Artifact{}, err
-	}
-
-	a := v.getNewArtifact(ctx, p)
-
+func (v *SMValidator) CheckEmailAddress(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
+	a := v.getNewArtifact(ctx, emailParts)
 	for validator := checkSyntax; validator != nil; {
 		if err := validator(&a); err != nil {
 			return a, err
