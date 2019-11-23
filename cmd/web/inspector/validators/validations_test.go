@@ -3,9 +3,6 @@ package validators
 import "testing"
 
 func TestValidations_Merge(t *testing.T) {
-	type args struct {
-		new Validations
-	}
 	tests := []struct {
 		name string
 		v    Validations

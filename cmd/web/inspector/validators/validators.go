@@ -30,10 +30,10 @@ type Result struct {
 }
 
 // ValidateFull performs a series of checks, from cheap to expensive and provides a fairly accurate result
-func ValidateFull(resolver *net.Resolver, dialer *net.Dialer) Validator {
-	v := NewSMValidator(resolver, dialer)
+func ValidateFull(dialer *net.Dialer) Validator {
+	v := NewSMValidator(dialer)
 	return func(ctx context.Context, e types.EmailParts) Result {
-		a, err := v.CheckEmailAddress(ctx, e)
+		a, err := v.CheckBasic(ctx, e)
 		return Result{
 			Error:       err,
 			Timings:     a.Timings,

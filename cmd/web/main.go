@@ -49,7 +49,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	checker := inspector.New(inspector.WithValidators(
-		validators.ValidateFull(&net.Resolver{}, &net.Dialer{}),
+		validators.ValidateFull(&net.Dialer{}),
 	))
 
 	h, err := highwayhash.New128([]byte(conf.Server.Hash.Key))
@@ -57,7 +57,7 @@ func main() {
 		panic(err)
 	}
 
-	cache := hitlist.NewHitList(h)
+	cache := hitlist.NewHitList(h, time.Hour*60)
 	myFinder, err := finder.New(
 		cache.GetValidAndUsageSortedDomains(),
 		finder.WithLengthTolerance(0.2),
@@ -104,7 +104,7 @@ func main() {
 						_, _ = fmt.Fprintf(w, "err: %s\n", err)
 						continue
 					}
-					_, _ = fmt.Fprintf(w, "\t%016b | %25s | %s \n", hit.Validations, hit.ValidUntil.Format(time.RFC3339), rcpt)
+					_, _ = fmt.Fprintf(w, "\t%016b | %25s | %s \n", hit.Validations, time.Now().Add(hit.TTL()).Format(time.RFC3339), rcpt)
 				}
 			}
 		}

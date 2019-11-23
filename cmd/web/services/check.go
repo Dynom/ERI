@@ -40,12 +40,11 @@ type CheckResult struct {
 func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailParts, includeAlternatives bool) (CheckResult, error) {
 	var res CheckResult
 	var result validators.Result
-	var now = time.Now()
 
 	l, err := c.cache.GetForEmail(email.Address)
 	if err == nil {
 		res.Valid = result.Validations.MergeWithNext(l.Validations).IsValid()
-		res.CacheHitTTL = l.ValidUntil.Sub(now)
+		res.CacheHitTTL = l.TTL()
 
 	} else {
 		if err != hitlist.ErrNotPresent {
@@ -68,12 +67,14 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 	}
 
 	if includeAlternatives {
+		ctx = context.Background()
 		alt, score, exact := c.finder.FindCtx(ctx, email.Domain)
 
 		c.logger.WithContext(ctx).WithFields(logrus.Fields{
-			"alt":   alt,
-			"score": score,
-			"exact": exact,
+			"alt":              alt,
+			"score":            score,
+			"exact":            exact,
+			"deadline_expired": didDeadlineExpire(ctx),
 		}).Debug("Used Finder")
 
 		if !exact && score > finder.WorstScoreValue {
@@ -87,4 +88,12 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 	}
 
 	return res, nil
+}
+
+func didDeadlineExpire(ctx context.Context) bool {
+	if t, set := ctx.Deadline(); set {
+		return t.After(time.Now())
+	}
+
+	return false
 }

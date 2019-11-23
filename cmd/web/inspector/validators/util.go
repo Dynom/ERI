@@ -27,7 +27,7 @@ func getConnection(ctx context.Context, dialer *net.Dialer, mxHost string) (net.
 		}
 
 		if !strings.Contains(dialErr.Error(), "connection refused") {
-			err = fmt.Errorf("%s %w", err, dialErr)
+			err = fmt.Errorf("%s "+mxHost+":"+port+" %w", err, dialErr)
 		}
 	}
 

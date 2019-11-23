@@ -43,7 +43,7 @@ func NewCheckHandler(logger *logrus.Logger, svc services.CheckSvc) http.HandlerF
 		}
 
 		// @todo should the timeout be for the entire request, or just Check ?
-		ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*500)
+		ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*10000)
 		defer cancel()
 
 		// -

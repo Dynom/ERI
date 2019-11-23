@@ -37,3 +37,8 @@ func (v *Validations) MarkAsInvalid() {
 func (v *Validations) MarkAsValid() {
 	*v |= VFValid
 }
+
+// HasFlag returns true if the type has the flag (or flags) specified
+func (v Validations) HasFlag(f Validations) bool {
+	return v&f == 1
+}
