@@ -9,7 +9,7 @@ import (
 )
 
 // getConnection attempts to connect to a host with one of the common email ports.
-func getConnection(ctx context.Context, dialer *net.Dialer, mxHost string) (net.Conn, error) {
+func getConnection(ctx context.Context, dialer DialContext, mxHost string) (net.Conn, error) {
 	var conn net.Conn
 	var err error
 
@@ -17,11 +17,9 @@ func getConnection(ctx context.Context, dialer *net.Dialer, mxHost string) (net.
 
 	ports := []string{"25", "587", "2525", "465"}
 	for _, port := range ports {
-		port := port
 
 		// @todo Should we check multiple ports, and do this in parallel?
 		// @todo Do we want to force ipv4/6?
-		// @todo Configure timeouts specifically for this expensive step?
 
 		var dialErr error
 
@@ -42,7 +40,7 @@ func getConnection(ctx context.Context, dialer *net.Dialer, mxHost string) (net.
 }
 
 // fetchMXHosts collects up to 10 MX hosts for a given domain
-func fetchMXHosts(ctx context.Context, resolver *net.Resolver, domain string) ([]string, error) {
+func fetchMXHosts(ctx context.Context, resolver LookupMX, domain string) ([]string, error) {
 
 	mxs, err := resolver.LookupMX(ctx, domain)
 	if err != nil {

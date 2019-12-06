@@ -2,26 +2,49 @@ package validator
 
 import (
 	"context"
+	"errors"
 	"net"
 	"reflect"
 	"testing"
 )
 
+type stubDialer struct {
+	err error
+}
+
+func (sd stubDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	// We don't use net.Conn, so returning nil for the interface here is safe
+	return nil, sd.err
+}
+
+type stubResolver struct {
+	mxs []*net.MX
+	err error // A single error for every resolver
+}
+
+func (sr stubResolver) LookupMX(_ context.Context, domain string) ([]*net.MX, error) {
+	return sr.mxs, sr.err
+}
+
+func buildLookupMX(mxHosts []string, err error) LookupMX {
+	var r stubResolver
+	r.err = err
+
+	r.mxs = make([]*net.MX, len(mxHosts))
+	for i, d := range mxHosts {
+		r.mxs[i] = &net.MX{
+			Host: d,
+			Pref: uint16(i),
+		}
+	}
+	return r
+}
+
 func Test_fetchMXHosts(t *testing.T) {
 
-	t.Skipf("figure out how to intercept DNS requests")
-
-	res := &net.Resolver{
-		PreferGo: true,
-		Dial: func(ctx context.Context, network, address string) (conn net.Conn, e error) {
-			dialer := net.Dialer{}
-			return dialer.DialContext(ctx, "udp", net.JoinHostPort("localhost", "53"))
-		},
-	}
-
 	type args struct {
-		resolver *net.Resolver
-		domain   string
+		hosts []string
+		err   error
 	}
 
 	tests := []struct {
@@ -30,15 +53,22 @@ func Test_fetchMXHosts(t *testing.T) {
 		want    []string
 		wantErr bool
 	}{
-		{wantErr: false, name: "foo", want: []string{"example.org"}, args: args{domain: "foo.bar", resolver: res}},
+
+		// The good
+		{name: "Happy flow", want: []string{"mx1.example.org"}, args: args{hosts: []string{"mx1.example.org"}}},
+
+		// The bad
+		{wantErr: true, name: "no MX records", want: []string{}, args: args{hosts: []string{}}},
+		{wantErr: true, name: "malformed MX records", want: []string{}, args: args{hosts: []string{"."}}},
+		{wantErr: true, name: "lookup error", want: []string{}, args: args{hosts: []string{"."}, err: errors.New("err")}},
 	}
 
 	ctx := context.Background()
 	for _, tt := range tests {
 
 		t.Run(tt.name, func(t *testing.T) {
+			got, err := fetchMXHosts(ctx, buildLookupMX(tt.args.hosts, tt.args.err), "foobar.local")
 
-			got, err := fetchMXHosts(ctx, res, tt.args.domain)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("fetchMXHosts() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -52,24 +82,34 @@ func Test_fetchMXHosts(t *testing.T) {
 }
 
 func Test_getConnection(t *testing.T) {
-	t.Skipf("figure out how to intercept DNS requests")
+
+	// @todo validate connection timeout workings
+	// @todo
 
 	type args struct {
-		ctx    context.Context
-		dialer *net.Dialer
-		mxHost string
+		err error
 	}
+
 	tests := []struct {
 		name    string
 		args    args
 		want    net.Conn
 		wantErr bool
 	}{
-		{},
+		// The good
+		{wantErr: false, name: "happy flow", args: args{err: nil}},
+
+		// The bad
+		{wantErr: false, name: "expected error", args: args{err: errors.New("connection refused")}},
+		{wantErr: false, name: "unexpected error", args: args{err: errors.New("b0rk")}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getConnection(tt.args.ctx, tt.args.dialer, tt.args.mxHost)
+			ctx := context.Background()
+			dialer := stubDialer{}
+			dialer.err = tt.args.err
+
+			got, err := getConnection(ctx, dialer, "mx.example.org")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getConnection() error = %v, wantErr %v", err, tt.wantErr)
 				return
