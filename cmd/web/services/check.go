@@ -11,7 +11,7 @@ import (
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 
 	"github.com/Dynom/ERI/cmd/web/inspector"
-	"github.com/Dynom/ERI/cmd/web/types"
+	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/TySug/finder"
 )
 
@@ -41,10 +41,10 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 	var res CheckResult
 	var result validators.Result
 
-	l, err := c.cache.GetForEmail(email.Address)
+	hit, err := c.cache.GetForEmail(email.Address)
 	if err == nil {
-		res.Valid = result.Validations.MergeWithNext(l.Validations).IsValid()
-		res.CacheHitTTL = l.TTL()
+		res.Valid = result.Validations.MergeWithNext(hit.Validations).IsValid()
+		res.CacheHitTTL = hit.TTL()
 
 	} else {
 		if err != hitlist.ErrNotPresent {
@@ -53,8 +53,9 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 
 		result = c.checker.Check(ctx, email.Address)
 		res.Valid = result.Validations.IsValid()
+		c.logger.WithContext(ctx).WithError(result.Error).Info("Validation(s) failed")
 
-		// @todo depending on the error above, we should cache with a different TTL and optionally even b0rk completely here
+		// @todo depending on the validations above, we should cache with a different TTL and optionally even b0rk completely here
 		err := c.cache.LearnEmailAddress(email.Address, result.Validations)
 		if err != nil {
 			return res, err

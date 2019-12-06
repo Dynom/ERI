@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"net/http/pprof"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -21,9 +22,25 @@ func sliceToHTTPHeaders(slice []config.Header) http.Header {
 func newLogger(conf config.Config) (*logrus.Logger, error) {
 	var err error
 	logger := logrus.New()
-	logger.Formatter = &logrus.JSONFormatter{}
+	//logger.Formatter = &logrus.JSONFormatter{}
+	logger.Formatter = &logrus.TextFormatter{}
 	logger.Out = os.Stdout
 	logger.Level, err = logrus.ParseLevel(conf.Server.Log.Level)
 
 	return logger, err
+}
+
+func configureProfiler(mux *http.ServeMux, conf config.Config) {
+	var prefix string
+	if conf.Server.Profiler.Prefix != "" {
+		prefix = conf.Server.Profiler.Prefix
+	} else {
+		prefix = "debug"
+	}
+
+	mux.HandleFunc(`/`+prefix+`/pprof/`, pprof.Index)
+	mux.HandleFunc(`/`+prefix+`/pprof/cmdline`, pprof.Cmdline)
+	mux.HandleFunc(`/`+prefix+`/pprof/profile`, pprof.Profile)
+	mux.HandleFunc(`/`+prefix+`/pprof/symbol`, pprof.Symbol)
+	mux.HandleFunc(`/`+prefix+`/pprof/trace`, pprof.Trace)
 }

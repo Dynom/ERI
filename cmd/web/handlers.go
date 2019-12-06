@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/Dynom/ERI/cmd/web/services"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp"
-	"github.com/Dynom/ERI/cmd/web/types"
+	"github.com/Dynom/ERI/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -43,7 +42,8 @@ func NewCheckHandler(logger *logrus.Logger, svc services.CheckSvc) http.HandlerF
 		}
 
 		// @todo should the timeout be for the entire request, or just Check ?
-		ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*10000)
+		//ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*500)
+		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
 		// -
@@ -58,8 +58,9 @@ func NewCheckHandler(logger *logrus.Logger, svc services.CheckSvc) http.HandlerF
 		checkResult, err := svc.HandleCheckRequest(ctx, email, req.Alternatives)
 		if err != nil {
 			logger.WithFields(logrus.Fields{
-				"result": checkResult,
-				"error":  err,
+				"result":  checkResult,
+				"error":   err,
+				"ctx_err": ctx.Err(),
 			}).Error("Failed to check e-mail address")
 
 			w.WriteHeader(http.StatusInternalServerError)
@@ -95,6 +96,17 @@ func NewCheckHandler(logger *logrus.Logger, svc services.CheckSvc) http.HandlerF
 	}
 }
 
+func NewHealthHandler(logger *logrus.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+
+		_, err := w.Write([]byte("OK"))
+		if err != nil {
+			logger.WithError(err).Error("failed to write in health handler")
+		}
+	}
+}
 func NewLearnHandler(logger *logrus.Logger, svc services.LearnSvc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -132,11 +144,13 @@ func NewLearnHandler(logger *logrus.Logger, svc services.LearnSvc) http.HandlerF
 		}
 
 		logger.WithFields(logrus.Fields{
-			"domains": result.NumDomains,
-			"emails":  result.NumEmailAddresses,
+			"domains_added": result.NumDomains - result.DomainErrors,
+			"domain_errors": result.DomainErrors,
+			"emails_added":  result.NumEmailAddresses - result.EmailAddressErrors,
+			"email_errors":  result.EmailAddressErrors,
 		}).Debug("Finished refresh request")
 
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(fmt.Sprintf("Refreshed %d domain(s) and %d e-mail address(es)", result.NumDomains, result.NumEmailAddresses)))
+		_, _ = w.Write([]byte(fmt.Sprintf("Refreshed %d domain(s) and %d e-mail address(es)", result.NumDomains-result.DomainErrors, result.NumEmailAddresses-result.EmailAddressErrors)))
 	}
 }

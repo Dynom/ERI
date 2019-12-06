@@ -5,15 +5,19 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Dynom/ERI/validator"
+
+	"github.com/Dynom/ERI/validator/validations"
+
 	"github.com/Dynom/ERI/cmd/web/inspector/validators"
 
-	"github.com/Dynom/ERI/cmd/web/types"
+	"github.com/Dynom/ERI/types"
 )
 
 func Test_Check(t *testing.T) {
-	validationResult := validators.Validations(0)
-	validationResult |= validators.VFValid
-	validationResult |= validators.VFMXLookup
+	validationResult := validations.Validations(0)
+	validationResult |= validations.VFValid
+	validationResult |= validations.VFMXLookup
 
 	insp := New(WithValidators(
 		validateStub(validationResult),
@@ -31,16 +35,16 @@ func Test_Check(t *testing.T) {
 }
 
 // validateStub is a stub validator
-func validateStub(v validators.Validations) validators.Validator {
+func validateStub(v validations.Validations) validators.Validator {
 	var err error
-	if v&validators.VFValid == 0 {
+	if v&validations.VFValid == 0 {
 		err = errors.New("validateStub returning an error")
 	}
 
 	return func(ctx context.Context, e types.EmailParts) validators.Result {
 		return validators.Result{
 			Error:       err,
-			Timings:     make(types.Timings, 0),
+			Timings:     make(validator.Timings, 0),
 			Validations: v,
 		}
 	}
@@ -56,23 +60,24 @@ func TestChecker_CheckIncrementalValidators(t *testing.T) {
 			name:          "single validator",
 			shouldBeValid: true,
 			validators: []validators.Validator{
-				validateStub(0 | validators.VFValid), // Valid
+				validateStub(0 | validations.VFValid), // Valid
 			},
 		},
 		{
+			// Validators are incremental, once we have a failure, we can't recover
 			name:          "multi validator, start invalid end with valid",
-			shouldBeValid: true,
+			shouldBeValid: false,
 			validators: []validators.Validator{
 				validateStub(0), // Invalid
-				validateStub(0 | validators.VFSyntax | validators.VFValid), // Valid
+				validateStub(0 | validations.VFSyntax | validations.VFValid), // Valid
 			},
 		},
 		{
 			name:          "multi validator, start valid end with invalid",
 			shouldBeValid: false,
 			validators: []validators.Validator{
-				validateStub(0 | validators.VFSyntax | validators.VFValid),    // Valid
-				validateStub(0 | validators.VFSyntax | validators.VFMXLookup), // Invalid
+				validateStub(0 | validations.VFSyntax | validations.VFValid),    // Valid
+				validateStub(0 | validations.VFSyntax | validations.VFMXLookup), // Invalid
 			},
 		},
 	}

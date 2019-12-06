@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Dynom/ERI/validator"
+
 	"github.com/Dynom/ERI/cmd/web/inspector/validators"
 
-	"github.com/Dynom/ERI/cmd/web/types"
+	"github.com/Dynom/ERI/types"
 )
 
 // New creates a new Checker and applies any specified functional Option argument
@@ -33,7 +35,7 @@ func (c Checker) Check(ctx context.Context, email string) validators.Result {
 	}
 
 	var result = validators.Result{
-		Timings: make(types.Timings, 0, len(c.validators)),
+		Timings: make(validator.Timings, 0, len(c.validators)),
 	}
 
 	for _, v := range c.validators {
@@ -55,6 +57,11 @@ func (c Checker) Check(ctx context.Context, email string) validators.Result {
 		if ctx.Err() != nil {
 			result.Error = wrapError(result.Error, ctx.Err())
 		}
+
+		// Since we're working incrementally we can bail, since we'll never recover to a valid state
+		if result.Error != nil || !result.IsValid() {
+			return result
+		}
 	}
 
 	return result
@@ -62,7 +69,7 @@ func (c Checker) Check(ctx context.Context, email string) validators.Result {
 
 func newErrorResult(err error) validators.Result {
 	return validators.Result{
-		Timings: types.Timings{},
+		Timings: validator.Timings{},
 		Error:   err,
 	}
 }

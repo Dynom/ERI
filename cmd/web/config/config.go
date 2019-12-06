@@ -25,9 +25,8 @@ func NewConfig(fileName string) (Config, error) {
 
 // Config holds central config parameters
 type Config struct {
-	References map[string][]string `toml:"references"`
-	Client     struct {
-		InputLengthMax int `toml:"inputLengthMax"`
+	Client struct {
+		InputLengthMax uint64 `toml:"inputLengthMax"`
 	} `toml:"client"`
 	CORS struct {
 		AllowedOrigins []string `toml:"allowedOrigins"`

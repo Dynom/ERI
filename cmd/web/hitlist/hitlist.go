@@ -9,9 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Dynom/ERI/cmd/web/inspector/validators"
+	"github.com/Dynom/ERI/validator"
 
-	"github.com/Dynom/ERI/cmd/web/types"
+	"github.com/Dynom/ERI/validator/validations"
+
+	"github.com/Dynom/ERI/types"
 )
 
 var (
@@ -37,8 +39,8 @@ type HitList struct {
 }
 
 type Hit struct {
-	validators.Validations           // The type of validations performed (bit mask)
-	ValidUntil             time.Time // The TTL
+	validations.Validations           // The type of validations performed (bit mask)
+	ValidUntil              time.Time // The TTL
 }
 
 func (h Hit) TTL() time.Duration {
@@ -46,7 +48,7 @@ func (h Hit) TTL() time.Duration {
 }
 
 type domainHit struct {
-	validators.Validations
+	validations.Validations
 	RCPTs        map[RCPT]Hit
 	learnedSince time.Time // The time we learned of a domain, used to calculate domain freshness
 }
@@ -153,6 +155,8 @@ func (h *HitList) GetForEmail(email string) (Hit, error) {
 		domain = parts.Domain
 	}
 
+	// @todo -- Since most typos appear to be at the end of a domain, does it make sense to reverse the domain name?
+
 	h.lock.RLock()
 	r, ok := h.Set[domain].RCPTs[safeLocal]
 	h.lock.RUnlock()
@@ -183,7 +187,7 @@ func (h *HitList) GetHit(domain string, rcpt RCPT) (Hit, error) {
 }
 
 // LearnEmailAddressDeadline Same as LearnEmailAddress, but allows for custom TTL. Duration shouldn't be negative.
-func (h *HitList) LearnEmailAddressDeadline(email string, validations validators.Validations, duration time.Duration) error {
+func (h *HitList) LearnEmailAddressDeadline(email string, validations validations.Validations, duration time.Duration) error {
 	var domain string
 	var safeLocal RCPT
 	{
@@ -217,19 +221,19 @@ func (h *HitList) LearnEmailAddressDeadline(email string, validations validators
 
 // LearnEmailAddress records validations for a particular e-mail address. LearnEmailAddress clears previously seen
 // validators if you want to merge, first fetch, merge and pass the resulting Validations to LearnEmailAddress()
-func (h *HitList) LearnEmailAddress(email string, validations validators.Validations) error {
+func (h *HitList) LearnEmailAddress(email string, validations validations.Validations) error {
 	return h.LearnEmailAddressDeadline(email, validations, h.ttl)
 }
 
 // LearnDomain learns of a domain and it's validity. It overwrites the existing validations, when applicable for
 // a domain
-func (h *HitList) LearnDomain(domain string, validations validators.Validations) error {
+func (h *HitList) LearnDomain(domain string, validations validations.Validations) error {
 
-	if !mightBeAHostOrIP(domain) {
+	if !validator.MightBeAHostOrIP(domain) {
 		return ErrNotAValidDomain
 	}
 
-	if validations.IsValid() || isValidationsForValidDomain(validations) {
+	if validations.IsValid() || validations.IsValidationsForValidDomain() {
 		validations.MarkAsValid()
 	} else {
 		validations.MarkAsInvalid()
@@ -249,40 +253,4 @@ func (h *HitList) LearnDomain(domain string, validations validators.Validations)
 	}
 
 	return nil
-}
-
-// isValidationsForValidDomain checks if a mask of validations really marks a domain as valid.
-func isValidationsForValidDomain(validations validators.Validations) bool {
-	if validations&validators.VFMXLookup == 1 ||
-		validations&validators.VFDomainHasIP == 1 ||
-		validations&validators.VFHostConnect == 1 {
-		return true
-	}
-
-	return false
-}
-
-// mightBeAHostOrIP is a very rudimentary check to see if the argument could be either a host name or IP address
-// It aims on speed and not for RFC compliance.
-//nolint:gocyclo
-func mightBeAHostOrIP(h string) bool {
-
-	// Normally we can assume that host names have a tld or consists at least out of 4 characters
-	if l := len(h); 4 >= l || l > 255 {
-		return false
-	}
-
-	for _, c := range h {
-		switch {
-		case 48 <= c && c <= 57 /* 0-9 */ :
-		case 65 <= c && c <= 90 /* A-Z */ :
-		case 97 <= c && c <= 122 /* a-z */ :
-		case c == 45 /* dash - */ :
-		case c == 46 /* dot . */ :
-		default:
-			return false
-		}
-	}
-
-	return true
 }

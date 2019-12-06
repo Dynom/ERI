@@ -1,49 +1,53 @@
 package validators
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Dynom/ERI/validator/validations"
+)
 
 func TestValidations_Merge(t *testing.T) {
 	tests := []struct {
 		name string
-		v    Validations
-		new  Validations
-		want Validations
+		v    validations.Validations
+		new  validations.Validations
+		want validations.Validations
 	}{
 		{
 			name: "Marking valid",
-			v:    Validations(0),
-			new:  VFValid,
-			want: VFValid,
+			v:    validations.Validations(0),
+			new:  validations.VFValid,
+			want: validations.VFValid,
 		},
 		{
 			name: "Marking invalid",
-			v:    VFValid,
-			new:  Validations(0),
-			want: Validations(0),
+			v:    validations.VFValid,
+			new:  validations.Validations(0),
+			want: validations.Validations(0),
 		},
 		{
 			name: "Marking validations",
-			v:    Validations(0),
-			new:  VFMXLookup | VFSyntax | VFHostConnect,
-			want: VFMXLookup | VFSyntax | VFHostConnect,
+			v:    validations.Validations(0),
+			new:  validations.VFMXLookup | validations.VFSyntax | validations.VFHostConnect,
+			want: validations.VFMXLookup | validations.VFSyntax | validations.VFHostConnect,
 		},
 		{
 			name: "Appending flags, excluding valid",
-			v:    VFSyntax,
-			new:  VFMXLookup | VFHostConnect,
-			want: VFMXLookup | VFSyntax | VFHostConnect,
+			v:    validations.VFSyntax,
+			new:  validations.VFMXLookup | validations.VFHostConnect,
+			want: validations.VFMXLookup | validations.VFSyntax | validations.VFHostConnect,
 		},
 		{
 			name: "Appending flags, first valid, new invalid",
-			v:    VFSyntax | VFValid,
-			new:  VFMXLookup | VFHostConnect,
-			want: VFMXLookup | VFSyntax | VFHostConnect,
+			v:    validations.VFSyntax | validations.VFValid,
+			new:  validations.VFMXLookup | validations.VFHostConnect,
+			want: validations.VFMXLookup | validations.VFSyntax | validations.VFHostConnect,
 		},
 		{
 			name: "Appending flags, first invalid, new valid",
-			v:    VFSyntax,
-			new:  VFMXLookup | VFHostConnect | VFValid,
-			want: VFMXLookup | VFSyntax | VFHostConnect | VFValid,
+			v:    validations.VFSyntax,
+			new:  validations.VFMXLookup | validations.VFHostConnect | validations.VFValid,
+			want: validations.VFMXLookup | validations.VFSyntax | validations.VFHostConnect | validations.VFValid,
 		},
 	}
 	for _, tt := range tests {

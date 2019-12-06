@@ -192,7 +192,6 @@ func sendBatch(client *http.Client, addresses []LearnValue, eriHost string, acti
 		body += string(value) + ","
 	}
 
-	fmt.Printf("Sending:\n%s\n\n", fmt.Sprintf(learnReq, body[:len(body)-1]))
 	req, err := http.NewRequest(http.MethodPost, eriHost+"/learn", strings.NewReader(fmt.Sprintf(learnReq, body[:len(body)-1])))
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "boom, headshot %s", err)

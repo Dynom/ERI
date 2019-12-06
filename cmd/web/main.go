@@ -45,11 +45,13 @@ func main() {
 
 	logger.WithFields(logrus.Fields{
 		"version": Version,
+		"config":  conf,
 	}).Info("Starting up...")
 
 	mux := http.NewServeMux()
 	checker := inspector.New(inspector.WithValidators(
-		validators.ValidateFull(&net.Dialer{}),
+		validators.ValidateMaxLength(conf.Client.InputLengthMax),
+		validators.ValidateSyntax(&net.Dialer{}),
 	))
 
 	h, err := highwayhash.New128([]byte(conf.Server.Hash.Key))
@@ -69,7 +71,10 @@ func main() {
 	}
 
 	checkSvc := services.NewCheckService(&cache, myFinder, checker, logger)
-	learnSvc := services.NewLearnService(&cache, myFinder)
+	learnSvc := services.NewLearnService(&cache, myFinder, logger)
+
+	mux.HandleFunc("/", NewHealthHandler(logger))
+	mux.HandleFunc("/health", NewHealthHandler(logger))
 
 	mux.HandleFunc("/check", NewCheckHandler(logger, checkSvc))
 	mux.HandleFunc("/learn", NewLearnHandler(logger, learnSvc))
@@ -116,6 +121,10 @@ func main() {
 	defer func() {
 		_ = lw.Close()
 	}()
+
+	if conf.Server.Profiler.Enable {
+		configureProfiler(mux, conf)
+	}
 
 	s := erihttp.BuildHTTPServer(mux, conf, lw,
 		handlers.WithGzipHandler(),

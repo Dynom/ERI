@@ -1,19 +1,26 @@
-package validators
+package validator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/mail"
 	"net/smtp"
 	"time"
 
-	"github.com/Dynom/ERI/cmd/web/types"
+	"github.com/Dynom/ERI/validator/validations"
+
+	"github.com/Dynom/ERI/types"
+)
+
+var (
+	ErrInvalidHost = errors.New("invalid host")
 )
 
 type Artifact struct {
-	Validations
-	types.Timings
+	validations.Validations
+	Timings
 	email  types.EmailParts
 	mx     []string
 	ctx    context.Context
@@ -23,26 +30,26 @@ type Artifact struct {
 
 type stateFn func(a *Artifact) error
 
-func NewSMValidator(dialer *net.Dialer) SMValidator {
+func NewEmailAddressValidator(dialer *net.Dialer) EmailValidator {
 
 	// @todo fix when Go's stdlib offers a nicer API for this
 	if dialer.Resolver == nil {
 		dialer.Resolver = net.DefaultResolver
 	}
 
-	return SMValidator{
+	return EmailValidator{
 		dialer: dialer,
 	}
 }
 
-type SMValidator struct {
+type EmailValidator struct {
 	dialer *net.Dialer
 }
 
-func (v *SMValidator) getNewArtifact(ctx context.Context, ep types.EmailParts) Artifact {
+func (v *EmailValidator) getNewArtifact(ctx context.Context, ep types.EmailParts) Artifact {
 	a := Artifact{
 		Validations: 0,
-		Timings:     make(types.Timings, 10),
+		Timings:     make(Timings, 10),
 		email:       ep,
 		mx:          []string{""},
 		ctx:         ctx,
@@ -57,7 +64,9 @@ func (v *SMValidator) getNewArtifact(ctx context.Context, ep types.EmailParts) A
 	return a
 }
 
-func (v *SMValidator) CheckFull(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
+// CheckWithConnect performs a thorough check, which has the least chance of false-positives. It requires a valid PTR
+// and is probably not something you want to offer as a user-facing service.
+func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
 	return validateSequence(ctx,
 		v.getNewArtifact(ctx, emailParts),
 		[]stateFn{
@@ -69,15 +78,23 @@ func (v *SMValidator) CheckFull(ctx context.Context, emailParts types.EmailParts
 		})
 }
 
-func (v *SMValidator) CheckBasic(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
+// CheckWithLookup performs a sanity check using DNS lookups. It won't connect to the actual hosts.
+func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
 	return validateSequence(ctx,
 		v.getNewArtifact(ctx, emailParts),
 		[]stateFn{
 			checkSyntax,
 			checkIfDomainHasMX,
 			checkIfMXHasIP,
-			//checkMXAcceptsConnect,	// Connections to MX's requires a valid PTR setup, which isn't applicable in certain situations
-			//checkRCPT,
+		})
+}
+
+// CheckWithSyntax performs only a syntax check.
+func (v *EmailValidator) CheckWithSyntax(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
+	return validateSequence(ctx,
+		v.getNewArtifact(ctx, emailParts),
+		[]stateFn{
+			checkSyntax,
 		})
 }
 
@@ -96,10 +113,11 @@ func validateSequence(ctx context.Context, artifact Artifact, sequence []stateFn
 	return artifact, nil
 }
 
+// checkSyntax checks for "common sense" e-mail address syntax. It doesn't try to be fully compliant.
 func checkSyntax(a *Artifact) error {
 	var err error
 
-	if a.Validations.HasFlag(VFSyntax) {
+	if a.Validations.HasFlag(validations.VFSyntax) {
 		return nil
 	}
 
@@ -120,10 +138,11 @@ func checkSyntax(a *Artifact) error {
 		return fmt.Errorf("domain part '%s' has invalid syntax", a.email.Domain)
 	}
 
-	a.Validations = a.Validations.MergeWithNext(VFSyntax)
+	a.Validations = a.Validations.MergeWithNext(validations.VFSyntax)
 	return nil
 }
 
+// checkIfDomainHasMX performs a DNS lookup and fetches MX records.
 func checkIfDomainHasMX(a *Artifact) error {
 	start := time.Now()
 	mxs, err := fetchMXHosts(a.ctx, a.dialer.Resolver, a.email.Domain)
@@ -138,10 +157,11 @@ func checkIfDomainHasMX(a *Artifact) error {
 	}
 
 	a.mx = mxs
-	a.Validations = a.Validations.MergeWithNext(VFMXLookup)
+	a.Validations = a.Validations.MergeWithNext(validations.VFMXLookup)
 	return nil
 }
 
+// checkIfMXHasIP performs a NS lookup and fetches the IP addresses of the MX hosts
 func checkIfMXHasIP(a *Artifact) error {
 	var err error
 
@@ -168,10 +188,12 @@ func checkIfMXHasIP(a *Artifact) error {
 		return err
 	}
 
-	a.Validations = a.Validations.MergeWithNext(VFDomainHasIP)
+	a.Validations = a.Validations.MergeWithNext(validations.VFDomainHasIP)
 	return nil
 }
 
+// checkMXAcceptsConnect checks if an MX host accepts connections. Expensive and requires a valid PTR setup for most
+// real world applications
 func checkMXAcceptsConnect(a *Artifact) error {
 
 	start := time.Now()
@@ -196,12 +218,14 @@ func checkMXAcceptsConnect(a *Artifact) error {
 	}
 
 	a.conn = conn
-	a.Validations = a.Validations.MergeWithNext(VFHostConnect)
+	a.Validations = a.Validations.MergeWithNext(validations.VFHostConnect)
 	return nil
 }
 
+// checkRCPT issues mail commands to the mail server, asking politely if a recipient inbox exists. High chance of false
+// positives on real world applications, due to security reasons.
 func checkRCPT(a *Artifact) error {
-	if a.HasFlag(VFValidRCPT) {
+	if a.HasFlag(validations.VFValidRCPT) {
 		return nil
 	}
 
@@ -221,10 +245,10 @@ func checkRCPT(a *Artifact) error {
 
 	start = time.Now()
 	err = client.Verify(a.email.Address)
-	a.Timings.Add("checkRCPT RCPT", time.Since(start))
+	a.Timings.Add("checkRCPT", time.Since(start))
 
 	if err == nil {
-		a.Validations = a.Validations.MergeWithNext(VFValidRCPT)
+		a.Validations = a.Validations.MergeWithNext(validations.VFValidRCPT)
 	}
 
 	return err
@@ -234,16 +258,16 @@ func checkRCPT(a *Artifact) error {
 func looksLikeValidLocalPart(local string) bool {
 
 	var length = len(local)
-	if length < 1 {
+	if 1 > length || length > 253 {
 		return false
 	}
 
 	for i, c := range local {
 		switch {
-		case 48 <= c && c <= 57 /* 0-9 */ :
-		case 65 <= c && c <= 90 /* A-Z */ :
 		case 97 <= c && c <= 122 /* a-z */ :
 		case c == 46 && 0 < i && i < length-1 /* . not first or last */ :
+		case 48 <= c && c <= 57 /* 0-9 */ :
+		case 65 <= c && c <= 90 /* A-Z */ :
 
 		case c == 33 /* ! */ :
 		case c == 35 /* # */ :
@@ -275,23 +299,27 @@ func looksLikeValidLocalPart(local string) bool {
 //nolint:gocyclo
 func looksLikeValidDomain(domain string) bool {
 	var length = len(domain)
+	const dot uint8 = 46
 
-	// Normally we can assume that host names have a tld or consists at least out of 4 characters
+	// Normally we can assume that host names have a tld and/or consists at least out of 4 characters
 	if 4 >= length || length >= 253 {
 		return false
 	}
 
-	if domain[0] == 46 || domain[length-1] == 46 {
+	// No dots on the outside of the domain name
+	if domain[0] == dot || domain[length-1] == dot {
 		return false
 	}
 
 	for i, c := range domain {
 		switch {
+		case 97 <= c && c <= 122 /* a-z */ :
+		case c == 46 /* dot . */ :
+
 		case 48 <= c && c <= 57 /* 0-9 */ :
 		case 65 <= c && c <= 90 /* A-Z */ :
-		case 97 <= c && c <= 122 /* a-z */ :
 		case c == 45 && 0 < i /* dash - */ :
-		case c == 46 /* dot . */ :
+
 		default:
 			return false
 		}
