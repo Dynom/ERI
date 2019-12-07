@@ -97,12 +97,13 @@ func Test_getConnection(t *testing.T) {
 		wantErr bool
 	}{
 		// The good
-		{wantErr: false, name: "happy flow", args: args{err: nil}},
+		{name: "happy flow", args: args{err: nil}},
+		{name: "expected error", args: args{err: errors.New("connection refused")}},
 
 		// The bad
-		{wantErr: false, name: "expected error", args: args{err: errors.New("connection refused")}},
-		{wantErr: false, name: "unexpected error", args: args{err: errors.New("b0rk")}},
+		{wantErr: true, name: "unexpected error", args: args{err: errors.New("b0rk")}},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()

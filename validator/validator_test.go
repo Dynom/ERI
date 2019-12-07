@@ -18,7 +18,7 @@ var (
 	validParts, _ = types.NewEmailParts("john.doe@example.org")
 )
 
-func TestSMValidator_CheckWithLookup(t *testing.T) {
+func TestEmailValidator_CheckWithLookup(t *testing.T) {
 	t.Skipf("Need net.* stubbing for this to properly work")
 
 	type args struct {
@@ -67,7 +67,7 @@ func TestSMValidator_CheckWithLookup(t *testing.T) {
 	}
 }
 
-func TestSMValidator_getNewArtifact(t *testing.T) {
+func TestEmailValidator_getNewArtifact(t *testing.T) {
 	d := net.Dialer{}
 	v := NewEmailAddressValidator(&d)
 
@@ -90,17 +90,18 @@ func Test_checkSyntax(t *testing.T) {
 		wantErr bool
 	}{
 		// All good
-		{name: "valid but short", email: "john@doe.example.org"},
-		{name: "wrong tld, but valid syntax", email: "j@example.mail"},
+		{name: "valid but short", email: "me@wx.yz"},
+		{name: "with subdomain", email: "john@doe.example.org"},
+		{name: "wrong tld, but valid syntax", email: "js@example.mail"},
 
 		// All bad
-		{name: "Invalid visible character", email: "j@d.org>", wantErr: true},
-		{name: "ending on a dot", email: "j@example.org.", wantErr: true},
+		{name: "Invalid visible character", email: "js@d.org>", wantErr: true},
+		{name: "ending on a dot", email: "js@example.org.", wantErr: true},
 		{name: "missing local part and @", email: "example.org", wantErr: true},
 		{name: "missing local part", email: "@example.org", wantErr: true},
 
 		// Not picked up by mail.ParseAddress
-		{name: "Invalid characters (NBSP)", email: "j@example.org   ", wantErr: true},
+		{name: "Invalid characters (NBSP)", email: "js@example.org   ", wantErr: true},
 	}
 
 	for _, tt := range tests {
@@ -116,13 +117,16 @@ func Test_checkSyntax(t *testing.T) {
 			}
 
 			if _, err := mail.ParseAddress(a.email.Address); (err != nil) != tt.wantErr {
-				t.Logf("Wouldn't have been picked up by mail.ParseAddress: '%s'", a.email.Address)
+				t.Logf("Wouldn't have been picked up by mail.ParseAddress(): '%s'", a.email.Address)
 			}
 		})
 	}
 }
 
 func Test_looksLikeValidLocalPart(t *testing.T) {
+
+	// @todo Unicode support
+
 	tests := []struct {
 		local string
 		want  bool
@@ -133,13 +137,16 @@ func Test_looksLikeValidLocalPart(t *testing.T) {
 		{want: true, local: "John.doe"},
 
 		// The bad
+		{local: ""},
 		{local: "."},
 		{local: "john doe"},
+		{local: "john\ndoe"},
+		{local: "john.doe\n"},
 	}
 	for _, tt := range tests {
 		t.Run("testing "+tt.local, func(t *testing.T) {
 			if got := looksLikeValidLocalPart(tt.local); got != tt.want {
-				t.Errorf("looksLikeValidLocalPart() = %v, want %v", got, tt.want)
+				t.Errorf("looksLikeValidLocalPart(%q) = %v, want %v", tt.local, got, tt.want)
 			}
 		})
 	}
@@ -147,6 +154,7 @@ func Test_looksLikeValidLocalPart(t *testing.T) {
 
 func Test_looksLikeValidDomain(t *testing.T) {
 	const (
+		// Explicitly testing real-world occurring characters
 		char0020 rune = 0x0020 // U+0020 (SP)
 		char00A0 rune = 0x00a0 // U+00A0 (NBSP)
 		char0009 rune = 0x0009 // control character
@@ -156,37 +164,45 @@ func Test_looksLikeValidDomain(t *testing.T) {
 	)
 
 	tests := []struct {
-		local   string
+		domain  string
 		badChar string
 		want    bool
 	}{
 		// The good
-		{want: true, local: "example.org"},
-		{want: true, local: "a.b.c.d.e.f.g.h.i.j.example.org"},
-		{want: true, local: "d-ash.example.org"},
-		{want: true, local: "ex-ample.org"},
+		{want: true, domain: "example.org"},
+		{want: true, domain: "a.b.c.d.e.f.g.h.i.j.example.org"},
+		{want: true, domain: "d-ash.example.org"},
+		{want: true, domain: "ex-ample.org"},
+		{want: true, domain: "eXample.org"},
+		{want: true, domain: "ex4mple.org"},
+		{want: true, domain: "短.co"}, // @todo much better unicode coverage, current implementation isn't great
+
+		// The bad - length
+		{domain: ""},
+		{domain: "a.a"},
 
 		// The bad - Spacing
-		{local: "example.org", badChar: "."},
-		{local: "example.org", badChar: string(char0020)},
-		{local: "example.org", badChar: string(char00A0)},
-		{local: "example.org", badChar: string(char0009)},
-		{local: "example.org", badChar: string(char00A0)},
-		{local: "example.org", badChar: string(char0020)},
-		{local: "example.org", badChar: string(char0010)},
-		{local: "example.org", badChar: string(char000a)},
-		{local: "example.org", badChar: string(char003e)},
+		{domain: "example.org", badChar: "."},
+		{domain: "example.org", badChar: string(char0020)},
+		{domain: "example.org", badChar: string(char00A0)},
+		{domain: "example.org", badChar: string(char0009)},
+		{domain: "example.org", badChar: string(char00A0)},
+		{domain: "example.org", badChar: string(char0020)},
+		{domain: "example.org", badChar: string(char0010)},
+		{domain: "example.org", badChar: string(char000a)},
+		{domain: "example.org", badChar: string(char003e)},
+		{domain: "example.org", badChar: "\n"},
 
 		// The bad - Odd, but common, characters
-		{local: "example.org", badChar: ">"},
-		{local: "example.org", badChar: ","},
-		{local: "example.org", badChar: ")"},
+		{domain: "example.org", badChar: ">"},
+		{domain: "example.org", badChar: ","},
+		{domain: "example.org", badChar: ")"},
 	}
 	for _, tt := range tests {
-		domain := tt.local + tt.badChar
+		domain := tt.domain + tt.badChar
 		t.Run("testing "+domain, func(t *testing.T) {
 			if got := looksLikeValidDomain(domain); got != tt.want {
-				t.Errorf("looksLikeValidLocalPart() = %v, want %v (bad char: 0x%x, %q))", got, tt.want, tt.badChar, tt.badChar)
+				t.Errorf("looksLikeValidDomain(%q) = %v, want %v (bad char: 0x%x, %q))", tt.domain, got, tt.want, tt.badChar, tt.badChar)
 			}
 		})
 	}
@@ -207,6 +223,9 @@ func Benchmark_looksLikeValidDomain(b *testing.B) {
 		" example.org",
 		"example.org ",
 		"eXamPLE.org ",
+
+		// Regex fallback
+		"短短.co",
 	}
 
 	b.ReportAllocs()

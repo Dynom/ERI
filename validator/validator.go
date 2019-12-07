@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/mail"
 	"net/smtp"
+	"regexp"
 	"time"
 
 	"github.com/Dynom/ERI/validator/validations"
@@ -254,18 +255,22 @@ func checkRCPT(a *Artifact) error {
 	return err
 }
 
+var reLocal = regexp.MustCompile(`(?i)\A[\p{L}\p{N}!#$%&'*+/=?^_` + "`" + `{|}~-]+(?:\.[\p{L}\p{N}!#$%&'*+/=?^_` + "`" + `{|}~-]+)*\z`)
+var reDomain = regexp.MustCompile(`(?i)\A(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)+[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\z`)
+
 //nolint:gocyclo
 func looksLikeValidLocalPart(local string) bool {
 
-	var length = len(local)
-	if 1 > length || length > 253 {
+	var lastIndexPos = len(local)
+	if 1 >= lastIndexPos || lastIndexPos > 63 {
 		return false
 	}
 
+	var tryRegex bool
 	for i, c := range local {
 		switch {
 		case 97 <= c && c <= 122 /* a-z */ :
-		case c == 46 && 0 < i && i < length-1 /* . not first or last */ :
+		case c == 46 && 0 < i && i < lastIndexPos /* . not first or last */ :
 		case 48 <= c && c <= 57 /* 0-9 */ :
 		case 65 <= c && c <= 90 /* A-Z */ :
 
@@ -289,8 +294,17 @@ func looksLikeValidLocalPart(local string) bool {
 		case c == 125 /* } */ :
 		case c == 126 /* ~ */ :
 		default:
+			if c > 255 {
+				tryRegex = true
+				break
+			}
+
 			return false
 		}
+	}
+
+	if tryRegex {
+		return reLocal.MatchString(local)
 	}
 
 	return true
@@ -298,31 +312,36 @@ func looksLikeValidLocalPart(local string) bool {
 
 //nolint:gocyclo
 func looksLikeValidDomain(domain string) bool {
-	var length = len(domain)
-	const dot uint8 = 46
+	var lastIndexPos = len(domain) - 1
 
 	// Normally we can assume that host names have a tld and/or consists at least out of 4 characters
-	if 4 >= length || length >= 253 {
+	if 3 >= lastIndexPos || lastIndexPos >= 253 {
 		return false
 	}
 
-	// No dots on the outside of the domain name
-	if domain[0] == dot || domain[length-1] == dot {
-		return false
-	}
-
+	var tryRegex bool
 	for i, c := range domain {
 		switch {
 		case 97 <= c && c <= 122 /* a-z */ :
-		case c == 46 /* dot . */ :
+		case c == 46 && 0 < i && i < lastIndexPos /* dot . */ :
 
 		case 48 <= c && c <= 57 /* 0-9 */ :
 		case 65 <= c && c <= 90 /* A-Z */ :
-		case c == 45 && 0 < i /* dash - */ :
+		case c == 45 && 0 < i && i < lastIndexPos /* dash - */ :
 
 		default:
+			if c > 255 {
+				tryRegex = true
+				break
+			}
+
 			return false
 		}
+	}
+
+	// We (might) have unicode characters, falling back on full-pattern-matching
+	if tryRegex {
+		return reDomain.MatchString(domain)
 	}
 
 	return true
