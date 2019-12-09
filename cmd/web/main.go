@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
 	"sort"
 	"time"
+
+	validator "github.com/Dynom/ERI/validator"
 
 	"github.com/Dynom/ERI/cmd/web/inspector/validators"
 
@@ -70,8 +73,18 @@ func main() {
 		panic(err)
 	}
 
-	checkSvc := services.NewCheckService(&cache, myFinder, checker, logger)
-	learnSvc := services.NewLearnService(&cache, myFinder, logger)
+	val := validator.NewEmailAddressValidator(&net.Dialer{
+		Resolver: &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, address string) (conn net.Conn, e error) {
+				d := net.Dialer{}
+				return d.DialContext(ctx, network, net.JoinHostPort(`8.8.8.8`, `53`))
+			},
+		},
+	})
+
+	checkSvc := services.NewCheckService(&cache, myFinder, &checker, logger)
+	learnSvc := services.NewLearnService(&cache, myFinder, &val, logger)
 
 	mux.HandleFunc("/", NewHealthHandler(logger))
 	mux.HandleFunc("/health", NewHealthHandler(logger))

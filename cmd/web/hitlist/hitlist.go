@@ -186,8 +186,8 @@ func (h *HitList) GetHit(domain string, rcpt RCPT) (Hit, error) {
 	return r, nil
 }
 
-// LearnEmailAddressDeadline Same as LearnEmailAddress, but allows for custom TTL. Duration shouldn't be negative.
-func (h *HitList) LearnEmailAddressDeadline(email string, validations validations.Validations, duration time.Duration) error {
+// AddEmailAddressDeadline Same as AddEmailAddress, but allows for custom TTL. Duration shouldn't be negative.
+func (h *HitList) AddEmailAddressDeadline(email string, validations validations.Validations, duration time.Duration) error {
 	var domain string
 	var safeLocal RCPT
 	{
@@ -202,7 +202,7 @@ func (h *HitList) LearnEmailAddressDeadline(email string, validations validation
 	}
 
 	if !h.HasDomain(domain) {
-		err := h.LearnDomain(domain, validations)
+		err := h.AddDomain(domain, validations)
 		if err != nil {
 			return err
 		}
@@ -219,21 +219,17 @@ func (h *HitList) LearnEmailAddressDeadline(email string, validations validation
 	return nil
 }
 
-// LearnEmailAddress records validations for a particular e-mail address. LearnEmailAddress clears previously seen
-// validators if you want to merge, first fetch, merge and pass the resulting Validations to LearnEmailAddress()
-func (h *HitList) LearnEmailAddress(email string, validations validations.Validations) error {
-	return h.LearnEmailAddressDeadline(email, validations, h.ttl)
+// AddEmailAddress records validations for a particular e-mail address. AddEmailAddress clears previously seen
+// validators if you want to merge, first fetch, merge and pass the resulting Validations to AddEmailAddress()
+func (h *HitList) AddEmailAddress(email string, validations validations.Validations) error {
+	return h.AddEmailAddressDeadline(email, validations, h.ttl)
 }
 
-// LearnDomain learns of a domain and it's validity. It overwrites the existing validations, when applicable for
+// AddDomain learns of a domain and it's validity. It overwrites the existing validations, when applicable for
 // a domain
-func (h *HitList) LearnDomain(domain string, validations validations.Validations) error {
+func (h *HitList) AddDomain(domain string, validations validations.Validations) error {
 
-	if !validator.MightBeAHostOrIP(domain) {
-		return ErrNotAValidDomain
-	}
-
-	if validations.IsValid() || validations.IsValidationsForValidDomain() {
+	if validator.MightBeAHostOrIP(domain) && (validations.IsValid() || validations.IsValidationsForValidDomain()) {
 		validations.MarkAsValid()
 	} else {
 		validations.MarkAsInvalid()

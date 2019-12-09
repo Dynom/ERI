@@ -76,7 +76,7 @@ func TestEmailValidator_getNewArtifact(t *testing.T) {
 		deadline := time.Now().Add(time.Minute * 1)
 		ctx, _ := context.WithDeadline(context.Background(), deadline)
 
-		a := v.getNewArtifact(ctx, types.EmailParts{})
+		a := getNewArtifact(ctx, types.EmailParts{}, v.dialer)
 		if a.dialer.Deadline.UTC() != deadline.UTC() {
 			t.Errorf("Expected the deadline to propagate, it didn't %s\n%+v", deadline, a)
 		}
@@ -112,8 +112,8 @@ func Test_checkSyntax(t *testing.T) {
 			}
 
 			a.email, _ = types.NewEmailParts(tt.email)
-			if err := checkSyntax(a); (err != nil) != tt.wantErr {
-				t.Errorf("checkSyntax() error = %v, wantErr %v", err, tt.wantErr)
+			if err := checkEmailAddressSyntax(a); (err != nil) != tt.wantErr {
+				t.Errorf("checkEmailAddressSyntax() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if _, err := mail.ParseAddress(a.email.Address); (err != nil) != tt.wantErr {

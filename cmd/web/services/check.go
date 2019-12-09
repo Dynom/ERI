@@ -15,7 +15,7 @@ import (
 	"github.com/Dynom/TySug/finder"
 )
 
-func NewCheckService(cache *hitlist.HitList, f *finder.Finder, checker inspector.Checker, logger *logrus.Logger) CheckSvc {
+func NewCheckService(cache *hitlist.HitList, f *finder.Finder, checker *inspector.Checker, logger *logrus.Logger) CheckSvc {
 	return CheckSvc{
 		cache:   cache,
 		finder:  f,
@@ -27,7 +27,7 @@ func NewCheckService(cache *hitlist.HitList, f *finder.Finder, checker inspector
 type CheckSvc struct {
 	cache   *hitlist.HitList
 	finder  *finder.Finder
-	checker inspector.Checker
+	checker *inspector.Checker
 	logger  *logrus.Entry
 }
 
@@ -38,6 +38,9 @@ type CheckResult struct {
 }
 
 func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailParts, includeAlternatives bool) (CheckResult, error) {
+
+	// @todo remove logging and include more details in CheckResult
+
 	var res CheckResult
 	var result validators.Result
 
@@ -53,10 +56,10 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 
 		result = c.checker.Check(ctx, email.Address)
 		res.Valid = result.Validations.IsValid()
-		c.logger.WithContext(ctx).WithError(result.Error).Info("Validation(s) failed")
+		c.logger.WithContext(ctx).WithError(result.Error).WithField("result", result).Info("Validation result")
 
 		// @todo depending on the validations above, we should cache with a different TTL and optionally even b0rk completely here
-		err := c.cache.LearnEmailAddress(email.Address, result.Validations)
+		err := c.cache.AddEmailAddress(email.Address, result.Validations)
 		if err != nil {
 			return res, err
 		}

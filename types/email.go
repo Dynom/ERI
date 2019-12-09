@@ -42,8 +42,6 @@ func splitLocalAndDomain(input string) (EmailParts, error) {
 		return EmailParts{}, ErrInvalidEmailAddress
 	}
 
-	//input = strings.ToLower(input)
-
 	return EmailParts{
 		Address: input,
 		Local:   input[:i],
