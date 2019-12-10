@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -43,4 +45,17 @@ func configureProfiler(mux *http.ServeMux, conf config.Config) {
 	mux.HandleFunc(`/`+prefix+`/pprof/profile`, pprof.Profile)
 	mux.HandleFunc(`/`+prefix+`/pprof/symbol`, pprof.Symbol)
 	mux.HandleFunc(`/`+prefix+`/pprof/trace`, pprof.Trace)
+}
+
+func setCustomResolver(dialer *net.Dialer, host string) {
+	if dialer.Resolver == nil {
+		dialer.Resolver = &net.Resolver{
+			PreferGo: true,
+		}
+	}
+
+	dialer.Resolver.Dial = func(ctx context.Context, network, address string) (conn net.Conn, e error) {
+		d := net.Dialer{}
+		return d.DialContext(ctx, network, net.JoinHostPort(host, `53`))
+	}
 }

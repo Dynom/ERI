@@ -36,3 +36,8 @@
   [server.profiler]
     enable = true
     prefix = "debug"
+
+  [server.finder]
+    useBuckets = true
+  [server.validator]
+    resolver = "8.8.8.8"

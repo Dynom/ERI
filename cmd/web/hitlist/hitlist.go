@@ -20,8 +20,8 @@ var (
 	ErrNotPresent = errors.New("value not present")
 )
 
-func NewHitList(h hash.Hash, ttl time.Duration) HitList {
-	return HitList{
+func NewHitList(h hash.Hash, ttl time.Duration) *HitList {
+	return &HitList{
 		Set:  make(map[string]domainHit),
 		lock: sync.RWMutex{},
 		h:    h,

@@ -41,6 +41,12 @@ type Config struct {
 			Key string `toml:"key"`
 			//Enable bool   `toml:"enable"`
 		} `toml:"hash"`
+		Finder struct {
+			UseBuckets bool `toml:"useBuckets"`
+		} `toml:"finder"`
+		Validator struct {
+			Resolver string `toml:"resolver"`
+		} `toml:"validator"`
 		Profiler struct {
 			Enable bool   `toml:"enable"`
 			Prefix string `toml:"prefix"`

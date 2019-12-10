@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"net"
 	"net/http"
 	"time"
@@ -51,29 +50,26 @@ func main() {
 		panic(err)
 	}
 
-	cache := hitlist.NewHitList(h, time.Hour*60)
+	cache := hitlist.NewHitList(h, time.Hour*60) // @todo figure out what todo with TTLs
 	myFinder, err := finder.New(
 		cache.GetValidAndUsageSortedDomains(),
 		finder.WithLengthTolerance(0.2),
 		finder.WithAlgorithm(finder.NewJaroWinklerDefaults()),
+		finder.WithBuckets(conf.Server.Finder.UseBuckets),
 	)
 
 	if err != nil {
 		panic(err)
 	}
 
-	val := validator.NewEmailAddressValidator(&net.Dialer{
-		Resolver: &net.Resolver{
-			PreferGo: true,
-			Dial: func(ctx context.Context, network, address string) (conn net.Conn, e error) {
-				d := net.Dialer{}
-				return d.DialContext(ctx, network, net.JoinHostPort(`8.8.8.8`, `53`))
-			},
-		},
-	})
+	var dialer = &net.Dialer{}
+	if conf.Server.Validator.Resolver != "" {
+		setCustomResolver(dialer, conf.Server.Validator.Resolver)
+	}
 
-	checkSvc := services.NewCheckService(&cache, myFinder, val.CheckWithSyntax, logger)
-	learnSvc := services.NewLearnService(&cache, myFinder, val.CheckWithSyntax, logger)
+	val := validator.NewEmailAddressValidator(dialer)
+	checkSvc := services.NewCheckService(cache, myFinder, val.CheckWithSyntax, logger)
+	learnSvc := services.NewLearnService(cache, myFinder, val.CheckWithSyntax, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", NewHealthHandler(logger))
@@ -83,7 +79,7 @@ func main() {
 	mux.HandleFunc("/learn", NewLearnHandler(logger, learnSvc))
 
 	// Debug
-	mux.HandleFunc("/dumphl", NewDebugHandler(&cache))
+	mux.HandleFunc("/dumphl", NewDebugHandler(cache))
 
 	lw := logger.WriterLevel(logger.Level)
 	defer func() {

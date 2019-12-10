@@ -137,10 +137,10 @@ func Test_MightBeAHostOrIP(t *testing.T) {
 		{want: true, name: "Domain multi-tld", args: args{h: "example.co.uk"}},
 		{want: true, name: "Domain CaSed", args: args{h: "eXample.Org"}},
 		{want: true, name: "Domain dash", args: args{h: "ex-ample.org"}},
+		{want: true, name: "postfix dot", args: args{h: "example.org."}},
 
 		{name: "dot", args: args{h: "."}},
 		{name: "bad, suffix dot", args: args{h: ".example.org"}},
-		{name: "bad, postfix dot", args: args{h: "example.org."}},
 		{name: "bad, no tld", args: args{h: "exampleorg"}},
 		{name: "bad, bad char", args: args{h: "example!org"}},
 		{name: "bad, space", args: args{h: " example.org"}},
