@@ -72,8 +72,8 @@ func main() {
 		},
 	})
 
-	checkSvc := services.NewCheckService(&cache, myFinder, val.CheckWithLookup, logger)
-	learnSvc := services.NewLearnService(&cache, myFinder, val.CheckWithLookup, logger)
+	checkSvc := services.NewCheckService(&cache, myFinder, val.CheckWithSyntax, logger)
+	learnSvc := services.NewLearnService(&cache, myFinder, val.CheckWithSyntax, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", NewHealthHandler(logger))

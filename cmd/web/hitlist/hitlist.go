@@ -17,8 +17,7 @@ import (
 )
 
 var (
-	ErrNotPresent      = errors.New("value not present")
-	ErrNotAValidDomain = errors.New("argument doesn't appear to be a valid domain name")
+	ErrNotPresent = errors.New("value not present")
 )
 
 func NewHitList(h hash.Hash, ttl time.Duration) HitList {

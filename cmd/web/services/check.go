@@ -10,7 +10,6 @@ import (
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 
-	"github.com/Dynom/ERI/cmd/web/inspector"
 	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/TySug/finder"
 )
@@ -42,11 +41,10 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 	// @todo remove logging and include more details in CheckResult
 
 	var res CheckResult
-	var result inspector.Result
 
 	hit, err := c.cache.GetForEmail(email.Address)
 	if err == nil {
-		res.Valid = result.Validations.MergeWithNext(hit.Validations).IsValid()
+		res.Valid = hit.IsValid()
 		res.CacheHitTTL = hit.TTL()
 
 	} else {
