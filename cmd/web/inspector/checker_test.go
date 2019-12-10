@@ -9,8 +9,6 @@ import (
 
 	"github.com/Dynom/ERI/validator/validations"
 
-	"github.com/Dynom/ERI/cmd/web/inspector/validators"
-
 	"github.com/Dynom/ERI/types"
 )
 
@@ -35,14 +33,14 @@ func Test_Check(t *testing.T) {
 }
 
 // validateStub is a stub validator
-func validateStub(v validations.Validations) validators.Validator {
+func validateStub(v validations.Validations) Validator {
 	var err error
 	if v&validations.VFValid == 0 {
 		err = errors.New("validateStub returning an error")
 	}
 
-	return func(ctx context.Context, e types.EmailParts) validators.Result {
-		return validators.Result{
+	return func(ctx context.Context, e types.EmailParts) Result {
+		return Result{
 			Error:       err,
 			Timings:     make(validator.Timings, 0),
 			Validations: v,
@@ -53,13 +51,13 @@ func validateStub(v validations.Validations) validators.Validator {
 func TestChecker_CheckIncrementalValidators(t *testing.T) {
 	tests := []struct {
 		name          string
-		validators    []validators.Validator
+		validators    []Validator
 		shouldBeValid bool
 	}{
 		{
 			name:          "single validator",
 			shouldBeValid: true,
-			validators: []validators.Validator{
+			validators: []Validator{
 				validateStub(0 | validations.VFValid), // Valid
 			},
 		},
@@ -67,7 +65,7 @@ func TestChecker_CheckIncrementalValidators(t *testing.T) {
 			// Validators are incremental, once we have a failure, we can't recover
 			name:          "multi validator, start invalid end with valid",
 			shouldBeValid: false,
-			validators: []validators.Validator{
+			validators: []Validator{
 				validateStub(0), // Invalid
 				validateStub(0 | validations.VFSyntax | validations.VFValid), // Valid
 			},
@@ -75,7 +73,7 @@ func TestChecker_CheckIncrementalValidators(t *testing.T) {
 		{
 			name:          "multi validator, start valid end with invalid",
 			shouldBeValid: false,
-			validators: []validators.Validator{
+			validators: []Validator{
 				validateStub(0 | validations.VFSyntax | validations.VFValid),    // Valid
 				validateStub(0 | validations.VFSyntax | validations.VFMXLookup), // Invalid
 			},

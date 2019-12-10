@@ -23,7 +23,7 @@ ERI design goals:
 # Features
 ## Implemented
 ## Planned
-- Play nice with Mail providers webhooks (e.g.: AWS SES/SNS, Send in Blue, Mailgun) for learning
+- Play nice with Mail providers webhooks (e.g.: AWS SES/SNS, Send in Blue, Mailgun) for learning of failure(s)
 - 
 
 

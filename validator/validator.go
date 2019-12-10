@@ -8,6 +8,8 @@ import (
 	"github.com/Dynom/ERI/types"
 )
 
+type CheckFn func(ctx context.Context, parts types.EmailParts) (Artifact, error)
+
 func NewEmailAddressValidator(dialer *net.Dialer) EmailValidator {
 
 	// @todo fix when Go's stdlib offers a nicer API for this
@@ -31,10 +33,16 @@ type EmailValidator struct {
 // CheckWithConnect performs a thorough check, which has the least chance of false-positives. It requires a valid PTR
 // and is probably not something you want to offer as a user-facing service.
 func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
+
+	var syntaxCheck stateFn = checkEmailAddressSyntax
+	if emailParts.Local == "" {
+		syntaxCheck = checkDomainSyntax
+	}
+
 	return validateSequence(ctx,
 		getNewArtifact(ctx, emailParts, v.dialer),
 		[]stateFn{
-			checkEmailAddressSyntax,
+			syntaxCheck,
 			checkIfDomainHasMX,
 			checkIfMXHasIP,
 			checkMXAcceptsConnect,
@@ -44,10 +52,16 @@ func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.
 
 // CheckWithLookup performs a sanity check using DNS lookups. It won't connect to the actual hosts.
 func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
+
+	var syntaxCheck stateFn = checkEmailAddressSyntax
+	if emailParts.Local == "" {
+		syntaxCheck = checkDomainSyntax
+	}
+
 	return validateSequence(ctx,
 		getNewArtifact(ctx, emailParts, v.dialer),
 		[]stateFn{
-			checkEmailAddressSyntax,
+			syntaxCheck,
 			checkIfDomainHasMX,
 			checkIfMXHasIP,
 		})
@@ -55,43 +69,16 @@ func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.E
 
 // CheckWithSyntax performs only a syntax check.
 func (v *EmailValidator) CheckWithSyntax(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
-	return validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, v.dialer),
-		[]stateFn{
-			checkEmailAddressSyntax,
-		})
-}
 
-// CheckWithConnect performs a thorough check, which has the least chance of false-positives. It requires a valid PTR
-// and is probably not something you want to offer as a user-facing service.
-func (v *EmailValidator) CheckDomainWithConnect(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
-	return validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, v.dialer),
-		[]stateFn{
-			checkDomainSyntax,
-			checkIfDomainHasMX,
-			checkIfMXHasIP,
-			checkMXAcceptsConnect,
-		})
-}
+	var syntaxCheck stateFn = checkEmailAddressSyntax
+	if emailParts.Local == "" {
+		syntaxCheck = checkDomainSyntax
+	}
 
-// CheckWithLookup performs a sanity check using DNS lookups. It won't connect to the actual hosts.
-func (v *EmailValidator) CheckDomainWithLookup(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
 	return validateSequence(ctx,
 		getNewArtifact(ctx, emailParts, v.dialer),
 		[]stateFn{
-			checkDomainSyntax,
-			checkIfDomainHasMX,
-			checkIfMXHasIP,
-		})
-}
-
-// CheckWithSyntax performs only a syntax check.
-func (v *EmailValidator) CheckDomainWithSyntax(ctx context.Context, emailParts types.EmailParts) (Artifact, error) {
-	return validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, v.dialer),
-		[]stateFn{
-			checkDomainSyntax,
+			syntaxCheck,
 		})
 }
 

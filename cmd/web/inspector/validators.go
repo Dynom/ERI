@@ -1,4 +1,4 @@
-package validators
+package inspector
 
 import (
 	"context"
@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/Dynom/ERI/validator/validations"
-
-	"github.com/Dynom/ERI/validator"
-
 	"github.com/Dynom/ERI/types"
+	"github.com/Dynom/ERI/validator"
+	"github.com/Dynom/ERI/validator/validations"
 )
 
 var (

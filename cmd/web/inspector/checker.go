@@ -6,8 +6,6 @@ import (
 
 	"github.com/Dynom/ERI/validator"
 
-	"github.com/Dynom/ERI/cmd/web/inspector/validators"
-
 	"github.com/Dynom/ERI/types"
 )
 
@@ -24,17 +22,17 @@ func New(options ...Option) Checker {
 
 // Checker holds the type that can perform the e-mail address checks
 type Checker struct {
-	validators []validators.Validator
+	validators []Validator
 }
 
 // Check runs various validators on the input and produces a Result
-func (c Checker) Check(ctx context.Context, email string) validators.Result {
+func (c Checker) Check(ctx context.Context, email string) Result {
 	e, err := types.NewEmailParts(email)
 	if err != nil {
 		return newErrorResult(err)
 	}
 
-	var result = validators.Result{
+	var result = Result{
 		Timings: make(validator.Timings, 0, len(c.validators)),
 	}
 
@@ -67,8 +65,8 @@ func (c Checker) Check(ctx context.Context, email string) validators.Result {
 	return result
 }
 
-func newErrorResult(err error) validators.Result {
-	return validators.Result{
+func newErrorResult(err error) Result {
+	return Result{
 		Timings: validator.Timings{},
 		Error:   err,
 	}

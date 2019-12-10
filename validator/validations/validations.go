@@ -1,5 +1,7 @@
 package validations
 
+import "fmt"
+
 const (
 	// Validation Flags, these flags represent successful validation steps. Depending on how far you want to go, you can
 	// classify a validation as valid enough, for your use-case.
@@ -14,6 +16,10 @@ const (
 
 // Validations holds the validation steps performed.
 type Validations uint64
+
+func (v Validations) String() string {
+	return fmt.Sprintf("%08b", v)
+}
 
 // IsValid returns true if the Validations are considered successful
 func (v Validations) IsValid() bool {
