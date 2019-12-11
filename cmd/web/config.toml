@@ -3,7 +3,7 @@
   # The maximum amount of references the client can send to test against (@todo)
   #referencesMax = 100
   # The maximum length (in bytes) of the "input" field, to accept to the finder.
-  #inputLengthMax = 50
+  inputLengthMax = 50
 
 [CORS]
   # Not defining allowedOrigins will use wildcard '*', meaning all clients are allowed.
@@ -25,20 +25,19 @@
     {name = "Referrer-Policy", value = "strict-origin"}
   ]
 
+  [server.hash]
+    # The key for the 128bit highwayhash algorithm. Must be exactly 32 bytes.
+    key = "00000000000000000000000000000000"
+
   [server.log]
     # The minimum logging level to report, @see https://github.com/Sirupsen/logrus#level-logging
     level = "info"
 
   [server.profiler]
-    enable = false
+    enable = true
     prefix = "debug"
 
-
-
-# The list of references
-[references]
-  domains = [
-  ]
-
-  test = [
-  ]
+  [server.finder]
+    useBuckets = true
+  [server.validator]
+    resolver = "8.8.8.8"

@@ -14,7 +14,8 @@ func NewEmailFromParts(local, domain string) (EmailParts, error) {
 	return NewEmailParts(local + `@` + domain)
 }
 
-// NewEmailParts takes an e-mail address and returns it in two parts, including the original
+// NewEmailParts takes an e-mail address and returns it lower-cased and in parts. It performs only the most minimal form
+// of syntax validation. An error is returned when the address doesn't contain an @, or when the input size is abnormal.
 func NewEmailParts(emailAddress string) (EmailParts, error) {
 	p, err := splitLocalAndDomain(emailAddress)
 	if err != nil {
@@ -40,8 +41,6 @@ func splitLocalAndDomain(input string) (EmailParts, error) {
 	if 0 >= i || i >= len(input) {
 		return EmailParts{}, ErrInvalidEmailAddress
 	}
-
-	input = strings.ToLower(input)
 
 	return EmailParts{
 		Address: input,

@@ -21,10 +21,15 @@ func BuildHTTPServer(mux http.Handler, config config.Config, logWriter io.Writer
 		mux = h(mux)
 	}
 
+	wTTL := 10 * time.Second
+	if config.Server.Profiler.Enable {
+		wTTL = 31 * time.Second
+	}
+
 	server := &http.Server{
 		ReadHeaderTimeout: 2 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second, // Is overridden, when the profiler is enabled.
+		ReadTimeout:       wTTL,
+		WriteTimeout:      wTTL, // Is overridden, when the profiler is enabled.
 		IdleTimeout:       60 * time.Second,
 		MaxHeaderBytes:    1 << 19, // 512 kb
 		Handler:           mux,

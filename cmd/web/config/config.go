@@ -25,9 +25,8 @@ func NewConfig(fileName string) (Config, error) {
 
 // Config holds central config parameters
 type Config struct {
-	References map[string][]string `toml:"references"`
-	Client     struct {
-		InputLengthMax int `toml:"inputLengthMax"`
+	Client struct {
+		InputLengthMax uint64 `toml:"inputLengthMax"`
 	} `toml:"client"`
 	CORS struct {
 		AllowedOrigins []string `toml:"allowedOrigins"`
@@ -38,6 +37,16 @@ type Config struct {
 		Log      struct {
 			Level string `toml:"level"`
 		} `toml:"log"`
+		Hash struct {
+			Key string `toml:"key"`
+			//Enable bool   `toml:"enable"`
+		} `toml:"hash"`
+		Finder struct {
+			UseBuckets bool `toml:"useBuckets"`
+		} `toml:"finder"`
+		Validator struct {
+			Resolver string `toml:"resolver"`
+		} `toml:"validator"`
 		Profiler struct {
 			Enable bool   `toml:"enable"`
 			Prefix string `toml:"prefix"`

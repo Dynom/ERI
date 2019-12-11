@@ -4,29 +4,30 @@ import (
 	"context"
 	"time"
 
+	"github.com/Dynom/ERI/validator"
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 
-	"github.com/Dynom/ERI/cmd/web/inspector"
-	"github.com/Dynom/ERI/cmd/web/types"
+	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/TySug/finder"
 )
 
-func NewCheckService(cache *hitlist.HitList, f *finder.Finder, checker inspector.Checker, logger *logrus.Logger) CheckSvc {
+func NewCheckService(cache *hitlist.HitList, f *finder.Finder, val validator.CheckFn, logger *logrus.Logger) CheckSvc {
 	return CheckSvc{
-		cache:   cache,
-		finder:  f,
-		checker: checker,
-		logger:  logger.WithField("svc", "check"),
+		cache:     cache,
+		finder:    f,
+		validator: val,
+		logger:    logger.WithField("svc", "check"),
 	}
 }
 
 type CheckSvc struct {
-	cache   *hitlist.HitList
-	finder  *finder.Finder
-	checker inspector.Checker
-	logger  *logrus.Entry
+	cache     *hitlist.HitList
+	finder    *finder.Finder
+	validator validator.CheckFn
+	logger    *logrus.Entry
 }
 
 type CheckResult struct {
@@ -36,25 +37,27 @@ type CheckResult struct {
 }
 
 func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailParts, includeAlternatives bool) (CheckResult, error) {
-	var res CheckResult
-	var result inspector.Result
-	var now = time.Now()
 
-	l, err := c.cache.GetForEmail(email.Address)
+	// @todo remove logging and include more details in CheckResult
+
+	var res CheckResult
+
+	hit, err := c.cache.GetForEmail(email.Address)
 	if err == nil {
-		res.Valid = result.Validations.MergeWithNext(l.Validations).IsValid()
-		res.CacheHitTTL = l.ValidUntil.Sub(now)
+		res.Valid = hit.IsValid()
+		res.CacheHitTTL = hit.TTL()
 
 	} else {
 		if err != hitlist.ErrNotPresent {
 			return res, err
 		}
 
-		result = c.checker.Check(ctx, email.Address)
+		result, err := c.validator(ctx, email)
 		res.Valid = result.Validations.IsValid()
+		c.logger.WithContext(ctx).WithError(err).WithField("result", result).Info("Validation result")
 
-		// @todo not sure if this should result in returning an error
-		err := c.cache.LearnEmailAddress(email.Address, result.Validations)
+		// @todo depending on the validations above, we should cache with a different TTL and optionally even b0rk completely here
+		err = c.cache.AddEmailAddress(email.Address, result.Validations)
 		if err != nil {
 			return res, err
 		}
@@ -66,12 +69,14 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 	}
 
 	if includeAlternatives {
+		ctx = context.Background()
 		alt, score, exact := c.finder.FindCtx(ctx, email.Domain)
 
 		c.logger.WithContext(ctx).WithFields(logrus.Fields{
-			"alt":   alt,
-			"score": score,
-			"exact": exact,
+			"alt":              alt,
+			"score":            score,
+			"exact":            exact,
+			"deadline_expired": didDeadlineExpire(ctx),
 		}).Debug("Used Finder")
 
 		if !exact && score > finder.WorstScoreValue {
@@ -85,4 +90,12 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 	}
 
 	return res, nil
+}
+
+func didDeadlineExpire(ctx context.Context) bool {
+	if t, set := ctx.Deadline(); set {
+		return t.After(time.Now())
+	}
+
+	return false
 }

@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"net"
 	"net/http"
-	"os"
-	"sort"
 	"time"
+
+	validator "github.com/Dynom/ERI/validator"
 
 	"github.com/minio/highwayhash"
 
@@ -19,7 +19,6 @@ import (
 
 	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
 
-	"github.com/Dynom/ERI/cmd/web/inspector"
 	"github.com/Dynom/TySug/finder"
 	"github.com/sirupsen/logrus"
 )
@@ -36,85 +35,63 @@ func main() {
 		panic(err)
 	}
 
-	logger := logrus.New()
-	logger.Formatter = &logrus.JSONFormatter{}
-	logger.Out = os.Stdout
-	logger.Level, err = logrus.ParseLevel(conf.Server.Log.Level)
-
+	logger, err := newLogger(conf)
 	if err != nil {
 		panic(err)
 	}
 
 	logger.WithFields(logrus.Fields{
 		"version": Version,
+		"config":  conf,
 	}).Info("Starting up...")
 
-	mux := http.NewServeMux()
-
-	checker := inspector.New(inspector.WithValidators(
-		inspector.ValidateSyntax(),
-		inspector.ValidateMXAndRCPT(inspector.DefaultRecipient),
-	))
-
-	h, err := highwayhash.New128([]byte(`a1C2d3oi4uctnqo3utlNcwtqlmwH!rtl`))
+	h, err := highwayhash.New128([]byte(conf.Server.Hash.Key))
 	if err != nil {
 		panic(err)
 	}
 
-	cache := hitlist.NewHitList(h)
+	cache := hitlist.NewHitList(h, time.Hour*60) // @todo figure out what todo with TTLs
 	myFinder, err := finder.New(
 		cache.GetValidAndUsageSortedDomains(),
 		finder.WithLengthTolerance(0.2),
 		finder.WithAlgorithm(finder.NewJaroWinklerDefaults()),
+		finder.WithBuckets(conf.Server.Finder.UseBuckets),
 	)
 
 	if err != nil {
 		panic(err)
 	}
 
-	checkSvc := services.NewCheckService(&cache, myFinder, checker, logger)
-	learnSvc := services.NewLearnService(&cache, myFinder)
+	var dialer = &net.Dialer{}
+	if conf.Server.Validator.Resolver != "" {
+		setCustomResolver(dialer, conf.Server.Validator.Resolver)
+	}
+
+	val := validator.NewEmailAddressValidator(dialer)
+	checkSvc := services.NewCheckService(cache, myFinder, val.CheckWithSyntax, logger)
+	learnSvc := services.NewLearnService(cache, myFinder, val.CheckWithSyntax, logger)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", NewHealthHandler(logger))
+	mux.HandleFunc("/health", NewHealthHandler(logger))
 
 	mux.HandleFunc("/check", NewCheckHandler(logger, checkSvc))
-	mux.HandleFunc("/dumphl", func(w http.ResponseWriter, r *http.Request) {
-
-		var domains = make([]string, 0, len(cache.Set))
-		for d := range cache.Set {
-			domains = append(domains, d)
-		}
-
-		sort.Strings(domains)
-		for _, domain := range domains {
-			_, _ = fmt.Fprintf(w, "%s\n", domain)
-
-			rcpts := make([]hitlist.RCPT, 0, len(cache.Set[domain].RCPTs))
-			for rcpt := range cache.Set[domain].RCPTs {
-				rcpts = append(rcpts, rcpt)
-			}
-
-			if len(rcpts) > 0 {
-				sort.Slice(rcpts, func(i, j int) bool {
-					return rcpts[i] < rcpts[j]
-				})
-				_, _ = fmt.Fprint(w, "\tValidations      | cache ttl                 | recipient \n")
-
-				for _, rcpt := range rcpts {
-					hit := cache.Set[domain].RCPTs[rcpt]
-					_, _ = fmt.Fprintf(w, "\t%016b | %25s | %s \n", hit.Validations, hit.ValidUntil.Format(time.RFC3339), rcpt)
-				}
-			}
-		}
-
-		_, _ = fmt.Fprintf(w, "%+v\n", cache.GetValidAndUsageSortedDomains())
-	})
 	mux.HandleFunc("/learn", NewLearnHandler(logger, learnSvc))
+
+	// Debug
+	mux.HandleFunc("/dumphl", NewDebugHandler(cache))
 
 	lw := logger.WriterLevel(logger.Level)
 	defer func() {
 		_ = lw.Close()
 	}()
 
+	if conf.Server.Profiler.Enable {
+		configureProfiler(mux, conf)
+	}
+
 	s := erihttp.BuildHTTPServer(mux, conf, lw,
+		handlers.WithRequestLogger(logger),
 		handlers.WithGzipHandler(),
 		handlers.WithHeaders(sliceToHTTPHeaders(conf.Server.Headers)),
 	)

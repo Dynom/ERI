@@ -3,67 +3,156 @@ package services
 import (
 	"context"
 	"fmt"
+	"sync"
+
+	"github.com/Dynom/ERI/types"
+
+	"github.com/Dynom/ERI/validator"
+
+	"github.com/Dynom/ERI/validator/validations"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
-	"github.com/Dynom/ERI/cmd/web/types"
 	"github.com/Dynom/TySug/finder"
 )
 
-func NewLearnService(cache *hitlist.HitList, f *finder.Finder) LearnSvc {
+const (
+	LearnValueEmail  = "email address"
+	LearnValueDomain = "domain"
+)
+
+type LearnValueType string
+
+type ResultStreamLearnStatus chan LearnStatus
+
+func (rs ResultStreamLearnStatus) Announce(status LearnStatus) {
+	rs <- status
+}
+
+func NewLearnService(cache *hitlist.HitList, f *finder.Finder, v validator.CheckFn, logger *logrus.Logger) LearnSvc {
 	return LearnSvc{
-		cache:  cache,
-		finder: f,
+		cache:        cache,
+		finder:       f,
+		validator:    v,
+		logger:       logger,
+		ResultStream: make(ResultStreamLearnStatus),
 	}
 }
 
 type LearnSvc struct {
-	cache  *hitlist.HitList
-	finder *finder.Finder
+	cache        *hitlist.HitList
+	finder       *finder.Finder
+	validator    validator.CheckFn
+	logger       *logrus.Logger
+	ResultStream ResultStreamLearnStatus
 }
 
 type LearnResult struct {
-	NumDomains        uint64
-	NumEmailAddresses uint64
+	NumDomains         uint64
+	NumEmailAddresses  uint64
+	DomainErrors       uint64
+	EmailAddressErrors uint64
 }
 
-func (l *LearnSvc) HandleLearnRequest(ctx context.Context, req erihttp.LearnRequest) (LearnResult, error) {
+type LearnStatus struct {
+	Type        LearnValueType
+	Value       string
+	Validations validations.Validations
+	Error       error
+}
+
+// HandleLearnRequest learns of the existence of a domain or e-mail address. It's designed to handle bulk requests
+// @todo figure out how a Learn Request should work
+func (l *LearnSvc) HandleLearnRequest(ctx context.Context, req erihttp.LearnRequest) LearnResult {
 	var result = LearnResult{
 		NumDomains:        uint64(len(req.Domains)),
 		NumEmailAddresses: uint64(len(req.Emails)),
 	}
 
-	var learnErrors = make(map[string]error, len(req.Emails)+len(req.Domains))
-	for _, toLearn := range req.Emails {
-		var v types.Validations
-		if toLearn.Valid {
-			v.MarkAsValid()
-		}
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
 
-		err := l.cache.LearnEmailAddress(toLearn.Value, v)
-		if err != nil {
-			learnErrors[toLearn.Value] = err
-		}
-	}
+	go func() {
+		result.EmailAddressErrors = learnAndAddValue(ctx, l.validator, l.cache, req.Emails, l.ResultStream, LearnValueEmail)
+		wg.Done()
+	}()
 
-	for _, toLearn := range req.Domains {
-		var v types.Validations
-		if toLearn.Valid {
-			v.MarkAsValid()
-		}
+	go func() {
+		result.DomainErrors = learnAndAddValue(ctx, l.validator, l.cache, req.Domains, l.ResultStream, LearnValueDomain)
+		wg.Done()
+	}()
 
-		err := l.cache.LearnDomain(toLearn.Value, v)
-		if err != nil {
-			learnErrors[toLearn.Value] = err
-		}
-	}
-
+	wg.Wait()
 	l.finder.Refresh(l.cache.GetValidAndUsageSortedDomains())
 
-	if len(learnErrors) > 0 {
-		return result, fmt.Errorf("had %d errors", len(learnErrors))
+	return result
+}
+
+func learnAndAddValue(ctx context.Context, validator validator.CheckFn, cache *hitlist.HitList, toLearn []erihttp.ToLearn, resultStream ResultStreamLearnStatus, valueType LearnValueType) (failures uint64) {
+	for _, learn := range toLearn {
+		var v validations.Validations
+		var err error
+		var ls = LearnStatus{
+			Type:        valueType,
+			Value:       learn.Value,
+			Validations: 0,
+			Error:       nil,
+		}
+
+		// Aborting operation if we're canceled
+		if ctx.Err() != nil {
+			return failures
+		}
+
+		var parts types.EmailParts
+		if valueType == LearnValueDomain {
+			parts = types.EmailParts{
+				Address: "",
+				Local:   "",
+				Domain:  learn.Value,
+			}
+		} else {
+			parts, err = types.NewEmailParts(learn.Value)
+			if err != nil {
+				failures++
+				ls := ls
+				ls.Error = fmt.Errorf("unable to split address %w", err)
+				resultStream.Announce(ls)
+				continue
+			}
+		}
+
+		// We can assume it's valid, since it was specified as such in the request
+		artifact, err := validator(ctx, parts)
+		v = artifact.Validations
+
+		if err != nil {
+			failures++
+			ls := ls
+			ls.Error = fmt.Errorf("address is invalid, marking as such %w", err)
+			resultStream.Announce(ls)
+		}
+
+		var learnFn func(string, validations.Validations) error
+		if valueType == LearnValueDomain {
+			learnFn = cache.AddDomain
+		} else {
+			learnFn = cache.AddEmailAddress
+		}
+
+		err = learnFn(learn.Value, v)
+		ls.Validations = v
+
+		if err != nil {
+			failures++
+			ls.Error = fmt.Errorf("failed learning address %w", err)
+		}
+
+		resultStream.Announce(ls)
 	}
 
-	return result, nil
+	return failures
 }
