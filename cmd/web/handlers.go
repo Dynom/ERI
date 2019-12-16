@@ -8,6 +8,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
+
 	"github.com/Dynom/TySug/finder"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
@@ -24,7 +26,8 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var req erihttp.AutoCompleteRequest
-		_ = log
+
+		log = log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 
@@ -85,6 +88,8 @@ func NewCheckHandler(logger logrus.FieldLogger, svc services.CheckSvc) http.Hand
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var req erihttp.CheckRequest
+
+		log = log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 
@@ -163,6 +168,9 @@ func NewHealthHandler(logger logrus.FieldLogger) http.HandlerFunc {
 
 	log := logger.WithField("handler", "health")
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		log = log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
+
 		w.Header().Set("content-type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 
@@ -180,7 +188,7 @@ func NewLearnHandler(logger logrus.FieldLogger, svc services.LearnSvc) http.Hand
 		var err error
 		var req erihttp.LearnRequest
 
-		log = log.WithContext(r.Context())
+		log = log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 
