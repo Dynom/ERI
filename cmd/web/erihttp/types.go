@@ -1,10 +1,17 @@
 package erihttp
 
-//{"valid": false, "reason": "bad_domain",         "alternative": "john.doe@gmail.com"}
+type AutoCompleteResponse struct {
+	Suggestions []string `json:"suggestions"`
+}
+
 type CheckResponse struct {
 	Valid       bool   `json:"valid"`
 	Reason      string `json:"reason,omitempty"`
 	Alternative string `json:"alternative,omitempty"`
+}
+
+type AutoCompleteRequest struct {
+	Domain string `json:"domain"`
 }
 
 type CheckRequest struct {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -57,5 +58,14 @@ func setCustomResolver(dialer *net.Dialer, host string) {
 	dialer.Resolver.Dial = func(ctx context.Context, network, address string) (conn net.Conn, e error) {
 		d := net.Dialer{}
 		return d.DialContext(ctx, network, net.JoinHostPort(host, `53`))
+	}
+}
+
+func deferClose(toClose io.Closer, log logrus.FieldLogger) {
+	if toClose != nil {
+		err := toClose.Close()
+		if err != nil {
+			log.WithError(err).Error("Failed to close handle")
+		}
 	}
 }

@@ -1,12 +1,13 @@
 # ERI
-Email Recipient Inspector, checks e-mail addresses and offers suggestions when there is suspicion of a typo. It uses an incremental validation approach and support learning
+Email Recipient Inspector, checks e-mail addresses and offers suggestions when there is suspicion of a typo. It uses an incremental validation approach and support learning. The main goal of ERI is to reduce mistakes when dealing with e-mail addresses.
 
 ERI design goals:
 - Fast
     - Incremental expensiveness on checks syntax -> MX -> RCPT
-- Secure
+- Robust / Secure
     - Fuzzer tested
     - Rate limited
+    - Limited dependencies
 - Privacy conscious
     - Tries to hash the in-memory result to leak as little as possible on bugs / compromise
 - Reliable
@@ -24,7 +25,7 @@ ERI design goals:
 ## Implemented
 ## Planned
 - Play nice with Mail providers webhooks (e.g.: AWS SES/SNS, Send in Blue, Mailgun) for learning of failure(s)
-- 
+- Auto-complete endpoint, helps completing the correct domain names
 
 
 # Considerations and Design Choices

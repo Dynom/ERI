@@ -8,6 +8,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/Dynom/TySug/finder"
+
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 
 	"github.com/Dynom/ERI/cmd/web/services"
@@ -17,19 +19,74 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewCheckHandler(logger *logrus.Logger, svc services.CheckSvc) http.HandlerFunc {
+func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) http.HandlerFunc {
+	log := logger.WithField("handler", "auto complete")
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		var req erihttp.AutoCompleteRequest
+		_ = log
 
-	log := logger.WithField("handler", "health")
+		defer deferClose(r.Body, log)
+
+		body, err := erihttp.GetBodyFromHTTPRequest(r)
+		if err != nil {
+			log.WithError(err).Errorf("Error handling request %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("Request failed"))
+			return
+		}
+
+		err = json.Unmarshal(body, &req)
+		if err != nil {
+			log.WithError(err).Errorf("Error handling request body %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("Request failed, unable to parse request body. Did you send JSON?"))
+			return
+		}
+
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+
+		list, err := myFinder.GetMatchingPrefix(ctx, req.Domain, 10)
+		if err != nil {
+			log.WithError(err).Errorf("Error during lookup %s", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("Request failed, unable to lookup by domain"))
+			return
+		}
+
+		response, err := json.Marshal(erihttp.AutoCompleteResponse{
+			Suggestions: list,
+		})
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"response": response,
+				"error":    err,
+			}).Error("Failed to marshal the response")
+
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("Unable to produce a response"))
+			return
+		}
+
+		log.WithFields(logrus.Fields{
+			"suggestion_amount": len(list),
+			"input":             req.Domain,
+		}).Debugf("Done performing check")
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(response)
+
+	}
+}
+func NewCheckHandler(logger logrus.FieldLogger, svc services.CheckSvc) http.HandlerFunc {
+
+	log := logger.WithField("handler", "check")
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var req erihttp.CheckRequest
 
-		defer func() {
-			// Body's can be nil on GET requests
-			if r.Body != nil {
-				_ = r.Body.Close()
-			}
-		}()
+		defer deferClose(r.Body, log)
 
 		body, err := erihttp.GetBodyFromHTTPRequest(r)
 		if err != nil {
@@ -102,7 +159,7 @@ func NewCheckHandler(logger *logrus.Logger, svc services.CheckSvc) http.HandlerF
 	}
 }
 
-func NewHealthHandler(logger *logrus.Logger) http.HandlerFunc {
+func NewHealthHandler(logger logrus.FieldLogger) http.HandlerFunc {
 
 	log := logger.WithField("handler", "health")
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +173,7 @@ func NewHealthHandler(logger *logrus.Logger) http.HandlerFunc {
 	}
 }
 
-func NewLearnHandler(logger *logrus.Logger, svc services.LearnSvc) http.HandlerFunc {
+func NewLearnHandler(logger logrus.FieldLogger, svc services.LearnSvc) http.HandlerFunc {
 
 	log := logger.WithField("handler", "learn")
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -125,12 +182,7 @@ func NewLearnHandler(logger *logrus.Logger, svc services.LearnSvc) http.HandlerF
 
 		log = log.WithContext(r.Context())
 
-		defer func() {
-			// Body's can be nil on GET requests
-			if r.Body != nil {
-				_ = r.Body.Close()
-			}
-		}()
+		defer deferClose(r.Body, log)
 
 		body, err := erihttp.GetBodyFromHTTPRequest(r)
 		if err != nil {

@@ -31,7 +31,7 @@
 
   [server.log]
     # The minimum logging level to report, @see https://github.com/Sirupsen/logrus#level-logging
-    level = "info"
+    level = "debug"
 
   [server.profiler]
     enable = true

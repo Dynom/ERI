@@ -50,12 +50,12 @@ func main() {
 		panic(err)
 	}
 
-	cache := hitlist.NewHitList(h, time.Hour*60) // @todo figure out what todo with TTLs
+	cache := hitlist.New(h, time.Hour*60) // @todo figure out what todo with TTLs
 	myFinder, err := finder.New(
 		cache.GetValidAndUsageSortedDomains(),
 		finder.WithLengthTolerance(0.2),
 		finder.WithAlgorithm(finder.NewJaroWinklerDefaults()),
-		finder.WithBuckets(conf.Server.Finder.UseBuckets),
+		finder.WithPrefixBuckets(conf.Server.Finder.UseBuckets),
 	)
 
 	if err != nil {
@@ -77,6 +77,7 @@ func main() {
 
 	mux.HandleFunc("/check", NewCheckHandler(logger, checkSvc))
 	mux.HandleFunc("/learn", NewLearnHandler(logger, learnSvc))
+	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder))
 
 	// Debug
 	mux.HandleFunc("/dumphl", NewDebugHandler(cache))

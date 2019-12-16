@@ -20,7 +20,7 @@ var (
 	ErrNotPresent = errors.New("value not present")
 )
 
-func NewHitList(h hash.Hash, ttl time.Duration) *HitList {
+func New(h hash.Hash, ttl time.Duration) *HitList {
 	return &HitList{
 		Set:  make(map[string]domainHit),
 		lock: sync.RWMutex{},
@@ -224,8 +224,7 @@ func (h *HitList) AddEmailAddress(email string, validations validations.Validati
 	return h.AddEmailAddressDeadline(email, validations, h.ttl)
 }
 
-// AddDomain learns of a domain and it's validity. It overwrites the existing validations, when applicable for
-// a domain
+// AddDomain learns of a domain and it's validity. It overwrites the existing validations, when applicable for a domain
 func (h *HitList) AddDomain(domain string, validations validations.Validations) error {
 
 	if validator.MightBeAHostOrIP(domain) && (validations.IsValid() || validations.IsValidationsForValidDomain()) {
