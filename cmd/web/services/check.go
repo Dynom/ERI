@@ -14,9 +14,9 @@ import (
 	"github.com/Dynom/TySug/finder"
 )
 
-func NewCheckService(cache *hitlist.HitList, f *finder.Finder, val validator.CheckFn, logger *logrus.Logger) CheckSvc {
+func NewCheckService(hitList *hitlist.HitList, f *finder.Finder, val validator.CheckFn, logger *logrus.Logger) CheckSvc {
 	return CheckSvc{
-		cache:     cache,
+		hitList:   hitList,
 		finder:    f,
 		validator: val,
 		logger:    logger.WithField("svc", "check"),
@@ -24,7 +24,7 @@ func NewCheckService(cache *hitlist.HitList, f *finder.Finder, val validator.Che
 }
 
 type CheckSvc struct {
-	cache     *hitlist.HitList
+	hitList   *hitlist.HitList
 	finder    *finder.Finder
 	validator validator.CheckFn
 	logger    *logrus.Entry
@@ -42,9 +42,9 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 
 	var res CheckResult
 
-	hit, err := c.cache.GetForEmail(email.Address)
+	hit, err := c.hitList.GetForEmail(email.Address)
 	if err == nil {
-		res.Valid = hit.IsValid()
+		res.Valid = hit.Validations.IsValid()
 		res.CacheHitTTL = hit.TTL()
 
 	} else {
@@ -57,14 +57,14 @@ func (c *CheckSvc) HandleCheckRequest(ctx context.Context, email types.EmailPart
 		c.logger.WithContext(ctx).WithError(err).WithField("result", result).Info("Validation result")
 
 		// @todo depending on the validations above, we should cache with a different TTL and optionally even b0rk completely here
-		err = c.cache.AddEmailAddress(email.Address, result.Validations)
+		err = c.hitList.AddEmailAddress(email.Address, result.Validations)
 		if err != nil {
 			return res, err
 		}
 
 		// Update finder with positive results
 		if result.Validations.IsValid() {
-			c.finder.Refresh(c.cache.GetValidAndUsageSortedDomains())
+			c.finder.Refresh(c.hitList.GetValidAndUsageSortedDomains())
 		}
 	}
 

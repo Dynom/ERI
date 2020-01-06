@@ -1,6 +1,6 @@
 ERI's Phake
 -----------
-Phake is a simple tool to test ERI. In it's most basic form you use it to train ERI and use a load-testing tool (like Vegeta) to test it's performance
+Phake is a simple tool to test ERI. In it's most basic form you use it to "train" ERI and use a load-testing tool (like Vegeta) to test it's performance
 
 Typical use-scenario:
 ```sh

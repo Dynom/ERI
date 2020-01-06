@@ -32,9 +32,9 @@ func (rs ResultStreamLearnStatus) Announce(status LearnStatus) {
 	rs <- status
 }
 
-func NewLearnService(cache *hitlist.HitList, f *finder.Finder, v validator.CheckFn, logger *logrus.Logger) LearnSvc {
+func NewLearnService(hitList *hitlist.HitList, f *finder.Finder, v validator.CheckFn, logger *logrus.Logger) LearnSvc {
 	return LearnSvc{
-		cache:        cache,
+		hitList:      hitList,
 		finder:       f,
 		validator:    v,
 		logger:       logger,
@@ -43,7 +43,7 @@ func NewLearnService(cache *hitlist.HitList, f *finder.Finder, v validator.Check
 }
 
 type LearnSvc struct {
-	cache        *hitlist.HitList
+	hitList      *hitlist.HitList
 	finder       *finder.Finder
 	validator    validator.CheckFn
 	logger       *logrus.Logger
@@ -76,22 +76,22 @@ func (l *LearnSvc) HandleLearnRequest(ctx context.Context, req erihttp.LearnRequ
 	wg.Add(2)
 
 	go func() {
-		result.EmailAddressErrors = learnAndAddValue(ctx, l.validator, l.cache, req.Emails, l.ResultStream, LearnValueEmail)
+		result.EmailAddressErrors = learnAndAddValue(ctx, l.validator, l.hitList, req.Emails, l.ResultStream, LearnValueEmail)
 		wg.Done()
 	}()
 
 	go func() {
-		result.DomainErrors = learnAndAddValue(ctx, l.validator, l.cache, req.Domains, l.ResultStream, LearnValueDomain)
+		result.DomainErrors = learnAndAddValue(ctx, l.validator, l.hitList, req.Domains, l.ResultStream, LearnValueDomain)
 		wg.Done()
 	}()
 
 	wg.Wait()
-	l.finder.Refresh(l.cache.GetValidAndUsageSortedDomains())
+	l.finder.Refresh(l.hitList.GetValidAndUsageSortedDomains())
 
 	return result
 }
 
-func learnAndAddValue(ctx context.Context, validator validator.CheckFn, cache *hitlist.HitList, toLearn []erihttp.ToLearn, resultStream ResultStreamLearnStatus, valueType LearnValueType) (failures uint64) {
+func learnAndAddValue(ctx context.Context, validator validator.CheckFn, hitList *hitlist.HitList, toLearn []erihttp.ToLearn, resultStream ResultStreamLearnStatus, valueType LearnValueType) (failures uint64) {
 	for _, learn := range toLearn {
 		var v validations.Validations
 		var err error
@@ -138,9 +138,9 @@ func learnAndAddValue(ctx context.Context, validator validator.CheckFn, cache *h
 
 		var learnFn func(string, validations.Validations) error
 		if valueType == LearnValueDomain {
-			learnFn = cache.AddDomain
+			learnFn = hitList.AddDomain
 		} else {
-			learnFn = cache.AddEmailAddress
+			learnFn = hitList.AddEmailAddress
 		}
 
 		err = learnFn(learn.Value, v)

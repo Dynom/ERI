@@ -5,23 +5,93 @@ import (
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/Dynom/ERI/validator/validations"
 )
+
+func Test_calculateValidRCPTUsage(t *testing.T) {
+	referenceTime := time.Date(2019, 11, 27, 5, 31, 0, 0, time.UTC)
+
+	t.Run("testing oldest", func(t *testing.T) {
+		rcpts := make(Recipients, 2)
+
+		validA := referenceTime.Add(10 * time.Hour)
+		validOldest := referenceTime.Add(1 * time.Hour)
+
+		rcpts["john@example.org"] = Hit{
+			Validations: validations.VFValid,
+			ValidUntil:  validA,
+		}
+
+		rcpts["jane@example.org"] = Hit{
+			Validations: validations.VFValid,
+			ValidUntil:  validOldest,
+		}
+
+		gotUsage, gotOldest := calculateValidRCPTUsage(rcpts, referenceTime)
+		if wantUsage := uint(len(rcpts)); gotUsage != wantUsage {
+			t.Errorf("calculateValidRCPTUsage() gotUsage = %v, want %v", gotUsage, wantUsage)
+		}
+
+		if wantOldest := validOldest; !validOldest.Equal(wantOldest) {
+			t.Errorf("calculateValidRCPTUsage() oldest %v isn't the oldest %v", gotOldest, wantOldest)
+		}
+	})
+
+	t.Run("testing usage", func(t *testing.T) {
+		rcpts := make(Recipients, 3)
+
+		want := uint(2)
+		validTime := referenceTime.Add(10 * time.Hour)
+		expiredTime := referenceTime.Add(-1 * time.Hour)
+
+		rcpts["john@example.org"] = Hit{
+			Validations: validations.VFValid,
+			ValidUntil:  validTime,
+		}
+
+		rcpts["jane@example.org"] = Hit{
+			Validations: validations.VFValid,
+			ValidUntil:  validTime,
+		}
+
+		// Validity expired
+		rcpts["late@example.org"] = Hit{
+			Validations: validations.VFValid,
+			ValidUntil:  expiredTime,
+		}
+
+		// Invalid
+		rcpts["not-valid@example.org"] = Hit{
+			Validations: 0,
+			ValidUntil:  validTime,
+		}
+
+		got, oldest := calculateValidRCPTUsage(rcpts, referenceTime)
+		if got != want {
+			t.Errorf("calculateValidRCPTUsage() got = %v, want %v", got, want)
+		}
+
+		if oldest != validTime {
+			t.Errorf("calculateValidRCPTUsage() got = %v, want %v", oldest, validTime)
+			for _, rcpt := range rcpts {
+				t.Logf("%+v", rcpt)
+			}
+		}
+	})
+}
 
 type FakeInt8 struct {
 	Validations int8
-	Time        time.Time
 }
 type FakeInt16 struct {
 	Validations int16
-	Time        time.Time
 }
 type FakeInt32 struct {
 	Validations int32
-	Time        time.Time
 }
 type FakeInt64 struct {
 	Validations int64
-	Time        time.Time
 }
 
 var bigMapInt8 map[string]FakeInt8
@@ -45,14 +115,12 @@ func BenchmarkMemoryUsage(b *testing.B) {
 		keys[i] = string(key)
 	}
 
-	now := time.Now()
 	b.Run("int8", func(t *testing.B) {
 		for j := 0; j < t.N; j++ {
 			bigMapInt8 = make(map[string]FakeInt8, mapSize)
 			for _, key := range keys {
 				bigMapInt8[key] = FakeInt8{
 					Validations: math.MaxInt8,
-					Time:        now,
 				}
 			}
 		}
@@ -63,7 +131,6 @@ func BenchmarkMemoryUsage(b *testing.B) {
 			for _, key := range keys {
 				bigMapInt16[key] = FakeInt16{
 					Validations: math.MaxInt16,
-					Time:        now,
 				}
 			}
 		}
@@ -74,7 +141,6 @@ func BenchmarkMemoryUsage(b *testing.B) {
 			for _, key := range keys {
 				bigMapInt32[key] = FakeInt32{
 					Validations: math.MaxInt32,
-					Time:        now,
 				}
 			}
 		}
@@ -85,7 +151,6 @@ func BenchmarkMemoryUsage(b *testing.B) {
 			for _, key := range keys {
 				bigMapInt64[key] = FakeInt64{
 					Validations: math.MaxInt64,
-					Time:        now,
 				}
 			}
 		}

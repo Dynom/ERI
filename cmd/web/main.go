@@ -50,9 +50,9 @@ func main() {
 		panic(err)
 	}
 
-	cache := hitlist.New(h, time.Hour*60) // @todo figure out what todo with TTLs
+	hitList := hitlist.New(h, time.Hour*60) // @todo figure out what todo with TTLs
 	myFinder, err := finder.New(
-		cache.GetValidAndUsageSortedDomains(),
+		hitList.GetValidAndUsageSortedDomains(),
 		finder.WithLengthTolerance(0.2),
 		finder.WithAlgorithm(finder.NewJaroWinklerDefaults()),
 		finder.WithPrefixBuckets(conf.Server.Finder.UseBuckets),
@@ -68,8 +68,8 @@ func main() {
 	}
 
 	val := validator.NewEmailAddressValidator(dialer)
-	checkSvc := services.NewCheckService(cache, myFinder, val.CheckWithSyntax, logger)
-	learnSvc := services.NewLearnService(cache, myFinder, val.CheckWithSyntax, logger)
+	checkSvc := services.NewCheckService(hitList, myFinder, val.CheckWithSyntax, logger)
+	learnSvc := services.NewLearnService(hitList, myFinder, val.CheckWithSyntax, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", NewHealthHandler(logger))
@@ -80,7 +80,7 @@ func main() {
 	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder))
 
 	// Debug
-	mux.HandleFunc("/dumphl", NewDebugHandler(cache))
+	mux.HandleFunc("/dumphl", NewDebugHandler(hitList))
 
 	lw := logger.WriterLevel(logger.Level)
 	defer func() {
@@ -90,6 +90,8 @@ func main() {
 	if conf.Server.Profiler.Enable {
 		configureProfiler(mux, conf)
 	}
+
+	// @todo status endpoint (or tick logger)
 
 	s := erihttp.BuildHTTPServer(mux, conf, lw,
 		handlers.WithRequestLogger(logger),

@@ -38,69 +38,46 @@ type HitList struct {
 }
 
 type Hit struct {
-	validations.Validations           // The type of validations performed (bit mask)
-	ValidUntil              time.Time // The TTL
+	Validations validations.Validations // The type of validations performed (bit mask)
+	ValidUntil  time.Time               // The TTL
 }
 
 func (h Hit) TTL() time.Duration {
 	return time.Until(h.ValidUntil)
 }
 
-type domainHit struct {
-	validations.Validations
-	RCPTs        map[RCPT]Hit
-	learnedSince time.Time // The time we learned of a domain, used to calculate domain freshness
+type Recipient string
+
+func (rcpt Recipient) String() string {
+	return hex.EncodeToString([]byte(rcpt))
 }
 
-type RCPT string
+type Recipients map[Recipient]Hit
 
-func (rcpt RCPT) String() string {
-	return hex.EncodeToString([]byte(rcpt))
+type domainHit struct {
+	validations.Validations
+	RCPTs       Recipients
+	validRCTPTs uint // An approximate number of recipients
+}
+
+type stats struct {
+	domain string
+	usage  uint
 }
 
 // GetValidAndUsageSortedDomains returns the used domains, sorted by their associated recipients (high>low)
 func (h *HitList) GetValidAndUsageSortedDomains() []string {
-	var now = time.Now()
-
-	type stats struct {
-		domain string
-		usage  uint
-	}
 
 	h.lock.RLock()
-	defer h.lock.RUnlock()
+	var domains = getValidAndUsedFromSet(h.Set)
+	h.lock.RUnlock()
 
-	var d = make([]stats, len(h.Set))
-
-	var index int
-	for domain, details := range h.Set {
-		var usage uint
-
-		if !details.Validations.IsValid() {
-			continue
-		}
-
-		// Count "valid" usage. If a domain has 0 valid leafs, the domain isn't valid
-		for _, leaf := range details.RCPTs {
-			if leaf.Validations.IsValid() && (leaf.ValidUntil.IsZero() || leaf.ValidUntil.After(now)) {
-				usage++
-			}
-		}
-
-		d[index] = stats{
-			domain: domain,
-			usage:  usage,
-		}
-
-		index++
-	}
-
-	sort.Slice(d, func(i, j int) bool {
-		return d[i].usage < d[j].usage
+	sort.Slice(domains, func(i, j int) bool {
+		return domains[i].usage < domains[j].usage
 	})
 
-	var result = make([]string, 0, len(d))
-	for _, stats := range d {
+	var result = make([]string, 0, len(domains))
+	for _, stats := range domains {
 		result = append(result, stats.domain)
 	}
 
@@ -119,7 +96,7 @@ func (h *HitList) HasDomain(domain string) bool {
 }
 
 // GetRCPTsForDomain performs a string-to-lower on the argument and returns hashed "Recipients" for a given domain.
-func (h *HitList) GetRCPTsForDomain(domain string) ([]RCPT, error) {
+func (h *HitList) GetRCPTsForDomain(domain string) ([]Recipient, error) {
 	domain = strings.ToLower(domain)
 
 	h.lock.RLock()
@@ -127,10 +104,10 @@ func (h *HitList) GetRCPTsForDomain(domain string) ([]RCPT, error) {
 
 	_, ok := h.Set[domain]
 	if !ok {
-		return []RCPT{}, ErrNotPresent
+		return []Recipient{}, ErrNotPresent
 	}
 
-	var recipients = make([]RCPT, 0, len(h.Set[domain].RCPTs))
+	var recipients = make([]Recipient, 0, len(h.Set[domain].RCPTs))
 	for recipient := range h.Set[domain].RCPTs {
 		recipients = append(recipients, recipient)
 	}
@@ -141,7 +118,7 @@ func (h *HitList) GetRCPTsForDomain(domain string) ([]RCPT, error) {
 // GetForEmail performs a string-to-lower on the argument and returns it's corresponding Hit, if a match was found
 func (h *HitList) GetForEmail(email string) (Hit, error) {
 	var domain string
-	var safeLocal RCPT
+	var safeLocal Recipient
 
 	{
 		email = strings.ToLower(email)
@@ -150,7 +127,7 @@ func (h *HitList) GetForEmail(email string) (Hit, error) {
 			return Hit{}, err
 		}
 
-		safeLocal = RCPT(h.h.Sum([]byte(parts.Local)))
+		safeLocal = Recipient(h.h.Sum([]byte(parts.Local)))
 		domain = parts.Domain
 	}
 
@@ -170,7 +147,7 @@ func (h *HitList) GetForEmail(email string) (Hit, error) {
 
 // GetHit is a fairly low-level function that returns the hit based on two knows, the RCPT and the domain
 // It performs a string-to-lower on the domain
-func (h *HitList) GetHit(domain string, rcpt RCPT) (Hit, error) {
+func (h *HitList) GetHit(domain string, rcpt Recipient) (Hit, error) {
 	domain = strings.ToLower(domain)
 
 	h.lock.RLock()
@@ -188,7 +165,7 @@ func (h *HitList) GetHit(domain string, rcpt RCPT) (Hit, error) {
 // AddEmailAddressDeadline Same as AddEmailAddress, but allows for custom TTL. Duration shouldn't be negative.
 func (h *HitList) AddEmailAddressDeadline(email string, validations validations.Validations, duration time.Duration) error {
 	var domain string
-	var safeLocal RCPT
+	var safeLocal Recipient
 	{
 		email = strings.ToLower(email)
 		parts, err := types.NewEmailParts(email)
@@ -196,7 +173,7 @@ func (h *HitList) AddEmailAddressDeadline(email string, validations validations.
 			return err
 		}
 
-		safeLocal = RCPT(h.h.Sum([]byte(parts.Local)))
+		safeLocal = Recipient(h.h.Sum([]byte(parts.Local)))
 		domain = parts.Domain
 	}
 
@@ -210,10 +187,23 @@ func (h *HitList) AddEmailAddressDeadline(email string, validations validations.
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	h.Set[domain].RCPTs[safeLocal] = Hit{
-		ValidUntil:  time.Now().Add(duration),
-		Validations: h.Set[domain].RCPTs[safeLocal].Validations.MergeWithNext(validations),
+	v, ok := h.Set[domain]
+	if !ok {
+		return errors.New("domain doesn't appear in set, this is... unexpected")
 	}
+
+	var now = time.Now()
+	v.RCPTs[safeLocal] = Hit{
+		ValidUntil:  now.Add(duration),
+		Validations: v.RCPTs[safeLocal].Validations.MergeWithNext(validations),
+	}
+
+	if validations.IsValid() {
+		u, _ := calculateValidRCPTUsage(v.RCPTs, now)
+		v.validRCTPTs = u + 1
+	}
+
+	h.Set[domain] = v
 
 	return nil
 }
@@ -226,6 +216,7 @@ func (h *HitList) AddEmailAddress(email string, validations validations.Validati
 
 // AddDomain learns of a domain and it's validity. It overwrites the existing validations, when applicable for a domain
 func (h *HitList) AddDomain(domain string, validations validations.Validations) error {
+	var now = time.Now()
 
 	if validator.MightBeAHostOrIP(domain) && (validations.IsValid() || validations.IsValidationsForValidDomain()) {
 		validations.MarkAsValid()
@@ -235,16 +226,69 @@ func (h *HitList) AddDomain(domain string, validations validations.Validations) 
 
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	if v, ok := h.Set[domain]; !ok {
+
+	if hit, ok := h.Set[domain]; !ok {
 		h.Set[domain] = domainHit{
-			RCPTs:        make(map[RCPT]Hit),
-			Validations:  validations,
-			learnedSince: time.Now(),
+			RCPTs:       make(map[Recipient]Hit),
+			Validations: validations,
 		}
 	} else {
-		v.Validations = v.Validations.MergeWithNext(validations)
-		h.Set[domain] = v
+		usage, _ := calculateValidRCPTUsage(hit.RCPTs, now)
+
+		hit.Validations = hit.Validations.MergeWithNext(validations)
+		hit.validRCTPTs = usage
+
+		h.Set[domain] = hit
 	}
 
 	return nil
+}
+
+// getValidAndUsedFromSet returns domains which are valid
+func getValidAndUsedFromSet(set map[string]domainHit) []stats {
+	var result = make([]stats, len(set))
+
+	var index int
+	for domain, details := range set {
+
+		if !details.Validations.IsValid() {
+			continue
+		}
+
+		result[index] = stats{
+			domain: domain,
+			usage:  details.validRCTPTs,
+		}
+
+		index++
+	}
+
+	return result
+}
+
+// calculateValidRCPTUsage calculates the usage of valid, and the first-to-expire valid recipients
+func calculateValidRCPTUsage(recipients map[Recipient]Hit, referenceTime time.Time) (usage uint, oldest time.Time) {
+
+	for _, recipient := range recipients {
+		if !recipient.Validations.IsValid() {
+			continue
+		}
+
+		if referenceTime.IsZero() || recipient.ValidUntil.IsZero() {
+			continue
+		}
+
+		// The recipient's validity expired, we won't consider it for "oldest"
+		if recipient.ValidUntil.Before(referenceTime) {
+			continue
+		}
+
+		if oldest.After(recipient.ValidUntil) || oldest.IsZero() {
+			oldest = recipient.ValidUntil
+		}
+
+		usage++
+	}
+
+	return
 }

@@ -237,19 +237,19 @@ func NewLearnHandler(logger logrus.FieldLogger, svc services.LearnSvc) http.Hand
 	}
 }
 
-func NewDebugHandler(cache *hitlist.HitList) http.HandlerFunc {
+func NewDebugHandler(hitList *hitlist.HitList) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var domains = make([]string, 0, len(cache.Set))
-		for d := range cache.Set {
+		var domains = make([]string, 0, len(hitList.Set))
+		for d := range hitList.Set {
 			domains = append(domains, d)
 		}
 
 		sort.Strings(domains)
 		for _, domain := range domains {
-			_, _ = fmt.Fprintf(w, "%016b | %s \n", cache.Set[domain].Validations, domain)
+			_, _ = fmt.Fprintf(w, "%016b | %s \n", hitList.Set[domain].Validations, domain)
 
-			recipients, err := cache.GetRCPTsForDomain(domain)
+			recipients, err := hitList.GetRCPTsForDomain(domain)
 			if err != nil {
 				_, _ = fmt.Fprintf(w, "err: %s\n", err)
 				continue
@@ -262,7 +262,7 @@ func NewDebugHandler(cache *hitlist.HitList) http.HandlerFunc {
 				_, _ = fmt.Fprint(w, "\tValidations      | cache ttl                 | recipient \n")
 
 				for _, rcpt := range recipients {
-					hit, err := cache.GetHit(domain, rcpt)
+					hit, err := hitList.GetHit(domain, rcpt)
 					if err != nil {
 						_, _ = fmt.Fprintf(w, "err: %s\n", err)
 						continue
@@ -272,6 +272,6 @@ func NewDebugHandler(cache *hitlist.HitList) http.HandlerFunc {
 			}
 		}
 
-		_, _ = fmt.Fprintf(w, "%+v\n", cache.GetValidAndUsageSortedDomains())
+		_, _ = fmt.Fprintf(w, "%+v\n", hitList.GetValidAndUsageSortedDomains())
 	}
 }
