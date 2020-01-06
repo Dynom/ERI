@@ -1,6 +1,8 @@
 package validations
 
 import (
+	"fmt"
+	"math"
 	"testing"
 )
 
@@ -140,36 +142,54 @@ func TestValidations_MergeWithNext(t *testing.T) {
 	}
 }
 
-func Test_MaskTest(t *testing.T) {
+func TestSizeExpectation(t *testing.T) {
+	var v Validations
 
-	t.Run("Flag values", func(t *testing.T) {
-		t.Logf("VFValid        %08b %d", VFValid, VFValid)
-		t.Logf("VFSyntax       %08b %d", VFSyntax, VFSyntax)
-		t.Logf("VFMXLookup     %08b %d", VFMXLookup, VFMXLookup)
-		t.Logf("VFHostConnect  %08b %d", VFHostConnect, VFHostConnect)
-		t.Logf("VFValidRCPT    %08b %d", VFValidRCPT, VFValidRCPT)
-		t.Logf("VFDisposable   %08b %d", VFDisposable, VFDisposable)
-	})
+	v = math.MaxUint8
+	if v+1 != 0 {
+		t.Errorf("Expected v to be uint8, which should overflow to 0, \nv     = %+v, \nv + 1 = %+v", v, v+1)
+	}
+}
 
-	t.Run("Setting", func(t *testing.T) {
-		var v Validations
+func TestStartingFromEmptyValidations(t *testing.T) {
+	var v Validations
 
-		t.Logf("initial      %08b", v)
-		// Setting MX?
-		//v = 1 | VFMXLookup
-		v |= VFMXLookup
-		t.Logf("set mx?      %08b", v)
-		//t.Logf("is valid? %08b", v&VFValid)
+	if v != 0 {
+		t.Errorf("Expected the default value of Validations to equal 0, got: %+v", v)
+	}
 
-		v |= VFValid
-		t.Logf("valid masked %08b", v&VFValid)
-		t.Logf("is valid?    %t", v&VFValid == VFValid)
+	t.Logf("initial       %08b", v)
 
-		v = 0 &^ VFValid
-		t.Logf("valid cleared %08b", v)
-		t.Logf("is valid?    %t", v&VFValid == VFValid)
+	// Setting MX
+	v |= VFMXLookup
+	t.Logf("set mx?       %08b", v)
+	t.Logf("is valid?     %08b", v&VFValid)
 
-	})
+	if !v.HasFlag(VFMXLookup) {
+		t.Errorf("Expected v to have the VFMXLookup flag set, I got: %08b", v)
+	}
+
+	if v.IsValid() {
+		t.Errorf("Expected v not to be valid, I got: %08b", v)
+	}
+
+	// Marking as valid
+	v |= VFValid
+	t.Logf("valid masked  %08b", v&VFValid)
+	t.Logf("is valid?     %t", v&VFValid == VFValid)
+
+	if !v.IsValid() {
+		t.Errorf("Expected v to be valid, I got: %08b", v)
+	}
+
+	v = 0 &^ VFValid
+	t.Logf("valid cleared %08b", v)
+	t.Logf("is valid?     %t", v&VFValid == VFValid)
+
+	if v.IsValid() {
+		t.Errorf("Expected v no longer to be valid, I got: %08b", v)
+	}
+
 }
 
 func TestValidations_Merge(t *testing.T) {
@@ -223,4 +243,69 @@ func TestValidations_Merge(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestString(t *testing.T) {
+	var v Validations
+
+	if v.String() != "00000000" {
+		t.Errorf("Expected the String method to be 0 padded")
+	}
+}
+
+const amount = 1024 * 1024
+
+var (
+	Int8  []int8
+	Int16 []int16
+	Int32 []int32
+	Int64 []int64
+)
+
+func BenchmarkTypeMemoryUsageInt8(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Int8 = make([]int8, amount)
+	}
+
+	Int8[0] += 1
+}
+func BenchmarkTypeMemoryUsageInt16(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Int16 = make([]int16, amount)
+	}
+
+	Int16[0] += 1
+}
+func BenchmarkTypeMemoryUsageInt32(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Int32 = make([]int32, amount)
+	}
+
+	Int32[0] += 1
+}
+func BenchmarkTypeMemoryUsageInt64(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Int64 = make([]int64, amount)
+	}
+
+	Int64[0] += 1
+}
+
+func ExampleMaskTest() {
+	fmt.Printf("VFValid        %08b %d\n", VFValid, VFValid)
+	fmt.Printf("VFSyntax       %08b %d\n", VFSyntax, VFSyntax)
+	fmt.Printf("VFMXLookup     %08b %d\n", VFMXLookup, VFMXLookup)
+	fmt.Printf("VFDomainHasIP  %08b %d\n", VFDomainHasIP, VFDomainHasIP)
+	fmt.Printf("VFHostConnect  %08b %d\n", VFHostConnect, VFHostConnect)
+	fmt.Printf("VFValidRCPT    %08b %d\n", VFValidRCPT, VFValidRCPT)
+	fmt.Printf("VFDisposable   %08b %d\n", VFDisposable, VFDisposable)
+
+	// Output:
+	// VFValid        00000001 1
+	// VFSyntax       00000010 2
+	// VFMXLookup     00000100 4
+	// VFDomainHasIP  00001000 8
+	// VFHostConnect  00010000 16
+	// VFValidRCPT    00100000 32
+	// VFDisposable   01000000 64
 }

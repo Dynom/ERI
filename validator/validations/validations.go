@@ -15,7 +15,7 @@ const (
 )
 
 // Validations holds the validation steps performed.
-type Validations uint64
+type Validations uint8
 
 func (v Validations) String() string {
 	return fmt.Sprintf("%08b", v)
