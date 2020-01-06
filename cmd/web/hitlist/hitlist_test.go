@@ -28,13 +28,9 @@ func Test_calculateValidRCPTUsage(t *testing.T) {
 			ValidUntil:  validOldest,
 		}
 
-		gotUsage, gotOldest := calculateValidRCPTUsage(rcpts, referenceTime)
+		gotUsage := calculateValidRCPTUsage(rcpts, referenceTime)
 		if wantUsage := uint(len(rcpts)); gotUsage != wantUsage {
 			t.Errorf("calculateValidRCPTUsage() gotUsage = %v, want %v", gotUsage, wantUsage)
-		}
-
-		if wantOldest := validOldest; !validOldest.Equal(wantOldest) {
-			t.Errorf("calculateValidRCPTUsage() oldest %v isn't the oldest %v", gotOldest, wantOldest)
 		}
 	})
 
@@ -67,16 +63,9 @@ func Test_calculateValidRCPTUsage(t *testing.T) {
 			ValidUntil:  validTime,
 		}
 
-		got, oldest := calculateValidRCPTUsage(rcpts, referenceTime)
+		got := calculateValidRCPTUsage(rcpts, referenceTime)
 		if got != want {
 			t.Errorf("calculateValidRCPTUsage() got = %v, want %v", got, want)
-		}
-
-		if oldest != validTime {
-			t.Errorf("calculateValidRCPTUsage() got = %v, want %v", oldest, validTime)
-			for _, rcpt := range rcpts {
-				t.Logf("%+v", rcpt)
-			}
 		}
 	})
 }

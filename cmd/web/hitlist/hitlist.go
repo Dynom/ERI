@@ -199,7 +199,7 @@ func (h *HitList) AddEmailAddressDeadline(email string, validations validations.
 	}
 
 	if validations.IsValid() {
-		u, _ := calculateValidRCPTUsage(v.RCPTs, now)
+		u := calculateValidRCPTUsage(v.RCPTs, now)
 		v.validRCTPTs = u + 1
 	}
 
@@ -233,7 +233,7 @@ func (h *HitList) AddDomain(domain string, validations validations.Validations) 
 			Validations: validations,
 		}
 	} else {
-		usage, _ := calculateValidRCPTUsage(hit.RCPTs, now)
+		usage := calculateValidRCPTUsage(hit.RCPTs, now)
 
 		hit.Validations = hit.Validations.MergeWithNext(validations)
 		hit.validRCTPTs = usage
@@ -267,7 +267,7 @@ func getValidAndUsedFromSet(set map[string]domainHit) []stats {
 }
 
 // calculateValidRCPTUsage calculates the usage of valid, and the first-to-expire valid recipients
-func calculateValidRCPTUsage(recipients map[Recipient]Hit, referenceTime time.Time) (usage uint, oldest time.Time) {
+func calculateValidRCPTUsage(recipients map[Recipient]Hit, referenceTime time.Time) (usage uint) {
 
 	for _, recipient := range recipients {
 		if !recipient.Validations.IsValid() {
@@ -281,10 +281,6 @@ func calculateValidRCPTUsage(recipients map[Recipient]Hit, referenceTime time.Ti
 		// The recipient's validity expired, we won't consider it for "oldest"
 		if recipient.ValidUntil.Before(referenceTime) {
 			continue
-		}
-
-		if oldest.After(recipient.ValidUntil) || oldest.IsZero() {
-			oldest = recipient.ValidUntil
 		}
 
 		usage++
