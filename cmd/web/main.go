@@ -53,7 +53,11 @@ func main() {
 		panic(err)
 	}
 
-	hitList := hitlist.New(h, time.Hour*60) // @todo figure out what todo with TTLs
+	hitList := hitlist.New(
+		h,
+		time.Hour*60, // @todo figure out what todo with TTLs
+		hitlist.WithMaxCallBackConcurrency(5),
+	)
 
 	if conf.Server.Backend.Driver != "" {
 		sqlConn, err := sql.Open(conf.Server.Backend.Driver, conf.Server.Backend.URL)
@@ -68,6 +72,7 @@ func main() {
 		}
 
 		logger.WithField("amount", collected).Info("pre-loaded values from the database")
+
 		registerPersistCallback(sqlConn, hitList, logger)
 		logger.Info("registered persisting callback, newly learned values will be persisted")
 	}
@@ -99,9 +104,6 @@ func main() {
 	mux.HandleFunc("/check", NewCheckHandler(logger, checkSvc))
 	mux.HandleFunc("/learn", NewLearnHandler(logger, learnSvc))
 	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder))
-
-	// Debug
-	mux.HandleFunc("/dumphl", NewDebugHandler(hitList))
 
 	lw := logger.WriterLevel(logger.Level)
 	defer func() {

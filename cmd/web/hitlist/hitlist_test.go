@@ -34,7 +34,7 @@ func TestHitList_AddDomain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &HitList{
-				Set:  tt.fields.Set,
+				set:  tt.fields.Set,
 				ttl:  tt.fields.ttl,
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
@@ -68,7 +68,7 @@ func TestHitList_AddEmailAddress(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &HitList{
-				Set:  tt.fields.Set,
+				set:  tt.fields.Set,
 				ttl:  tt.fields.ttl,
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
@@ -103,7 +103,7 @@ func TestHitList_AddEmailAddressDeadline(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &HitList{
-				Set:  tt.fields.Set,
+				set:  tt.fields.Set,
 				ttl:  tt.fields.ttl,
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
@@ -137,7 +137,7 @@ func TestHitList_GetForEmail(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &HitList{
-				Set:  tt.fields.Set,
+				set:  tt.fields.Set,
 				ttl:  tt.fields.ttl,
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
@@ -177,7 +177,7 @@ func TestHitList_GetHit(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &HitList{
-				Set:  tt.fields.Set,
+				set:  tt.fields.Set,
 				ttl:  tt.fields.ttl,
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
@@ -216,7 +216,7 @@ func TestHitList_GetRCPTsForDomain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &HitList{
-				Set:  tt.fields.Set,
+				set:  tt.fields.Set,
 				ttl:  tt.fields.ttl,
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
@@ -250,7 +250,7 @@ func TestHitList_GetValidAndUsageSortedDomains(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &HitList{
-				Set:  tt.fields.Set,
+				set:  tt.fields.Set,
 				ttl:  tt.fields.ttl,
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
@@ -283,7 +283,7 @@ func TestHitList_HasDomain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &HitList{
-				Set:  tt.fields.Set,
+				set:  tt.fields.Set,
 				ttl:  tt.fields.ttl,
 				lock: tt.fields.lock,
 				h:    tt.fields.h,

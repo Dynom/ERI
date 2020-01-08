@@ -11,9 +11,9 @@ import (
 )
 
 type hitListRow struct {
-	Domain      string `sql:"domain"`
-	Recipient   string `sql:"recipient"`
-	Validations int64  `sql:"validations"`
+	Domain      string                  `sql:"domain"`
+	Recipient   string                  `sql:"recipient"`
+	Validations validations.Validations `sql:"validations"`
 }
 
 func preloadValues(conn *sql.DB, list *hitlist.HitList, logger logrus.FieldLogger) (uint, error) {
@@ -41,7 +41,8 @@ func preloadValues(conn *sql.DB, list *hitlist.HitList, logger logrus.FieldLogge
 			continue
 		}
 
-		logger.WithField("row", row).Info("Got one!")
+		logger = logger.WithField("row", row)
+
 		var err error
 		if row.Recipient == "" {
 			err = list.AddDomain(row.Domain, validations.Validations(row.Validations))

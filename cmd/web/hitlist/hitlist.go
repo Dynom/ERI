@@ -26,27 +26,36 @@ const (
 	ChangeAdd            = iota
 )
 
-func New(h hash.Hash, ttl time.Duration) *HitList {
-	return &HitList{
-		Set:        make(map[string]domainHit),
+func New(h hash.Hash, ttl time.Duration, options ...Option) *HitList {
+	l := HitList{
+		set:        make(map[string]domainHit),
 		lock:       sync.RWMutex{},
 		notifyLock: sync.RWMutex{},
 		h:          h,
 		ttl:        ttl,
 		toNotify:   make([]OnChangeFn, 0),
-		sem:        make(chan struct{}, 10),
+		semLimit:   10,
 	}
+
+	for _, o := range options {
+		o(&l)
+	}
+
+	l.sem = make(chan struct{}, l.semLimit)
+
+	return &l
 }
 
 // HitList is an opinionated nearly-flat tree structured type that captures e-mail address validity on two levels
 type HitList struct {
-	Set        map[string]domainHit
+	set        map[string]domainHit
 	ttl        time.Duration // The default TTL for when Learning about a new e-mail address
 	lock       sync.RWMutex
 	notifyLock sync.RWMutex
 	h          hash.Hash
 	toNotify   []OnChangeFn
 	sem        chan struct{}
+	semLimit   uint
 }
 
 type Hit struct {
@@ -93,19 +102,6 @@ func (h *HitList) RegisterOnChange(fn ...OnChangeFn) {
 
 func (h *HitList) notify(recipient Recipient, domain string, validations validations.Validations, changeType ChangeType) {
 
-	// If the combination is known, don't bother notifying, since we're not mutating.
-	if recipient.IsEmpty() {
-		dh, err := h.getDomainHit(domain)
-		if err == nil && dh.Validations == validations || err != nil && err != ErrNotPresent {
-			return
-		}
-	} else {
-		hit, err := h.GetHit(domain, recipient)
-		if err == nil && hit.Validations == validations || err != nil && err != ErrNotPresent {
-			return
-		}
-	}
-
 	h.notifyLock.RLock()
 	defer h.notifyLock.RUnlock()
 
@@ -123,7 +119,7 @@ func (h *HitList) notify(recipient Recipient, domain string, validations validat
 func (h *HitList) GetValidAndUsageSortedDomains() []string {
 
 	h.lock.RLock()
-	var domains = getValidAndUsedFromSet(h.Set)
+	var domains = getValidAndUsedFromSet(h.set)
 	h.lock.RUnlock()
 
 	sort.Slice(domains, func(i, j int) bool {
@@ -143,7 +139,7 @@ func (h *HitList) HasDomain(domain string) bool {
 	domain = strings.ToLower(domain)
 
 	h.lock.RLock()
-	_, ok := h.Set[domain]
+	_, ok := h.set[domain]
 	h.lock.RUnlock()
 
 	return ok
@@ -156,13 +152,13 @@ func (h *HitList) GetRCPTsForDomain(domain string) ([]Recipient, error) {
 	h.lock.RLock()
 	defer h.lock.RUnlock()
 
-	_, ok := h.Set[domain]
+	_, ok := h.set[domain]
 	if !ok {
 		return []Recipient{}, ErrNotPresent
 	}
 
-	var recipients = make([]Recipient, 0, len(h.Set[domain].RCPTs))
-	for recipient := range h.Set[domain].RCPTs {
+	var recipients = make([]Recipient, 0, len(h.set[domain].RCPTs))
+	for recipient := range h.set[domain].RCPTs {
 		recipients = append(recipients, recipient)
 	}
 
@@ -188,7 +184,7 @@ func (h *HitList) GetForEmail(email string) (Hit, error) {
 	// @todo -- Since most typos appear to be at the end of a domain, does it make sense to reverse the domain name?
 
 	h.lock.RLock()
-	r, ok := h.Set[domain].RCPTs[safeLocal]
+	r, ok := h.set[domain].RCPTs[safeLocal]
 	h.lock.RUnlock()
 
 	if !ok || r.ValidUntil.Before(time.Now()) {
@@ -205,7 +201,7 @@ func (h *HitList) GetHit(domain string, rcpt Recipient) (Hit, error) {
 	domain = strings.ToLower(domain)
 
 	h.lock.RLock()
-	r, ok := h.Set[domain].RCPTs[rcpt]
+	r, ok := h.set[domain].RCPTs[rcpt]
 	h.lock.RUnlock()
 
 	if !ok {
@@ -220,7 +216,7 @@ func (h *HitList) getDomainHit(domain string) (domainHit, error) {
 	domain = strings.ToLower(domain)
 
 	h.lock.RLock()
-	r, ok := h.Set[domain]
+	r, ok := h.set[domain]
 	h.lock.RUnlock()
 
 	if !ok {
@@ -273,7 +269,7 @@ func (h *HitList) AddEmailAddressDeadline(email string, validations validations.
 	}
 
 	h.lock.Lock()
-	h.Set[domain] = domainHit
+	h.set[domain] = domainHit
 	h.lock.Unlock()
 
 	h.notify(safeLocal, domain, hit.Validations, ChangeAdd)
@@ -301,11 +297,6 @@ func (h *HitList) AddDomain(domain string, validations validations.Validations) 
 func (h *HitList) addDomain(domain string, validations validations.Validations) error {
 	var now = time.Now()
 
-	//if validator.MightBeAHostOrIP(domain) && (validations.IsValid() || validations.IsValidationsForValidDomain()) {
-	//	validations.MarkAsValid()
-	//} else {
-	//	validations.MarkAsInvalid()
-	//}
 	if !validator.MightBeAHostOrIP(domain) {
 		return errors.New("argument isn't considered a valid domain")
 	}
@@ -313,8 +304,8 @@ func (h *HitList) addDomain(domain string, validations validations.Validations) 
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	if hit, ok := h.Set[domain]; !ok {
-		h.Set[domain] = domainHit{
+	if hit, ok := h.set[domain]; !ok {
+		h.set[domain] = domainHit{
 			RCPTs:       make(map[Recipient]Hit),
 			Validations: validations,
 		}
@@ -322,7 +313,7 @@ func (h *HitList) addDomain(domain string, validations validations.Validations) 
 		hit.Validations = hit.Validations.MergeWithNext(validations)
 		hit.validRCTPTs = calculateValidRCPTUsage(hit.RCPTs, now)
 
-		h.Set[domain] = hit
+		h.set[domain] = hit
 	}
 
 	return nil

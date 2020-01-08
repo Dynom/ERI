@@ -5,14 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sort"
-	"time"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
 
 	"github.com/Dynom/TySug/finder"
-
-	"github.com/Dynom/ERI/cmd/web/hitlist"
 
 	"github.com/Dynom/ERI/cmd/web/services"
 
@@ -218,44 +214,5 @@ func NewLearnHandler(logger logrus.FieldLogger, svc services.LearnSvc) http.Hand
 
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(fmt.Sprintf("Refreshed %d domain(s) and %d e-mail address(es)", result.NumDomains-result.DomainErrors, result.NumEmailAddresses-result.EmailAddressErrors)))
-	}
-}
-
-func NewDebugHandler(hitList *hitlist.HitList) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		var domains = make([]string, 0, len(hitList.Set))
-		for d := range hitList.Set {
-			domains = append(domains, d)
-		}
-
-		sort.Strings(domains)
-		for _, domain := range domains {
-			_, _ = fmt.Fprintf(w, "%016b | %s \n", hitList.Set[domain].Validations, domain)
-
-			recipients, err := hitList.GetRCPTsForDomain(domain)
-			if err != nil {
-				_, _ = fmt.Fprintf(w, "err: %s\n", err)
-				continue
-			}
-
-			if len(recipients) > 0 {
-				sort.Slice(recipients, func(i, j int) bool {
-					return recipients[i] < recipients[j]
-				})
-				_, _ = fmt.Fprint(w, "\tValidations      | cache ttl                 | recipient \n")
-
-				for _, rcpt := range recipients {
-					hit, err := hitList.GetHit(domain, rcpt)
-					if err != nil {
-						_, _ = fmt.Fprintf(w, "err: %s\n", err)
-						continue
-					}
-					_, _ = fmt.Fprintf(w, "\t%016b | %25s | %s \n", hit.Validations, time.Now().Add(hit.TTL()).Format(time.RFC3339), rcpt)
-				}
-			}
-		}
-
-		_, _ = fmt.Fprintf(w, "%+v\n", hitList.GetValidAndUsageSortedDomains())
 	}
 }
