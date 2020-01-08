@@ -208,22 +208,6 @@ func NewLearnHandler(logger logrus.FieldLogger, svc services.LearnSvc) http.Hand
 			return
 		}
 
-		go func() {
-			for status := range svc.ResultStream {
-				e := log.WithFields(logrus.Fields{
-					"validations": status.Validations,
-					"value":       status.Value,
-					"type":        status.Type,
-				})
-
-				if status.Error != nil {
-					e = e.WithError(status.Error)
-				}
-
-				e.Debug("Learn status")
-			}
-		}()
-
 		result := svc.HandleLearnRequest(r.Context(), req)
 		log.WithFields(logrus.Fields{
 			"domains_added": result.NumDomains - result.DomainErrors,

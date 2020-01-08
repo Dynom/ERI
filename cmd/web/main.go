@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"net"
 	"net/http"
 	"time"
@@ -21,6 +22,8 @@ import (
 
 	"github.com/Dynom/TySug/finder"
 	"github.com/sirupsen/logrus"
+
+	_ "github.com/lib/pq"
 )
 
 // Version contains the app version, the value is changed during compile time to the appropriate Git tag
@@ -51,6 +54,24 @@ func main() {
 	}
 
 	hitList := hitlist.New(h, time.Hour*60) // @todo figure out what todo with TTLs
+
+	if conf.Server.Backend.Driver != "" {
+		sqlConn, err := sql.Open(conf.Server.Backend.Driver, conf.Server.Backend.URL)
+		if err != nil {
+			panic(err)
+		}
+
+		defer deferClose(sqlConn, logger)
+		collected, err := preloadValues(sqlConn, hitList, logger)
+		if err != nil {
+			panic(err)
+		}
+
+		logger.WithField("amount", collected).Info("pre-loaded values from the database")
+		registerPersistCallback(sqlConn, hitList, logger)
+		logger.Info("registered persisting callback, newly learned values will be persisted")
+	}
+
 	myFinder, err := finder.New(
 		hitList.GetValidAndUsageSortedDomains(),
 		finder.WithLengthTolerance(0.2),

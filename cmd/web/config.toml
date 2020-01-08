@@ -31,7 +31,7 @@
 
   [server.log]
     # The minimum logging level to report, @see https://github.com/Sirupsen/logrus#level-logging
-    level = "info" #"debug"
+    level = "debug"
 
   [server.profiler]
     enable = true
@@ -39,5 +39,12 @@
 
   [server.finder]
     useBuckets = true
+
   [server.validator]
     resolver = "8.8.8.8"
+
+  [server.backend]
+    # Drivers: https://github.com/golang/go/wiki/SQLDrivers
+    # Postgres: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+    driver = "postgres"
+    url = "postgresql://postgres@localhost:15432/eri?sslmode=disable"

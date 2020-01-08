@@ -105,7 +105,7 @@ func MightBeAHostOrIP(h string) bool {
 
 	// Normally we can assume that host names have a tld or consists at least out of 4 characters
 	lastCharIndex := len(h) - 1
-	if 4 >= lastCharIndex || lastCharIndex >= 253 {
+	if 3 >= lastCharIndex || lastCharIndex >= 253 {
 		return false
 	}
 

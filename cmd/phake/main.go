@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -146,7 +147,17 @@ func generateAndSendBatches(result io.StringWriter, numberOfAddresses int64, dom
 		batchSize = numberOfAddresses
 	}
 
-	client := http.DefaultClient
+	client := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:           0,
+			MaxIdleConnsPerHost:    0,
+			MaxConnsPerHost:        0,
+			IdleConnTimeout:        10 * time.Second,
+			MaxResponseHeaderBytes: 1 << 19,
+		},
+		Timeout: 0, //10 * time.Second,
+	}
+
 	for batchIndex := int64(0); batchIndex < numberOfAddresses; batchIndex += batchSize {
 
 		var toLearn = make([]LearnValue, batchSize)

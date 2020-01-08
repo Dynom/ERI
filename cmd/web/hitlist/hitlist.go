@@ -3,6 +3,7 @@ package hitlist
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"hash"
 	"sort"
 	"strings"
@@ -20,21 +21,32 @@ var (
 	ErrNotPresent = errors.New("value not present")
 )
 
+const (
+	_         ChangeType = iota
+	ChangeAdd            = iota
+)
+
 func New(h hash.Hash, ttl time.Duration) *HitList {
 	return &HitList{
-		Set:  make(map[string]domainHit),
-		lock: sync.RWMutex{},
-		h:    h,
-		ttl:  ttl,
+		Set:        make(map[string]domainHit),
+		lock:       sync.RWMutex{},
+		notifyLock: sync.RWMutex{},
+		h:          h,
+		ttl:        ttl,
+		toNotify:   make([]OnChangeFn, 0),
+		sem:        make(chan struct{}, 10),
 	}
 }
 
 // HitList is an opinionated nearly-flat tree structured type that captures e-mail address validity on two levels
 type HitList struct {
-	Set  map[string]domainHit
-	ttl  time.Duration // The default TTL for when Learning about a new e-mail address
-	lock sync.RWMutex
-	h    hash.Hash
+	Set        map[string]domainHit
+	ttl        time.Duration // The default TTL for when Learning about a new e-mail address
+	lock       sync.RWMutex
+	notifyLock sync.RWMutex
+	h          hash.Hash
+	toNotify   []OnChangeFn
+	sem        chan struct{}
 }
 
 type Hit struct {
@@ -52,6 +64,10 @@ func (rcpt Recipient) String() string {
 	return hex.EncodeToString([]byte(rcpt))
 }
 
+func (rcpt Recipient) IsEmpty() bool {
+	return rcpt == ""
+}
+
 type Recipients map[Recipient]Hit
 
 type domainHit struct {
@@ -63,6 +79,44 @@ type domainHit struct {
 type stats struct {
 	domain string
 	usage  uint
+}
+
+type ChangeType uint
+type OnChangeFn func(recipient Recipient, domain string, validations validations.Validations, change ChangeType)
+
+// RegisterOnChange accepts functions which are invoked, in unspecified order, whenever a mutation happens
+func (h *HitList) RegisterOnChange(fn ...OnChangeFn) {
+	h.notifyLock.Lock()
+	h.toNotify = append(h.toNotify, fn...)
+	h.notifyLock.Unlock()
+}
+
+func (h *HitList) notify(recipient Recipient, domain string, validations validations.Validations, changeType ChangeType) {
+
+	// If the combination is known, don't bother notifying, since we're not mutating.
+	if recipient.IsEmpty() {
+		dh, err := h.getDomainHit(domain)
+		if err == nil && dh.Validations == validations || err != nil && err != ErrNotPresent {
+			return
+		}
+	} else {
+		hit, err := h.GetHit(domain, recipient)
+		if err == nil && hit.Validations == validations || err != nil && err != ErrNotPresent {
+			return
+		}
+	}
+
+	h.notifyLock.RLock()
+	defer h.notifyLock.RUnlock()
+
+	for _, notify := range h.toNotify {
+		h.sem <- struct{}{}
+
+		go func(fn OnChangeFn) {
+			fn(recipient, domain, validations, changeType)
+			<-h.sem
+		}(notify)
+	}
 }
 
 // GetValidAndUsageSortedDomains returns the used domains, sorted by their associated recipients (high>low)
@@ -162,6 +216,21 @@ func (h *HitList) GetHit(domain string, rcpt Recipient) (Hit, error) {
 	return r, nil
 }
 
+func (h *HitList) getDomainHit(domain string) (domainHit, error) {
+	domain = strings.ToLower(domain)
+
+	h.lock.RLock()
+	r, ok := h.Set[domain]
+	h.lock.RUnlock()
+
+	if !ok {
+		// @todo improve error situation
+		return domainHit{}, ErrNotPresent
+	}
+
+	return r, nil
+}
+
 // AddEmailAddressDeadline Same as AddEmailAddress, but allows for custom TTL. Duration shouldn't be negative.
 func (h *HitList) AddEmailAddressDeadline(email string, validations validations.Validations, duration time.Duration) error {
 	var domain string
@@ -178,32 +247,36 @@ func (h *HitList) AddEmailAddressDeadline(email string, validations validations.
 	}
 
 	if !h.HasDomain(domain) {
-		err := h.AddDomain(domain, validations)
+		err := h.addDomain(domain, validations)
 		if err != nil {
 			return err
 		}
 	}
 
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
-	v, ok := h.Set[domain]
-	if !ok {
-		return errors.New("domain doesn't appear in set, this is... unexpected")
+	// @todo possible race-condition
+	domainHit, err := h.getDomainHit(domain)
+	if err != nil {
+		return fmt.Errorf("domain doesn't exist, this is unexpected %w", err)
 	}
 
 	var now = time.Now()
-	v.RCPTs[safeLocal] = Hit{
+	hit := Hit{
 		ValidUntil:  now.Add(duration),
-		Validations: v.RCPTs[safeLocal].Validations.MergeWithNext(validations),
+		Validations: domainHit.RCPTs[safeLocal].Validations.MergeWithNext(validations),
 	}
+
+	domainHit.RCPTs[safeLocal] = hit
 
 	if validations.IsValid() {
-		u := calculateValidRCPTUsage(v.RCPTs, now)
-		v.validRCTPTs = u + 1
+		u := calculateValidRCPTUsage(domainHit.RCPTs, now)
+		domainHit.validRCTPTs = u + 1
 	}
 
-	h.Set[domain] = v
+	h.lock.Lock()
+	h.Set[domain] = domainHit
+	h.lock.Unlock()
+
+	h.notify(safeLocal, domain, hit.Validations, ChangeAdd)
 
 	return nil
 }
@@ -216,12 +289,25 @@ func (h *HitList) AddEmailAddress(email string, validations validations.Validati
 
 // AddDomain learns of a domain and it's validity. It overwrites the existing validations, when applicable for a domain
 func (h *HitList) AddDomain(domain string, validations validations.Validations) error {
+	err := h.addDomain(domain, validations)
+	if err == nil {
+		h.notify("", domain, validations, ChangeAdd)
+	}
+
+	return err
+}
+
+// AddDomain learns of a domain and it's validity. It overwrites the existing validations, when applicable for a domain
+func (h *HitList) addDomain(domain string, validations validations.Validations) error {
 	var now = time.Now()
 
-	if validator.MightBeAHostOrIP(domain) && (validations.IsValid() || validations.IsValidationsForValidDomain()) {
-		validations.MarkAsValid()
-	} else {
-		validations.MarkAsInvalid()
+	//if validator.MightBeAHostOrIP(domain) && (validations.IsValid() || validations.IsValidationsForValidDomain()) {
+	//	validations.MarkAsValid()
+	//} else {
+	//	validations.MarkAsInvalid()
+	//}
+	if !validator.MightBeAHostOrIP(domain) {
+		return errors.New("argument isn't considered a valid domain")
 	}
 
 	h.lock.Lock()
@@ -233,10 +319,8 @@ func (h *HitList) AddDomain(domain string, validations validations.Validations) 
 			Validations: validations,
 		}
 	} else {
-		usage := calculateValidRCPTUsage(hit.RCPTs, now)
-
 		hit.Validations = hit.Validations.MergeWithNext(validations)
-		hit.validRCTPTs = usage
+		hit.validRCTPTs = calculateValidRCPTUsage(hit.RCPTs, now)
 
 		h.Set[domain] = hit
 	}
@@ -251,7 +335,7 @@ func getValidAndUsedFromSet(set map[string]domainHit) []stats {
 	var index int
 	for domain, details := range set {
 
-		if !details.Validations.IsValid() {
+		if !details.Validations.IsValidationsForValidDomain() {
 			continue
 		}
 

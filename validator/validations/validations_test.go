@@ -54,12 +54,12 @@ func TestValidations_IsValidationsForValidDomain(t *testing.T) {
 		v    Validations
 		want bool
 	}{
-		{want: true, name: "All domain flags", v: VFHostConnect | VFMXLookup | VFDomainHasIP},
-		{want: true, name: "Domain has IP", v: VFDomainHasIP},
-		{want: true, name: "Domain accepted connections", v: VFHostConnect},
-		{want: true, name: "DNS lookup showed domain has MX records", v: VFMXLookup},
+		{want: true, name: "All domain flags", v: VFSyntax | VFHostConnect | VFMXLookup | VFDomainHasIP},
+		{want: true, name: "Domain has IP", v: VFSyntax | VFDomainHasIP},
+		{want: true, name: "Domain accepted connections", v: VFSyntax | VFHostConnect},
+		{want: true, name: "DNS lookup showed domain has MX records", v: VFSyntax | VFMXLookup},
 
-		// Valid doesn't mean the domain is actually valid (e.g. we might've only performed a syntax check)
+		// A valid flag on the domain doesn't have to mean that it's valid, without additional flags
 		{name: "valid, doesn't mean valid domain", v: VFValid},
 	}
 

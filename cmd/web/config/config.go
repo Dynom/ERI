@@ -51,6 +51,10 @@ type Config struct {
 			Enable bool   `toml:"enable"`
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
+		Backend struct {
+			Driver string `toml:"driver"`
+			URL    string `toml:"url"`
+		} `toml:"backend"`
 	} `toml:"server"`
 }
 
