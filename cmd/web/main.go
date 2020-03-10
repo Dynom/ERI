@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"net"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/juju/ratelimit"
 
 	validator "github.com/Dynom/ERI/validator"
 
@@ -68,7 +71,8 @@ func main() {
 		defer deferClose(sqlConn, logger)
 		collected, err := preloadValues(sqlConn, hitList, logger)
 		if err != nil {
-			panic(err)
+			logger.Errorf("A backend has been configured, but the connection failed %s", err)
+			os.Exit(1)
 		}
 
 		logger.WithField("amount", collected).Info("pre-loaded values from the database")
@@ -94,13 +98,15 @@ func main() {
 	}
 
 	val := validator.NewEmailAddressValidator(dialer)
-	checkSvc := services.NewCheckService(hitList, myFinder, val.CheckWithSyntax, logger)
-	learnSvc := services.NewLearnService(hitList, myFinder, val.CheckWithSyntax, logger)
+	checkSvc := services.NewCheckService(hitList, myFinder, mapValidatorTypeToValidatorFn(conf.Server.Validator.CheckValidator, val), logger)
+	learnSvc := services.NewLearnService(hitList, myFinder, mapValidatorTypeToValidatorFn(conf.Server.Validator.LearnValidator, val), logger)
+	suggestSvc := services.NewSuggestService(hitList, myFinder, mapValidatorTypeToValidatorFn(conf.Server.Validator.LearnValidator, val), logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", NewHealthHandler(logger))
 	mux.HandleFunc("/health", NewHealthHandler(logger))
 
+	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
 	mux.HandleFunc("/check", NewCheckHandler(logger, checkSvc))
 	mux.HandleFunc("/learn", NewLearnHandler(logger, learnSvc))
 	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder))
@@ -116,7 +122,9 @@ func main() {
 
 	// @todo status endpoint (or tick logger)
 
+	bucket := ratelimit.NewBucketWithRate(100, 500)
 	s := erihttp.BuildHTTPServer(mux, conf, lw,
+		handlers.NewRateLimitHandler(logger, bucket, time.Millisecond*100),
 		handlers.WithRequestLogger(logger),
 		handlers.WithGzipHandler(),
 		handlers.WithHeaders(sliceToHTTPHeaders(conf.Server.Headers)),
@@ -128,4 +136,15 @@ func main() {
 	err = s.ListenAndServe()
 
 	logger.Errorf("HTTP server stopped %s", err)
+}
+
+func mapValidatorTypeToValidatorFn(vt config.ValidatorType, v validator.EmailValidator) validator.CheckFn {
+	switch vt {
+	case config.VTLookup:
+		return v.CheckWithLookup
+	case config.VTStructure:
+		return v.CheckWithSyntax
+	}
+
+	panic("Incorrect validator to map, this probably means an inconsistency between main and config packages.")
 }

@@ -18,12 +18,13 @@ import (
 )
 
 func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) http.HandlerFunc {
+
 	log := logger.WithField("handler", "auto complete")
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var req erihttp.AutoCompleteRequest
 
-		log = log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
+		log := log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 
@@ -45,6 +46,13 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) 
 
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
+
+		if len(req.Domain) == 0 {
+			log.Error("Empty argument")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("Request failed, unable to lookup by domain"))
+			return
+		}
 
 		list, err := myFinder.GetMatchingPrefix(ctx, req.Domain, 10)
 		if err != nil {
@@ -80,12 +88,61 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) 
 }
 func NewCheckHandler(logger logrus.FieldLogger, svc services.CheckSvc) http.HandlerFunc {
 
+	/*********************************************************************************************************************
+			Expected API:
+			URL /validate
+			Responsibility: Validate an argument with the specified validators, doesn't persist the result
+
+			-->
+				email:string
+				validators:[]string
+		  <--
+		  	{
+					...result
+				}
+
+
+			URL /check
+			Responsibility: Give a brief summary of an input, calls learn on newly found addresses
+
+			--->
+				email:string
+				include_alternatives:bool
+
+			<---
+				{
+					"validations_passed": ["structure", "lookup", "connect"], // 0 or more, unique list
+					"alternatives": [] // 0 or more, unique string
+				}
+
+
+			URL /suggest
+			Responsibility: Return a list of suggestions for the input.
+			Notes:
+			-	The input is returned if it's the best suggestion
+
+
+			--->
+				email:string
+
+			<--- 200
+				{
+					"alternatives": [] // 0 or more, unique string
+				}
+
+			<-- 400
+				{
+					"error": "Address couldn't be validated",
+					"code": "validation_structure"
+				}
+	*********************************************************************************************************************/
+
 	log := logger.WithField("handler", "check")
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var req erihttp.CheckRequest
 
-		log = log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
+		log := log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 
@@ -160,12 +217,91 @@ func NewCheckHandler(logger logrus.FieldLogger, svc services.CheckSvc) http.Hand
 	}
 }
 
+func NewSuggestHandler(logger logrus.FieldLogger, svc services.SuggestSvc) http.HandlerFunc {
+	log := logger.WithField("handler", "suggest")
+	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		var req erihttp.SuggestRequest
+
+		log := log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
+
+		defer deferClose(r.Body, log)
+
+		body, err := erihttp.GetBodyFromHTTPRequest(r)
+		if err != nil {
+			log.WithError(err).Error("Error handling request")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("Request failed"))
+			return
+		}
+
+		err = json.Unmarshal(body, &req)
+		if err != nil {
+			log.WithError(err).Error("Error handling request body")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("Request failed, unable to parse request body. Did you send JSON?"))
+			return
+		}
+
+		// @todo should the timeout be for the entire request, or just Check ?
+		//ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*500)
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+
+		checkResult, err := svc.HandleRequest(ctx, req.Email)
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"result":  checkResult,
+				"error":   err,
+				"ctx_err": ctx.Err(),
+			}).Error("Failed to validate e-mail address")
+
+			response, rerr := json.Marshal(erihttp.ErrorResponse{
+				Error: err,
+			})
+
+			if rerr != nil {
+				log.WithError(rerr).Error("Unable to marshal error response")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write(response)
+			return
+		}
+
+		response, err := json.Marshal(erihttp.SuggestResponse{
+			Alternatives: checkResult.Alternatives,
+		})
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"result":   checkResult,
+				"response": response,
+				"error":    err,
+			}).Error("Failed to marshal the response")
+
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("Unable to produce a response"))
+			return
+		}
+
+		log.WithFields(logrus.Fields{
+			"result": checkResult,
+			"target": req.Email,
+		}).Debugf("Done performing check")
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(response)
+	}
+}
+
 func NewHealthHandler(logger logrus.FieldLogger) http.HandlerFunc {
 
 	log := logger.WithField("handler", "health")
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		log = log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
+		log := log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
 
 		w.Header().Set("content-type", "text/plain")
 		w.WriteHeader(http.StatusOK)
@@ -184,7 +320,7 @@ func NewLearnHandler(logger logrus.FieldLogger, svc services.LearnSvc) http.Hand
 		var err error
 		var req erihttp.LearnRequest
 
-		log = log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
+		log := log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 

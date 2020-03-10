@@ -368,12 +368,12 @@ func Test_calculateValidRCPTUsage(t *testing.T) {
 		validOldest := referenceTime.Add(1 * time.Hour)
 
 		rcpts["john@example.org"] = Hit{
-			Validations: validations.VFValid,
+			Validations: validations.FValid,
 			ValidUntil:  validA,
 		}
 
 		rcpts["jane@example.org"] = Hit{
-			Validations: validations.VFValid,
+			Validations: validations.FValid,
 			ValidUntil:  validOldest,
 		}
 
@@ -391,18 +391,18 @@ func Test_calculateValidRCPTUsage(t *testing.T) {
 		expiredTime := referenceTime.Add(-1 * time.Hour)
 
 		rcpts["john@example.org"] = Hit{
-			Validations: validations.VFValid,
+			Validations: validations.FValid,
 			ValidUntil:  validTime,
 		}
 
 		rcpts["jane@example.org"] = Hit{
-			Validations: validations.VFValid,
+			Validations: validations.FValid,
 			ValidUntil:  validTime,
 		}
 
 		// Validity expired
 		rcpts["late@example.org"] = Hit{
-			Validations: validations.VFValid,
+			Validations: validations.FValid,
 			ValidUntil:  expiredTime,
 		}
 

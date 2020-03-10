@@ -53,7 +53,7 @@ func TestEmailValidator_CheckWithLookup(t *testing.T) {
 				},
 			}
 
-			got, err := v.CheckWithLookup(tt.args.ctx, tt.args.emailParts)
+			got := v.CheckWithLookup(tt.args.ctx, tt.args.emailParts)
 			t.Logf("Got: %b (%s)", got.Validations, err)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckFull() error = %v, wantErr %v", err, tt.wantErr)

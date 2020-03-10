@@ -2,6 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"time"
+
+	"github.com/Dynom/ERI/validator"
 
 	"github.com/sirupsen/logrus"
 
@@ -14,6 +17,7 @@ type hitListRow struct {
 	Domain      string                  `sql:"domain"`
 	Recipient   string                  `sql:"recipient"`
 	Validations validations.Validations `sql:"validations"`
+	Steps       validations.Steps       `sql:"steps"`
 }
 
 func preloadValues(conn *sql.DB, list *hitlist.HitList, logger logrus.FieldLogger) (uint, error) {
@@ -22,6 +26,7 @@ func preloadValues(conn *sql.DB, list *hitlist.HitList, logger logrus.FieldLogge
 		return 0, err
 	}
 
+	var now = time.Now()
 	stmt, err := conn.Prepare("SELECT domain, recipient, validations FROM hitlist")
 	if err != nil {
 		return 0, err
@@ -41,13 +46,17 @@ func preloadValues(conn *sql.DB, list *hitlist.HitList, logger logrus.FieldLogge
 			continue
 		}
 
-		logger = logger.WithField("row", row)
+		logger := logger.WithField("row", row)
+		vr := validator.Result{
+			Validations: row.Validations,
+			Steps:       row.Steps,
+		}
 
 		var err error
 		if row.Recipient == "" {
-			err = list.AddDomain(row.Domain, validations.Validations(row.Validations))
+			err = list.AddDomain(row.Domain, vr)
 		} else {
-			err = list.AddEmailAddress(row.Recipient+`@`+row.Domain, validations.Validations(row.Validations))
+			err = list.AddEmailAddress(row.Recipient+`@`+row.Domain, vr)
 		}
 
 		if err != nil {
@@ -58,35 +67,38 @@ func preloadValues(conn *sql.DB, list *hitlist.HitList, logger logrus.FieldLogge
 		dbCollected++
 	}
 
+	logger.WithField("time_µs", time.Since(now)).Debug("Done loading from backend")
+
 	return dbCollected, nil
 }
 
 func registerPersistCallback(conn *sql.DB, list *hitlist.HitList, logger logrus.FieldLogger) {
 
-	list.RegisterOnChange(func(r hitlist.Recipient, d string, v validations.Validations, c hitlist.ChangeType) {
+	stmt, err := conn.Prepare(`
+			INSERT INTO hitlist (domain, recipient, validations, steps)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (domain, recipient) DO UPDATE
+			SET validations = EXCLUDED.validations,
+			    steps = EXCLUDED.steps`)
 
+	if err != nil {
+		panic(err)
+	}
+
+	list.RegisterOnChange(func(r hitlist.Recipient, d string, vr validator.Result, c hitlist.ChangeType) {
 		if c != hitlist.ChangeAdd {
 			return
 		}
 
-		stmt, err := conn.Prepare(`
-			INSERT INTO hitlist (domain, recipient, validations)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (domain, recipient) DO UPDATE
-			SET validations = EXCLUDED.validations`)
-
-		if err != nil {
-			panic(err)
-		}
-
-		_, err = stmt.Exec(d, r.String(), v)
+		_, err := stmt.Exec(d, r.String(), vr.Validations, vr.Steps)
 		if err != nil {
 			logger.WithError(err).Error("Couldn't persist change")
 		} else {
 			logger.WithFields(logrus.Fields{
 				"domain":      d,
 				"recipient":   r.String(),
-				"validations": v.String(),
+				"validations": vr.Validations.String(),
+				"steps":       vr.Steps.String(),
 			}).Debug("Persisted (new) recipient")
 		}
 	})

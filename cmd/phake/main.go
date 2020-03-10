@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/Dynom/ERI/validator"
 )
 
 const batchMaxSize = 5000
@@ -102,6 +104,9 @@ func main() {
 					if isInvisible(char) || !utf8.ValidRune(char) {
 						fmt.Printf("\t '%s' has character: '%s' = 0x%x on position %d\n", domain, string(char), char, pos)
 					}
+				}
+
+				if !validator.MightBeAHostOrIP(domain) {
 					continue
 				}
 
@@ -117,7 +122,7 @@ func main() {
 					}
 
 					// truncate domains
-					domains = domains[:0] //[]string{}
+					domains = domains[:0:0] //[]string{}
 				}
 
 				continue

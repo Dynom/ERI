@@ -5,14 +5,16 @@ import "fmt"
 const (
 	// Validation Flags, these flags represent successful validation steps. Depending on how far you want to go, you can
 	// classify a validation as valid enough, for your use-case.
-	VFValid       Validations = 1 << iota // The e-mail is considered valid (1) or not (0)
-	VFSyntax      Validations = 1 << iota // e-mail address follows a (reasonably) valid syntax
-	VFMXLookup    Validations = 1 << iota // e-mail domain has MX records
-	VFDomainHasIP Validations = 1 << iota // The domain has IP's
-	VFHostConnect Validations = 1 << iota // MX accepts connections
-	VFValidRCPT   Validations = 1 << iota // MX acknowledges that the RCPT exists
-	VFDisposable  Validations = 1 << iota // Address / Domain is considered a disposable e-mail trap
+	FValid       Flag = 1 << iota
+	FSyntax      Flag = 1 << iota
+	FMXLookup    Flag = 1 << iota
+	FDomainHasIP Flag = 1 << iota
+	FHostConnect Flag = 1 << iota
+	FValidRCPT   Flag = 1 << iota
+	FDisposable  Flag = 1 << iota // Address / Domain is considered a disposable e-mail trap
 )
+
+type Flag uint8
 
 // Validations holds the validation steps performed.
 type Validations uint8
@@ -23,7 +25,7 @@ func (v Validations) String() string {
 
 // IsValid returns true if the Validations are considered successful
 func (v Validations) IsValid() bool {
-	return v&VFValid == VFValid
+	return Flag(v)&FValid == FValid
 }
 
 // MergeWithNext appends to Validations are returns the result. If the new validations aren't considered valid, it will
@@ -36,20 +38,27 @@ func (v Validations) MergeWithNext(new Validations) Validations {
 
 // MarkAsInvalid clears the CFValid bit and marks the Validations as invalid
 func (v *Validations) MarkAsInvalid() {
-	*v &^= VFValid
+	*v &^= Validations(FValid)
 }
 
 // MarkAsValid sets the CFValid bit and marks the Validations as valid
 func (v *Validations) MarkAsValid() {
-	*v |= VFValid
+	*v |= Validations(FValid)
+}
+
+// SetFlag defines a flag on the type and returns a copy
+func (v *Validations) SetFlag(new Flag) Validations {
+	*v |= Validations(new)
+
+	return *v
 }
 
 // HasFlag returns true if the type has the flag (or flags) specified
-func (v Validations) HasFlag(f Validations) bool {
-	return v&f != 0
+func (v Validations) HasFlag(f Flag) bool {
+	return v&Validations(f) != 0
 }
 
 // isValidationsForValidDomain checks if a mask of validations really marks a domain as valid.
 func (v Validations) IsValidationsForValidDomain() bool {
-	return (v.HasFlag(VFMXLookup) || v.HasFlag(VFDomainHasIP) || v.HasFlag(VFHostConnect)) && v.HasFlag(VFSyntax)
+	return (v.HasFlag(FMXLookup) || v.HasFlag(FDomainHasIP) || v.HasFlag(FHostConnect)) && v.HasFlag(FSyntax)
 }

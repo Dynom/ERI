@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
+
 	"github.com/Dynom/ERI/types"
 
 	"github.com/Dynom/ERI/validator"
@@ -58,6 +60,7 @@ type LearnStatus struct {
 // HandleLearnRequest learns of the existence of a domain or e-mail address. It's designed to handle bulk requests
 // @todo figure out how a Learn Request should work
 func (l *LearnSvc) HandleLearnRequest(ctx context.Context, req erihttp.LearnRequest) LearnResult {
+
 	var result = LearnResult{
 		NumDomains:        uint64(len(req.Domains)),
 		NumEmailAddresses: uint64(len(req.Emails)),
@@ -88,8 +91,9 @@ func (l *LearnSvc) HandleLearnRequest(ctx context.Context, req erihttp.LearnRequ
 
 func (l *LearnSvc) learnAndAddValue(ctx context.Context, toLearn []erihttp.ToLearn, valueType LearnValueType) (failures uint64) {
 	logger := l.logger.WithFields(logrus.Fields{
-		"method": "learnAndAddValue",
-		"type":   valueType,
+		handlers.RequestID: ctx.Value(handlers.RequestID),
+		"method":           "learnAndAddValue",
+		"type":             valueType,
 	})
 
 	for _, learn := range toLearn {
@@ -98,7 +102,6 @@ func (l *LearnSvc) learnAndAddValue(ctx context.Context, toLearn []erihttp.ToLea
 			"considered_valid": learn.Valid,
 		})
 
-		var v validations.Validations
 		var err error
 
 		// Aborting operation if we're canceled
@@ -123,23 +126,21 @@ func (l *LearnSvc) learnAndAddValue(ctx context.Context, toLearn []erihttp.ToLea
 			}
 		}
 
-		artifact, err := l.validator(ctx, parts)
-		v = artifact.Validations
+		artifact := l.validator(ctx, parts)
+		logger = logger.WithField("validations", artifact.Validations)
 
-		logger = logger.WithField("validations", v)
-
-		if err != nil {
+		if !artifact.Validations.IsValid() {
 			failures++
 		}
 
-		var learnFn func(string, validations.Validations) error
+		var learnFn func(string, validator.Result) error
 		if valueType == LearnValueDomain {
 			learnFn = l.hitList.AddDomain
 		} else {
 			learnFn = l.hitList.AddEmailAddress
 		}
 
-		err = learnFn(learn.Value, v)
+		err = learnFn(learn.Value, artifact)
 
 		if err != nil {
 			failures++

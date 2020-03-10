@@ -10,8 +10,20 @@ type CheckResponse struct {
 	Alternative string `json:"alternative,omitempty"`
 }
 
+type SuggestResponse struct {
+	Alternatives []string `json:"alternatives"`
+}
+
+type ErrorResponse struct {
+	Error error `json:"error"`
+}
+
 type AutoCompleteRequest struct {
 	Domain string `json:"domain"`
+}
+
+type SuggestRequest struct {
+	Email string `json:"email"`
 }
 
 type CheckRequest struct {

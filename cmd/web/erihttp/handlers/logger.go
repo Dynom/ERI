@@ -40,6 +40,7 @@ func WithRequestLogger(logger *logrus.Logger) HandlerWrapper {
 			defer func() {
 				l.WithField("time_µs", time.Since(now).Microseconds()).Debug("Request stop")
 			}()
+
 			handler.ServeHTTP(w, r)
 		})
 	}

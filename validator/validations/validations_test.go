@@ -13,12 +13,12 @@ func TestValidations_HasFlag(t *testing.T) {
 		tf   Validations
 		want bool
 	}{
-		{want: true, name: "has flag", v: VFValid, tf: VFValid},
-		{want: true, name: "has flag (multiple)", v: VFValid | VFDomainHasIP, tf: VFValid},
-		{want: true, name: "has flag (multiple)", v: VFSyntax | VFDomainHasIP, tf: VFDomainHasIP},
+		{want: true, name: "has flag", v: FValid, tf: FValid},
+		{want: true, name: "has flag (multiple)", v: FValid | FDomainHasIP, tf: FValid},
+		{want: true, name: "has flag (multiple)", v: FSyntax | FDomainHasIP, tf: FDomainHasIP},
 
-		{name: "doesn't have flag", v: 0, tf: VFValid},
-		{name: "doesn't have flag", v: VFDomainHasIP, tf: VFValid},
+		{name: "doesn't have flag", v: 0, tf: FValid},
+		{name: "doesn't have flag", v: FDomainHasIP, tf: FValid},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -35,9 +35,9 @@ func TestValidations_IsValid(t *testing.T) {
 		v    Validations
 		want bool
 	}{
-		{want: true, name: "mega valid", v: VFValid},
+		{want: true, name: "mega valid", v: FValid},
 		{name: "default value", v: 0},
-		{name: "some flags", v: VFSyntax | VFDomainHasIP},
+		{name: "some flags", v: FSyntax | FDomainHasIP},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -54,13 +54,13 @@ func TestValidations_IsValidationsForValidDomain(t *testing.T) {
 		v    Validations
 		want bool
 	}{
-		{want: true, name: "All domain flags", v: VFSyntax | VFHostConnect | VFMXLookup | VFDomainHasIP},
-		{want: true, name: "Domain has IP", v: VFSyntax | VFDomainHasIP},
-		{want: true, name: "Domain accepted connections", v: VFSyntax | VFHostConnect},
-		{want: true, name: "DNS lookup showed domain has MX records", v: VFSyntax | VFMXLookup},
+		{want: true, name: "All domain flags", v: FSyntax | FHostConnect | FMXLookup | FDomainHasIP},
+		{want: true, name: "Domain has IP", v: FSyntax | FDomainHasIP},
+		{want: true, name: "Domain accepted connections", v: FSyntax | FHostConnect},
+		{want: true, name: "DNS lookup showed domain has MX records", v: FSyntax | FMXLookup},
 
 		// A valid flag on the domain doesn't have to mean that it's valid, without additional flags
-		{name: "valid, doesn't mean valid domain", v: VFValid},
+		{name: "valid, doesn't mean valid domain", v: FValid},
 	}
 
 	for _, tt := range tests {
@@ -77,10 +77,10 @@ func TestValidations_MarkAsInvalid(t *testing.T) {
 		name string
 		v    Validations
 	}{
-		{name: "Starting as valid", v: VFValid},
+		{name: "Starting as valid", v: FValid},
 		{name: "Starting as invalid", v: 0},
-		{name: "Various flags, invalid", v: VFHostConnect | VFMXLookup},
-		{name: "Various flags, valid", v: VFValid | VFHostConnect | VFMXLookup | VFValidRCPT | VFMXLookup},
+		{name: "Various flags, invalid", v: FHostConnect | FMXLookup},
+		{name: "Various flags, valid", v: FValid | FHostConnect | FMXLookup | FValidRCPT | FMXLookup},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -99,10 +99,10 @@ func TestValidations_MarkAsValid(t *testing.T) {
 		name string
 		v    Validations
 	}{
-		{name: "Starting as valid", v: VFValid},
+		{name: "Starting as valid", v: FValid},
 		{name: "Starting as invalid", v: 0},
-		{name: "Various flags, invalid", v: VFHostConnect | VFMXLookup},
-		{name: "Various flags, valid", v: VFValid | VFHostConnect | VFMXLookup | VFValidRCPT | VFMXLookup},
+		{name: "Various flags, invalid", v: FHostConnect | FMXLookup},
+		{name: "Various flags, valid", v: FValid | FHostConnect | FMXLookup | FValidRCPT | FMXLookup},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -123,14 +123,14 @@ func TestValidations_MergeWithNext(t *testing.T) {
 		new  Validations
 		want Validations
 	}{
-		{name: "single flag", v: 0, new: VFValid, want: VFValid},
-		{name: "multiple flags, start from 0", v: 0, new: VFMXLookup | VFHostConnect, want: VFMXLookup | VFHostConnect},
-		{name: "single flag, start from VFMXLookup", v: VFMXLookup, new: VFHostConnect, want: VFMXLookup | VFHostConnect},
-		{name: "multiple flags, start from VFMXLookup", v: VFMXLookup, new: VFMXLookup | VFHostConnect, want: VFMXLookup | VFHostConnect},
+		{name: "single flag", v: 0, new: FValid, want: FValid},
+		{name: "multiple flags, start from 0", v: 0, new: FMXLookup | FHostConnect, want: FMXLookup | FHostConnect},
+		{name: "single flag, start from FMXLookup", v: FMXLookup, new: FHostConnect, want: FMXLookup | FHostConnect},
+		{name: "multiple flags, start from FMXLookup", v: FMXLookup, new: FMXLookup | FHostConnect, want: FMXLookup | FHostConnect},
 
 		// MergeWithNext() assumes Full validations as arguments and assumes an incremental chain of validations
 		// it unset's the validity of the existing validations.
-		{name: "multiple flags, start from VFValid", v: VFValid, new: VFHostConnect, want: VFHostConnect},
+		{name: "multiple flags, start from FValid", v: FValid, new: FHostConnect, want: FHostConnect},
 	}
 
 	for _, tt := range tests {
@@ -161,12 +161,12 @@ func TestStartingFromEmptyValidations(t *testing.T) {
 	t.Logf("initial       %08b", v)
 
 	// Setting MX
-	v |= VFMXLookup
+	v |= FMXLookup
 	t.Logf("set mx?       %08b", v)
-	t.Logf("is valid?     %08b", v&VFValid)
+	t.Logf("is valid?     %08b", v&FValid)
 
-	if !v.HasFlag(VFMXLookup) {
-		t.Errorf("Expected v to have the VFMXLookup flag set, I got: %08b", v)
+	if !v.HasFlag(FMXLookup) {
+		t.Errorf("Expected v to have the FMXLookup flag set, I got: %08b", v)
 	}
 
 	if v.IsValid() {
@@ -174,17 +174,17 @@ func TestStartingFromEmptyValidations(t *testing.T) {
 	}
 
 	// Marking as valid
-	v |= VFValid
-	t.Logf("valid masked  %08b", v&VFValid)
-	t.Logf("is valid?     %t", v&VFValid == VFValid)
+	v |= FValid
+	t.Logf("valid masked  %08b", v&FValid)
+	t.Logf("is valid?     %t", v&FValid == FValid)
 
 	if !v.IsValid() {
 		t.Errorf("Expected v to be valid, I got: %08b", v)
 	}
 
-	v = 0 &^ VFValid
+	v = 0 &^ FValid
 	t.Logf("valid cleared %08b", v)
-	t.Logf("is valid?     %t", v&VFValid == VFValid)
+	t.Logf("is valid?     %t", v&FValid == FValid)
 
 	if v.IsValid() {
 		t.Errorf("Expected v no longer to be valid, I got: %08b", v)
@@ -202,38 +202,38 @@ func TestValidations_Merge(t *testing.T) {
 		{
 			name: "Marking valid",
 			v:    Validations(0),
-			new:  VFValid,
-			want: VFValid,
+			new:  FValid,
+			want: FValid,
 		},
 		{
 			name: "Marking invalid",
-			v:    VFValid,
+			v:    FValid,
 			new:  Validations(0),
 			want: Validations(0),
 		},
 		{
 			name: "Marking validations",
 			v:    Validations(0),
-			new:  VFMXLookup | VFSyntax | VFHostConnect,
-			want: VFMXLookup | VFSyntax | VFHostConnect,
+			new:  FMXLookup | FSyntax | FHostConnect,
+			want: FMXLookup | FSyntax | FHostConnect,
 		},
 		{
 			name: "Appending flags, excluding valid",
-			v:    VFSyntax,
-			new:  VFMXLookup | VFHostConnect,
-			want: VFMXLookup | VFSyntax | VFHostConnect,
+			v:    FSyntax,
+			new:  FMXLookup | FHostConnect,
+			want: FMXLookup | FSyntax | FHostConnect,
 		},
 		{
 			name: "Appending flags, first valid, new invalid",
-			v:    VFSyntax | VFValid,
-			new:  VFMXLookup | VFHostConnect,
-			want: VFMXLookup | VFSyntax | VFHostConnect,
+			v:    FSyntax | FValid,
+			new:  FMXLookup | FHostConnect,
+			want: FMXLookup | FSyntax | FHostConnect,
 		},
 		{
 			name: "Appending flags, first invalid, new valid",
-			v:    VFSyntax,
-			new:  VFMXLookup | VFHostConnect | VFValid,
-			want: VFMXLookup | VFSyntax | VFHostConnect | VFValid,
+			v:    FSyntax,
+			new:  FMXLookup | FHostConnect | FValid,
+			want: FMXLookup | FSyntax | FHostConnect | FValid,
 		},
 	}
 	for _, tt := range tests {
@@ -292,20 +292,20 @@ func BenchmarkTypeMemoryUsageInt64(b *testing.B) {
 }
 
 func ExampleMaskTest() {
-	fmt.Printf("VFValid        %08b %d\n", VFValid, VFValid)
-	fmt.Printf("VFSyntax       %08b %d\n", VFSyntax, VFSyntax)
-	fmt.Printf("VFMXLookup     %08b %d\n", VFMXLookup, VFMXLookup)
-	fmt.Printf("VFDomainHasIP  %08b %d\n", VFDomainHasIP, VFDomainHasIP)
-	fmt.Printf("VFHostConnect  %08b %d\n", VFHostConnect, VFHostConnect)
-	fmt.Printf("VFValidRCPT    %08b %d\n", VFValidRCPT, VFValidRCPT)
-	fmt.Printf("VFDisposable   %08b %d\n", VFDisposable, VFDisposable)
+	fmt.Printf("FValid        %08b %d\n", FValid, FValid)
+	fmt.Printf("FSyntax       %08b %d\n", FSyntax, FSyntax)
+	fmt.Printf("FMXLookup     %08b %d\n", FMXLookup, FMXLookup)
+	fmt.Printf("FDomainHasIP  %08b %d\n", FDomainHasIP, FDomainHasIP)
+	fmt.Printf("FHostConnect  %08b %d\n", FHostConnect, FHostConnect)
+	fmt.Printf("FValidRCPT    %08b %d\n", FValidRCPT, FValidRCPT)
+	fmt.Printf("FDisposable   %08b %d\n", FDisposable, FDisposable)
 
 	// Output:
-	// VFValid        00000001 1
-	// VFSyntax       00000010 2
-	// VFMXLookup     00000100 4
-	// VFDomainHasIP  00001000 8
-	// VFHostConnect  00010000 16
-	// VFValidRCPT    00100000 32
-	// VFDisposable   01000000 64
+	// FValid        00000001 1
+	// FSyntax       00000010 2
+	// FMXLookup     00000100 4
+	// FDomainHasIP  00001000 8
+	// FHostConnect  00010000 16
+	// FValidRCPT    00100000 32
+	// FDisposable   01000000 64
 }

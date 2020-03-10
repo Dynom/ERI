@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	ErrInvalidHost = errors.New("invalid host")
+	ErrInvalidHost        = errors.New("invalid host")
+	ErrEmailAddressSyntax = errors.New("invalid syntax")
 )
 
 func getNewArtifact(ctx context.Context, ep types.EmailParts, dialer *net.Dialer) Artifact {
