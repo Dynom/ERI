@@ -1,19 +1,17 @@
 package main
 
 import (
-	"database/sql"
 	"net"
 	"net/http"
-	"os"
+	"sync"
 	"time"
+
+	"github.com/Dynom/ERI/cmd/web/hitlist"
+	"github.com/minio/highwayhash"
 
 	"github.com/juju/ratelimit"
 
-	validator "github.com/Dynom/ERI/validator"
-
-	"github.com/minio/highwayhash"
-
-	"github.com/Dynom/ERI/cmd/web/hitlist"
+	"github.com/Dynom/ERI/validator"
 
 	"github.com/Dynom/ERI/cmd/web/services"
 
@@ -25,8 +23,6 @@ import (
 
 	"github.com/Dynom/TySug/finder"
 	"github.com/sirupsen/logrus"
-
-	_ "github.com/lib/pq"
 )
 
 // Version contains the app version, the value is changed during compile time to the appropriate Git tag
@@ -59,27 +55,7 @@ func main() {
 	hitList := hitlist.New(
 		h,
 		time.Hour*60, // @todo figure out what todo with TTLs
-		hitlist.WithMaxCallBackConcurrency(5),
 	)
-
-	if conf.Server.Backend.Driver != "" {
-		sqlConn, err := sql.Open(conf.Server.Backend.Driver, conf.Server.Backend.URL)
-		if err != nil {
-			panic(err)
-		}
-
-		defer deferClose(sqlConn, logger)
-		collected, err := preloadValues(sqlConn, hitList, logger)
-		if err != nil {
-			logger.Errorf("A backend has been configured, but the connection failed %s", err)
-			os.Exit(1)
-		}
-
-		logger.WithField("amount", collected).Info("pre-loaded values from the database")
-
-		registerPersistCallback(sqlConn, hitList, logger)
-		logger.Info("registered persisting callback, newly learned values will be persisted")
-	}
 
 	myFinder, err := finder.New(
 		hitList.GetValidAndUsageSortedDomains(),
@@ -97,18 +73,27 @@ func main() {
 		setCustomResolver(dialer, conf.Server.Validator.Resolver)
 	}
 
+	validationResultCache := &sync.Map{}
+	validationResultPersister := &sync.Map{}
+
 	val := validator.NewEmailAddressValidator(dialer)
-	checkSvc := services.NewCheckService(hitList, myFinder, mapValidatorTypeToValidatorFn(conf.Server.Validator.CheckValidator, val), logger)
-	learnSvc := services.NewLearnService(hitList, myFinder, mapValidatorTypeToValidatorFn(conf.Server.Validator.LearnValidator, val), logger)
-	suggestSvc := services.NewSuggestService(hitList, myFinder, mapValidatorTypeToValidatorFn(conf.Server.Validator.LearnValidator, val), logger)
+
+	// Pick the validator we want to use
+	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.CheckValidator, val)
+
+	// Wrap it
+	checkValidator = validatorPersistProxy(validationResultPersister, logger, checkValidator)
+	checkValidator = validatorUpdateFinderProxy(myFinder, hitList, logger, checkValidator)
+	checkValidator = validatorCacheProxy(validationResultCache, logger, checkValidator)
+
+	// Use it
+	suggestSvc := services.NewSuggestService(myFinder, checkValidator, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", NewHealthHandler(logger))
 	mux.HandleFunc("/health", NewHealthHandler(logger))
 
 	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
-	mux.HandleFunc("/check", NewCheckHandler(logger, checkSvc))
-	mux.HandleFunc("/learn", NewLearnHandler(logger, learnSvc))
 	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder))
 
 	lw := logger.WriterLevel(logger.Level)
@@ -121,6 +106,7 @@ func main() {
 	}
 
 	// @todo status endpoint (or tick logger)
+	// @todo make the RL configurable
 
 	bucket := ratelimit.NewBucketWithRate(100, 500)
 	s := erihttp.BuildHTTPServer(mux, conf, lw,

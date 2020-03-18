@@ -17,15 +17,20 @@ var (
 	ErrEmailAddressSyntax = errors.New("invalid syntax")
 )
 
-func getNewArtifact(ctx context.Context, ep types.EmailParts, dialer *net.Dialer) Artifact {
+func getNewArtifact(ctx context.Context, ep types.EmailParts, dialer *net.Dialer, options ...ArtifactFn) Artifact {
 	a := Artifact{
 		Validations: 0,
+		Steps:       0,
 		Timings:     make(Timings, 10),
 		email:       ep,
 		mx:          []string{""},
 		ctx:         ctx,
 		dialer:      dialer,
 		conn:        nil,
+	}
+
+	for _, opt := range options {
+		opt(&a)
 	}
 
 	if deadline, set := ctx.Deadline(); set {
@@ -64,6 +69,20 @@ func getConnection(ctx context.Context, dialer DialContext, mxHost string) (net.
 	}
 
 	return conn, err
+}
+
+// getEarliestDeadlineCTX returns a context with the deadline set to whatever is earliest
+func getEarliestDeadlineCTX(parentCTX context.Context, ttl time.Duration) (context.Context, context.CancelFunc) {
+
+	parentDeadline, ok := parentCTX.Deadline()
+	if ok {
+		ourDeadline := time.Now().Add(ttl)
+		if ourDeadline.Before(parentDeadline) {
+			return context.WithDeadline(parentCTX, ourDeadline)
+		}
+	}
+
+	return context.WithTimeout(parentCTX, ttl)
 }
 
 // fetchMXHosts collects up to N MX hosts for a given domain

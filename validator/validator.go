@@ -8,7 +8,8 @@ import (
 	"github.com/Dynom/ERI/types"
 )
 
-type CheckFn func(ctx context.Context, parts types.EmailParts) Result
+type CheckFn func(ctx context.Context, parts types.EmailParts, options ...ArtifactFn) Result
+type ArtifactFn func(artifact *Artifact)
 
 func NewEmailAddressValidator(dialer *net.Dialer) EmailValidator {
 
@@ -32,7 +33,7 @@ type EmailValidator struct {
 
 // CheckWithConnect performs a thorough check, which has the least chance of false-positives. It requires a valid PTR
 // and is probably not something you want to offer as a user-facing service.
-func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.EmailParts) Result {
+func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.EmailParts, options ...ArtifactFn) Result {
 
 	var syntaxCheck stateFn = checkEmailAddressSyntax
 	if emailParts.Local == "" {
@@ -40,7 +41,7 @@ func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.
 	}
 
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, v.dialer),
+		getNewArtifact(ctx, emailParts, v.dialer, options...),
 		[]stateFn{
 			syntaxCheck,
 			checkIfDomainHasMX,
@@ -53,7 +54,7 @@ func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.
 }
 
 // CheckWithLookup performs a sanity check using DNS lookups. It won't connect to the actual hosts.
-func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.EmailParts) Result {
+func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.EmailParts, options ...ArtifactFn) Result {
 
 	var syntaxCheck stateFn = checkEmailAddressSyntax
 	if emailParts.Local == "" {
@@ -61,7 +62,7 @@ func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.E
 	}
 
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, v.dialer),
+		getNewArtifact(ctx, emailParts, v.dialer, options...),
 		[]stateFn{
 			syntaxCheck,
 			checkIfDomainHasMX,
@@ -72,7 +73,7 @@ func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.E
 }
 
 // CheckWithSyntax performs only a syntax check.
-func (v *EmailValidator) CheckWithSyntax(ctx context.Context, emailParts types.EmailParts) Result {
+func (v *EmailValidator) CheckWithSyntax(ctx context.Context, emailParts types.EmailParts, options ...ArtifactFn) Result {
 
 	var syntaxCheck stateFn = checkEmailAddressSyntax
 	if emailParts.Local == "" {
@@ -80,7 +81,7 @@ func (v *EmailValidator) CheckWithSyntax(ctx context.Context, emailParts types.E
 	}
 
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, v.dialer),
+		getNewArtifact(ctx, emailParts, v.dialer, options...),
 		[]stateFn{
 			syntaxCheck,
 		})

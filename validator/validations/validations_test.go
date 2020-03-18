@@ -9,8 +9,8 @@ import (
 func TestValidations_HasFlag(t *testing.T) {
 	tests := []struct {
 		name string
-		v    Validations
-		tf   Validations
+		v    Flag
+		tf   Flag
 		want bool
 	}{
 		{want: true, name: "has flag", v: FValid, tf: FValid},
@@ -22,7 +22,8 @@ func TestValidations_HasFlag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.v.HasFlag(tt.tf); got != tt.want {
+			v := Validations(tt.v)
+			if got := v.HasFlag(tt.tf); got != tt.want {
 				t.Errorf("HasFlag() = %v, want %v", got, tt.want)
 			}
 		})
@@ -32,7 +33,7 @@ func TestValidations_HasFlag(t *testing.T) {
 func TestValidations_IsValid(t *testing.T) {
 	tests := []struct {
 		name string
-		v    Validations
+		v    Flag
 		want bool
 	}{
 		{want: true, name: "mega valid", v: FValid},
@@ -41,7 +42,8 @@ func TestValidations_IsValid(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.v.IsValid(); got != tt.want {
+			v := Validations(tt.v)
+			if got := v.IsValid(); got != tt.want {
 				t.Errorf("IsValid() = %v, want %v", got, tt.want)
 			}
 		})
@@ -51,7 +53,7 @@ func TestValidations_IsValid(t *testing.T) {
 func TestValidations_IsValidationsForValidDomain(t *testing.T) {
 	tests := []struct {
 		name string
-		v    Validations
+		v    Flag
 		want bool
 	}{
 		{want: true, name: "All domain flags", v: FSyntax | FHostConnect | FMXLookup | FDomainHasIP},
@@ -65,7 +67,8 @@ func TestValidations_IsValidationsForValidDomain(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.v.IsValidationsForValidDomain(); got != tt.want {
+			v := Validations(tt.v)
+			if got := v.IsValidationsForValidDomain(); got != tt.want {
 				t.Errorf("IsValidationsForValidDomain() = %v, want %v (%08b)", got, tt.want, tt.v)
 			}
 		})
@@ -75,7 +78,7 @@ func TestValidations_IsValidationsForValidDomain(t *testing.T) {
 func TestValidations_MarkAsInvalid(t *testing.T) {
 	tests := []struct {
 		name string
-		v    Validations
+		v    Flag
 	}{
 		{name: "Starting as valid", v: FValid},
 		{name: "Starting as invalid", v: 0},
@@ -84,7 +87,7 @@ func TestValidations_MarkAsInvalid(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v := tt.v
+			v := Validations(tt.v)
 			v.MarkAsInvalid()
 
 			if got := v.IsValid(); got != false {
@@ -97,7 +100,7 @@ func TestValidations_MarkAsInvalid(t *testing.T) {
 func TestValidations_MarkAsValid(t *testing.T) {
 	tests := []struct {
 		name string
-		v    Validations
+		v    Flag
 	}{
 		{name: "Starting as valid", v: FValid},
 		{name: "Starting as invalid", v: 0},
@@ -106,7 +109,7 @@ func TestValidations_MarkAsValid(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v := tt.v
+			v := Validations(tt.v)
 			v.MarkAsValid()
 
 			if got := v.IsValid(); got != true {
@@ -119,9 +122,9 @@ func TestValidations_MarkAsValid(t *testing.T) {
 func TestValidations_MergeWithNext(t *testing.T) {
 	tests := []struct {
 		name string
-		v    Validations
-		new  Validations
-		want Validations
+		v    Flag
+		new  Flag
+		want Flag
 	}{
 		{name: "single flag", v: 0, new: FValid, want: FValid},
 		{name: "multiple flags, start from 0", v: 0, new: FMXLookup | FHostConnect, want: FMXLookup | FHostConnect},
@@ -135,7 +138,8 @@ func TestValidations_MergeWithNext(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.v.MergeWithNext(tt.new); got != tt.want {
+			v := Validations(tt.v)
+			if got := v.MergeWithNext(Validations(tt.new)); got != Validations(tt.want) {
 				t.Errorf("MergeWithNext()\n%08b (%d) got\n%08b (%d) want", got, got, tt.want, tt.want)
 			}
 		})
@@ -152,7 +156,7 @@ func TestSizeExpectation(t *testing.T) {
 }
 
 func TestStartingFromEmptyValidations(t *testing.T) {
-	var v Validations
+	var v Flag
 
 	if v != 0 {
 		t.Errorf("Expected the default value of Validations to equal 0, got: %+v", v)
@@ -165,11 +169,11 @@ func TestStartingFromEmptyValidations(t *testing.T) {
 	t.Logf("set mx?       %08b", v)
 	t.Logf("is valid?     %08b", v&FValid)
 
-	if !v.HasFlag(FMXLookup) {
+	if !Validations(v).HasFlag(FMXLookup) {
 		t.Errorf("Expected v to have the FMXLookup flag set, I got: %08b", v)
 	}
 
-	if v.IsValid() {
+	if Validations(v).IsValid() {
 		t.Errorf("Expected v not to be valid, I got: %08b", v)
 	}
 
@@ -178,7 +182,7 @@ func TestStartingFromEmptyValidations(t *testing.T) {
 	t.Logf("valid masked  %08b", v&FValid)
 	t.Logf("is valid?     %t", v&FValid == FValid)
 
-	if !v.IsValid() {
+	if !Validations(v).IsValid() {
 		t.Errorf("Expected v to be valid, I got: %08b", v)
 	}
 
@@ -186,7 +190,7 @@ func TestStartingFromEmptyValidations(t *testing.T) {
 	t.Logf("valid cleared %08b", v)
 	t.Logf("is valid?     %t", v&FValid == FValid)
 
-	if v.IsValid() {
+	if Validations(v).IsValid() {
 		t.Errorf("Expected v no longer to be valid, I got: %08b", v)
 	}
 
@@ -202,38 +206,38 @@ func TestValidations_Merge(t *testing.T) {
 		{
 			name: "Marking valid",
 			v:    Validations(0),
-			new:  FValid,
-			want: FValid,
+			new:  Validations(FValid),
+			want: Validations(FValid),
 		},
 		{
 			name: "Marking invalid",
-			v:    FValid,
+			v:    Validations(FValid),
 			new:  Validations(0),
 			want: Validations(0),
 		},
 		{
 			name: "Marking validations",
 			v:    Validations(0),
-			new:  FMXLookup | FSyntax | FHostConnect,
-			want: FMXLookup | FSyntax | FHostConnect,
+			new:  Validations(FMXLookup | FSyntax | FHostConnect),
+			want: Validations(FMXLookup | FSyntax | FHostConnect),
 		},
 		{
 			name: "Appending flags, excluding valid",
-			v:    FSyntax,
-			new:  FMXLookup | FHostConnect,
-			want: FMXLookup | FSyntax | FHostConnect,
+			v:    Validations(FSyntax),
+			new:  Validations(FMXLookup | FHostConnect),
+			want: Validations(FMXLookup | FSyntax | FHostConnect),
 		},
 		{
 			name: "Appending flags, first valid, new invalid",
-			v:    FSyntax | FValid,
-			new:  FMXLookup | FHostConnect,
-			want: FMXLookup | FSyntax | FHostConnect,
+			v:    Validations(FSyntax | FValid),
+			new:  Validations(FMXLookup | FHostConnect),
+			want: Validations(FMXLookup | FSyntax | FHostConnect),
 		},
 		{
 			name: "Appending flags, first invalid, new valid",
-			v:    FSyntax,
-			new:  FMXLookup | FHostConnect | FValid,
-			want: FMXLookup | FSyntax | FHostConnect | FValid,
+			v:    Validations(FSyntax),
+			new:  Validations(FMXLookup | FHostConnect | FValid),
+			want: Validations(FMXLookup | FSyntax | FHostConnect | FValid),
 		},
 	}
 	for _, tt := range tests {

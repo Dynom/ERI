@@ -15,7 +15,7 @@ type SuggestResponse struct {
 }
 
 type ErrorResponse struct {
-	Error error `json:"error"`
+	Error string `json:"error"`
 }
 
 type AutoCompleteRequest struct {

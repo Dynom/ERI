@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"time"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
 
@@ -9,35 +10,31 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/Dynom/ERI/cmd/web/hitlist"
-
 	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/TySug/finder"
 )
 
-func NewSuggestService(hitList *hitlist.HitList, f *finder.Finder, val validator.CheckFn, logger *logrus.Logger) SuggestSvc {
+func NewSuggestService(f *finder.Finder, val validator.CheckFn, logger *logrus.Logger) SuggestSvc {
 	return SuggestSvc{
-		hitList:   hitList,
 		finder:    f,
 		validator: val,
-		logger:    logger.WithField("svc", "check"),
+		logger:    logger.WithField("svc", "suggest"),
 	}
 }
 
 type SuggestSvc struct {
-	hitList   *hitlist.HitList
 	finder    *finder.Finder
 	validator validator.CheckFn
 	logger    *logrus.Entry
 }
 
 type SuggestResult struct {
-	Alternatives []string
+	Result []string
 }
 
 func (c *SuggestSvc) HandleRequest(ctx context.Context, email string) (SuggestResult, error) {
 	var sr = SuggestResult{
-		Alternatives: []string{email},
+		Result: []string{email},
 	}
 
 	log := c.logger.WithField(handlers.RequestID, ctx.Value(handlers.RequestID))
@@ -47,25 +44,15 @@ func (c *SuggestSvc) HandleRequest(ctx context.Context, email string) (SuggestRe
 		return sr, nil
 	}
 
-	// A direct hit on the domain, passing through
-	hit, err := c.hitList.GetForDomain(parts.Domain)
-	if err == nil {
-		if v := hit.ValidationResult.Validations; v.IsValid() || v.IsValidationsForValidDomain() {
-			return sr, nil
-		}
-	}
-
-	// Validating the argument next
 	vr := c.validator(ctx, parts)
-	log.WithFields(logrus.Fields{
-		"email":       parts.Address,
-		"validations": vr.Validations.String(),
-		"steps":       vr.Steps.String(),
-	}).Debug("Validations ran")
-
-	// Learn of this validation
-	if err := c.hitList.AddEmailAddress(email, vr); err == nil && vr.Validations.IsValidationsForValidDomain() {
-		c.finder.Refresh(c.hitList.GetValidAndUsageSortedDomains())
+	if !vr.HasValidStructure() {
+		// No need to run finder, since it can't be a valid address
+		log.WithFields(logrus.Fields{
+			"email":       email,
+			"steps":       vr.Steps.String(),
+			"validations": vr.Validations.String(),
+		}).Debug("Input doesn't have a valid structure")
+		return sr, nil
 	}
 
 	if vr.Validations.IsValid() {
@@ -89,9 +76,17 @@ func (c *SuggestSvc) HandleRequest(ctx context.Context, email string) (SuggestRe
 		}
 
 		return SuggestResult{
-			Alternatives: []string{parts.Address},
+			Result: []string{parts.Address},
 		}, nil
 	}
 
 	return sr, nil
+}
+
+func didDeadlineExpire(ctx context.Context) bool {
+	if t, set := ctx.Deadline(); set {
+		return t.After(time.Now())
+	}
+
+	return false
 }

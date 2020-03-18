@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Dynom/ERI/validator"
+
 	"github.com/Dynom/ERI/validator/validations"
 )
 
@@ -20,8 +22,8 @@ func TestHitList_AddDomain(t *testing.T) {
 		h    hash.Hash
 	}
 	type args struct {
-		domain      string
-		validations validations.Validations
+		domain string
+		vr     validator.Result
 	}
 	tests := []struct {
 		name    string
@@ -39,7 +41,7 @@ func TestHitList_AddDomain(t *testing.T) {
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
 			}
-			if err := h.AddDomain(tt.args.domain, tt.args.validations); (err != nil) != tt.wantErr {
+			if err := h.AddDomain(tt.args.domain, tt.args.vr); (err != nil) != tt.wantErr {
 				t.Errorf("AddDomain() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -54,8 +56,8 @@ func TestHitList_AddEmailAddress(t *testing.T) {
 		h    hash.Hash
 	}
 	type args struct {
-		email       string
-		validations validations.Validations
+		email string
+		vr    validator.Result
 	}
 	tests := []struct {
 		name    string
@@ -73,7 +75,7 @@ func TestHitList_AddEmailAddress(t *testing.T) {
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
 			}
-			if err := h.AddEmailAddress(tt.args.email, tt.args.validations); (err != nil) != tt.wantErr {
+			if err := h.AddEmailAddress(tt.args.email, tt.args.vr); (err != nil) != tt.wantErr {
 				t.Errorf("AddEmailAddress() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -88,9 +90,9 @@ func TestHitList_AddEmailAddressDeadline(t *testing.T) {
 		h    hash.Hash
 	}
 	type args struct {
-		email       string
-		validations validations.Validations
-		duration    time.Duration
+		email    string
+		vr       validator.Result
+		duration time.Duration
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +110,7 @@ func TestHitList_AddEmailAddressDeadline(t *testing.T) {
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
 			}
-			if err := h.AddEmailAddressDeadline(tt.args.email, tt.args.validations, tt.args.duration); (err != nil) != tt.wantErr {
+			if err := h.AddEmailAddressDeadline(tt.args.email, tt.args.vr, tt.args.duration); (err != nil) != tt.wantErr {
 				t.Errorf("AddEmailAddressDeadline() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -295,30 +297,30 @@ func TestHitList_HasDomain(t *testing.T) {
 	}
 }
 
-func TestHit_TTL(t *testing.T) {
-	type fields struct {
-		Validations validations.Validations
-		ValidUntil  time.Time
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   time.Duration
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := Hit{
-				Validations: tt.fields.Validations,
-				ValidUntil:  tt.fields.ValidUntil,
-			}
-			if got := h.TTL(); got != tt.want {
-				t.Errorf("TTL() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+//func TestHit_TTL(t *testing.T) {
+//	type fields struct {
+//		Validations validations.Validations
+//		ValidUntil  time.Time
+//	}
+//	tests := []struct {
+//		name   string
+//		fields fields
+//		want   time.Duration
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			h := Hit{
+//				Validations: tt.fields.Validations,
+//				ValidUntil:  tt.fields.ValidUntil,
+//			}
+//			if got := h.TTL(); got != tt.want {
+//				t.Errorf("TTL() = %v, want %v", got, tt.want)
+//			}
+//		})
+//	}
+//}
 
 func TestNewHitList(t *testing.T) {
 	type args struct {
@@ -368,13 +370,21 @@ func Test_calculateValidRCPTUsage(t *testing.T) {
 		validOldest := referenceTime.Add(1 * time.Hour)
 
 		rcpts["john@example.org"] = Hit{
-			Validations: validations.FValid,
-			ValidUntil:  validA,
+			ValidationResult: validator.Result{
+				Validations: validations.Validations(validations.FValid),
+				Steps:       0,
+				Timings:     nil,
+			},
+			ValidUntil: validA,
 		}
 
 		rcpts["jane@example.org"] = Hit{
-			Validations: validations.FValid,
-			ValidUntil:  validOldest,
+			ValidationResult: validator.Result{
+				Validations: validations.Validations(validations.FValid),
+				Steps:       0,
+				Timings:     nil,
+			},
+			ValidUntil: validOldest,
 		}
 
 		gotUsage := calculateValidRCPTUsage(rcpts, referenceTime)
@@ -391,25 +401,41 @@ func Test_calculateValidRCPTUsage(t *testing.T) {
 		expiredTime := referenceTime.Add(-1 * time.Hour)
 
 		rcpts["john@example.org"] = Hit{
-			Validations: validations.FValid,
-			ValidUntil:  validTime,
+			ValidationResult: validator.Result{
+				Validations: validations.Validations(validations.FValid),
+				Steps:       0,
+				Timings:     nil,
+			},
+			ValidUntil: validTime,
 		}
 
 		rcpts["jane@example.org"] = Hit{
-			Validations: validations.FValid,
-			ValidUntil:  validTime,
+			ValidationResult: validator.Result{
+				Validations: validations.Validations(validations.FValid),
+				Steps:       0,
+				Timings:     nil,
+			},
+			ValidUntil: validTime,
 		}
 
 		// Validity expired
 		rcpts["late@example.org"] = Hit{
-			Validations: validations.FValid,
-			ValidUntil:  expiredTime,
+			ValidationResult: validator.Result{
+				Validations: validations.Validations(validations.FValid),
+				Steps:       0,
+				Timings:     nil,
+			},
+			ValidUntil: expiredTime,
 		}
 
 		// Invalid
 		rcpts["not-valid@example.org"] = Hit{
-			Validations: 0,
-			ValidUntil:  validTime,
+			ValidationResult: validator.Result{
+				Validations: 0,
+				Steps:       0,
+				Timings:     nil,
+			},
+			ValidUntil: validTime,
 		}
 
 		got := calculateValidRCPTUsage(rcpts, referenceTime)

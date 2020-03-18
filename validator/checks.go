@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"net/mail"
@@ -19,6 +18,10 @@ type ValidationError struct {
 
 // checkEmailAddressSyntax checks for "common sense" e-mail address syntax. It doesn't try to be fully compliant.
 func checkEmailAddressSyntax(a *Artifact) error {
+	if a.Steps.HasFlag(validations.FSyntax) {
+		return nil
+	}
+
 	a.Steps.SetFlag(validations.FSyntax)
 
 	var err error
@@ -58,6 +61,10 @@ func checkEmailAddressSyntax(a *Artifact) error {
 
 // checkDomainSyntax checks if the Domain part has a sensible syntax. It ignores the Local part, so that can be omitted
 func checkDomainSyntax(a *Artifact) error {
+	if a.Steps.HasFlag(validations.FSyntax) {
+		return nil
+	}
+
 	a.Steps.SetFlag(validations.FSyntax)
 
 	start := time.Now()
@@ -75,22 +82,12 @@ func checkDomainSyntax(a *Artifact) error {
 	return nil
 }
 
-// getEarliestDeadlineCTX returns a context with the deadline set to whatever is earliest
-func getEarliestDeadlineCTX(parentCTX context.Context, ttl time.Duration) (context.Context, context.CancelFunc) {
-
-	parentDeadline, ok := parentCTX.Deadline()
-	if ok {
-		ourDeadline := time.Now().Add(ttl)
-		if ourDeadline.Before(parentDeadline) {
-			return context.WithDeadline(parentCTX, ourDeadline)
-		}
-	}
-
-	return context.WithTimeout(parentCTX, ttl)
-}
-
 // checkIfDomainHasMX performs a DNS lookup and fetches MX records.
 func checkIfDomainHasMX(a *Artifact) error {
+	if a.Steps.HasFlag(validations.FMXLookup) {
+		return nil
+	}
+
 	a.Steps.SetFlag(validations.FMXLookup)
 
 	const ttl = 100 * time.Millisecond
@@ -121,6 +118,10 @@ func checkIfDomainHasMX(a *Artifact) error {
 
 // checkIfMXHasIP performs a NS lookup and fetches the IP addresses of the MX hosts
 func checkIfMXHasIP(a *Artifact) error {
+	if a.Steps.HasFlag(validations.FDomainHasIP) {
+		return nil
+	}
+
 	a.Steps.SetFlag(validations.FDomainHasIP)
 
 	var err error
@@ -158,6 +159,10 @@ func checkIfMXHasIP(a *Artifact) error {
 // checkMXAcceptsConnect checks if an MX host accepts connections. Expensive and requires a valid PTR setup for most
 // real world applications
 func checkMXAcceptsConnect(a *Artifact) error {
+	if a.Steps.HasFlag(validations.FHostConnect) {
+		return nil
+	}
+
 	a.Steps.SetFlag(validations.FHostConnect)
 
 	start := time.Now()
@@ -193,6 +198,10 @@ func checkMXAcceptsConnect(a *Artifact) error {
 // checkRCPT issues mail commands to the mail server, asking politely if a recipient inbox exists. High chance of false
 // positives on real world applications, due to security reasons.
 func checkRCPT(a *Artifact) error {
+	if a.Steps.HasFlag(validations.FValidRCPT) {
+		return nil
+	}
+
 	a.Steps.SetFlag(validations.FValidRCPT)
 
 	if a.Validations.HasFlag(validations.FValidRCPT) {
