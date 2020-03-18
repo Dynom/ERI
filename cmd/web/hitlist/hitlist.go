@@ -13,18 +13,12 @@ import (
 	"github.com/Dynom/ERI/types"
 )
 
-func New(h hash.Hash, ttl time.Duration, options ...Option) *HitList {
+func New(h hash.Hash, ttl time.Duration) *HitList {
 	l := HitList{
-		set:        make(map[string]domainHit),
-		lock:       sync.RWMutex{},
-		notifyLock: sync.RWMutex{},
-		h:          h,
-		ttl:        ttl,
-		toNotify:   make([]OnChangeFn, 0),
-	}
-
-	for _, o := range options {
-		o(&l)
+		set:  make(map[string]domainHit),
+		lock: sync.RWMutex{},
+		h:    h,
+		ttl:  ttl,
 	}
 
 	return &l
@@ -32,17 +26,15 @@ func New(h hash.Hash, ttl time.Duration, options ...Option) *HitList {
 
 // HitList is an opinionated nearly-flat tree structured type that captures e-mail address validity on two levels
 type HitList struct {
-	set        map[string]domainHit
-	ttl        time.Duration // The default TTL for when Learning about a new e-mail address
-	lock       sync.RWMutex
-	notifyLock sync.RWMutex
-	h          hash.Hash
-	toNotify   []OnChangeFn
+	set  map[string]domainHit
+	ttl  time.Duration // The default TTL for when Learning about a new e-mail address
+	lock sync.RWMutex
+	h    hash.Hash
 }
 
 type Hit struct {
 	ValidationResult validator.Result
-	ValidUntil       time.Time // The TTL
+	ValidUntil       time.Time
 	Domain           domainHit
 }
 
