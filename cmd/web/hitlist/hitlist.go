@@ -2,7 +2,6 @@ package hitlist
 
 import (
 	"encoding/hex"
-	"errors"
 	"hash"
 	"sort"
 	"strings"
@@ -12,10 +11,6 @@ import (
 	"github.com/Dynom/ERI/validator"
 
 	"github.com/Dynom/ERI/types"
-)
-
-var (
-	ErrNotPresent = errors.New("value not present")
 )
 
 func New(h hash.Hash, ttl time.Duration, options ...Option) *HitList {
