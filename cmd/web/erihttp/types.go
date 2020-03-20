@@ -11,7 +11,8 @@ type CheckResponse struct {
 }
 
 type SuggestResponse struct {
-	Alternatives []string `json:"alternatives"`
+	Alternatives    []string `json:"alternatives"`
+	MalformedSyntax bool     `json:"malformed_syntax"`
 }
 
 type ErrorResponse struct {

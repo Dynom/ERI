@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"sync"
@@ -79,7 +80,7 @@ func main() {
 	val := validator.NewEmailAddressValidator(dialer)
 
 	// Pick the validator we want to use
-	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.CheckValidator, val)
+	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.SuggestValidator, val)
 
 	// Wrap it
 	checkValidator = validatorPersistProxy(validationResultPersister, logger, checkValidator)
@@ -110,11 +111,13 @@ func main() {
 
 	bucket := ratelimit.NewBucketWithRate(100, 500)
 	s := erihttp.BuildHTTPServer(mux, conf, lw,
-		handlers.NewRateLimitHandler(logger, bucket, time.Millisecond*100),
+		//handlers.NewRateLimitHandler(logger, bucket, time.Millisecond*100),
 		handlers.WithRequestLogger(logger),
 		handlers.WithGzipHandler(),
 		handlers.WithHeaders(sliceToHTTPHeaders(conf.Server.Headers)),
 	)
+
+	_ = bucket
 
 	logger.WithFields(logrus.Fields{
 		"listen_on": conf.Server.ListenOn,
@@ -132,5 +135,5 @@ func mapValidatorTypeToValidatorFn(vt config.ValidatorType, v validator.EmailVal
 		return v.CheckWithSyntax
 	}
 
-	panic("Incorrect validator to map, this probably means an inconsistency between main and config packages.")
+	panic(fmt.Sprintf("Incorrect validator %q configured.", vt))
 }

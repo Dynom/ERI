@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
+
+	"github.com/Dynom/ERI/validator"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
 
@@ -80,6 +83,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) 
 			"input":             req.Domain,
 		}).Debugf("Done performing check")
 
+		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(response)
 
@@ -89,24 +93,24 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) 
 func NewSuggestHandler(logger logrus.FieldLogger, svc services.SuggestSvc) http.HandlerFunc {
 	log := logger.WithField("handler", "suggest")
 	return func(w http.ResponseWriter, r *http.Request) {
-		var err error
+		var sugErr error
 		var req erihttp.SuggestRequest
 
 		log := log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 
-		body, err := erihttp.GetBodyFromHTTPRequest(r)
-		if err != nil {
-			log.WithError(err).Error("Error handling request")
+		body, sugErr := erihttp.GetBodyFromHTTPRequest(r)
+		if sugErr != nil {
+			log.WithError(sugErr).Error("Error handling request")
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte("Request failed"))
 			return
 		}
 
-		err = json.Unmarshal(body, &req)
-		if err != nil {
-			log.WithError(err).Error("Error handling request body")
+		sugErr = json.Unmarshal(body, &req)
+		if sugErr != nil {
+			log.WithError(sugErr).Error("Error handling request body")
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte("Request failed, unable to parse request body. Did you send JSON?"))
 			return
@@ -115,38 +119,21 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc services.SuggestSvc) http.
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
-		checkResult, err := svc.HandleRequest(ctx, req.Email)
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"result":  checkResult,
-				"error":   err,
-				"ctx_err": ctx.Err(),
-			}).Error("Failed to validate e-mail address")
-
-			response, rerr := json.Marshal(erihttp.ErrorResponse{
-				Error: err.Error(),
-			})
-
-			if rerr != nil {
-				log.WithError(rerr).Error("Unable to marshal error response")
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write(response)
-			return
+		var alts = []string{req.Email}
+		result, sugErr := svc.Suggest(ctx, req.Email)
+		if sugErr == nil && len(result.Alternatives) > 0 {
+			alts = append(alts[0:0], result.Alternatives...)
 		}
 
 		response, err := json.Marshal(erihttp.SuggestResponse{
-			Alternatives: checkResult.Result,
+			Alternatives:    alts,
+			MalformedSyntax: errors.Is(sugErr, validator.ErrEmailAddressSyntax),
 		})
+
 		if err != nil {
 			log.WithFields(logrus.Fields{
-				"result":   checkResult,
 				"response": response,
-				"error":    err,
+				"error":    sugErr,
 			}).Error("Failed to marshal the response")
 
 			w.WriteHeader(http.StatusInternalServerError)
@@ -155,8 +142,8 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc services.SuggestSvc) http.
 		}
 
 		log.WithFields(logrus.Fields{
-			"result": checkResult,
-			"target": req.Email,
+			"alternatives": alts,
+			"target":       req.Email,
 		}).Debugf("Done performing check")
 
 		w.Header().Add("Content-Type", "application/json")

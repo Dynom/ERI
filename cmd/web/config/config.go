@@ -53,19 +53,17 @@ type Config struct {
 			UseBuckets bool `toml:"useBuckets"`
 		} `toml:"finder"`
 		Validator struct {
-			Resolver             string        `toml:"resolver"`
-			CheckValidator       ValidatorType `toml:"check"`
-			LearnValidator       ValidatorType `toml:"learn"`
-			DomainsMustBeLearned bool          `toml:"domainsMustBeLearned"`
+			Resolver         string        `toml:"resolver"`
+			SuggestValidator ValidatorType `toml:"suggest"`
 		} `toml:"validator"`
 		Profiler struct {
 			Enable bool   `toml:"enable"`
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
-		Backend struct {
-			Driver string `toml:"driver"`
-			URL    string `toml:"url"`
-		} `toml:"backend"`
+		//Backend struct {
+		//	Driver string `toml:"driver"`
+		//	URL    string `toml:"url"`
+		//} `toml:"backend"`
 	} `toml:"server"`
 }
 

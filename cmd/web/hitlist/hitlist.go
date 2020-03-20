@@ -95,6 +95,7 @@ func (h *HitList) GetValidAndUsageSortedDomains() []string {
 func (h *HitList) AddEmailAddressDeadline(email string, vr validator.Result, duration time.Duration) error {
 	var domain string
 	var safeLocal Recipient
+
 	{
 		email = strings.ToLower(email)
 		parts, err := types.NewEmailParts(email)

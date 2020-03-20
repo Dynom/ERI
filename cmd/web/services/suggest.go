@@ -29,30 +29,32 @@ type SuggestSvc struct {
 }
 
 type SuggestResult struct {
-	Result []string
+	Alternatives []string
 }
 
-func (c *SuggestSvc) HandleRequest(ctx context.Context, email string) (SuggestResult, error) {
+func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, error) {
 	var sr = SuggestResult{
-		Result: []string{email},
+		Alternatives: []string{email},
 	}
 
-	log := c.logger.WithField(handlers.RequestID, ctx.Value(handlers.RequestID))
+	log := c.logger.WithFields(logrus.Fields{
+		handlers.RequestID: ctx.Value(handlers.RequestID),
+		"email":            email,
+	})
 
 	parts, err := types.NewEmailParts(email)
 	if err != nil {
-		return sr, nil
+		log.WithError(err).Debug("Unable to split input")
+		return sr, validator.ErrEmailAddressSyntax
 	}
 
 	vr := c.validator(ctx, parts)
 	if !vr.HasValidStructure() {
-		// No need to run finder, since it can't be a valid address
 		log.WithFields(logrus.Fields{
-			"email":       email,
 			"steps":       vr.Steps.String(),
 			"validations": vr.Validations.String(),
 		}).Debug("Input doesn't have a valid structure")
-		return sr, nil
+		return sr, validator.ErrEmailAddressSyntax
 	}
 
 	if vr.Validations.IsValid() {
@@ -70,13 +72,9 @@ func (c *SuggestSvc) HandleRequest(ctx context.Context, email string) (SuggestRe
 	}).Debug("Used Finder")
 
 	if score > finder.WorstScoreValue {
-		parts, err := types.NewEmailFromParts(parts.Local, alt)
-		if err != nil {
-			return sr, err
-		}
-
+		parts := types.NewEmailFromParts(parts.Local, alt)
 		return SuggestResult{
-			Result: []string{parts.Address},
+			Alternatives: []string{parts.Address},
 		}, nil
 	}
 

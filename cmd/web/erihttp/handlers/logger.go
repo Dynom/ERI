@@ -20,6 +20,7 @@ func WithRequestLogger(logger *logrus.Logger) HandlerWrapper {
 		var reqID uint64
 		m := sync.Mutex{}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var now time.Time
 			m.Lock()
 			reqID++
 			m.Unlock()
@@ -34,13 +35,15 @@ func WithRequestLogger(logger *logrus.Logger) HandlerWrapper {
 
 			r = r.WithContext(context.WithValue(r.Context(), RequestID, rid))
 
-			now := time.Now()
 			l.Debug("Request start")
 
 			defer func() {
-				l.WithField("time_µs", time.Since(now).Microseconds()).Debug("Request stop")
+				l.WithFields(logrus.Fields{
+					"time_µs": time.Since(now).Microseconds(),
+				}).Debug("Request stop")
 			}()
 
+			now = time.Now()
 			handler.ServeHTTP(w, r)
 		})
 	}
