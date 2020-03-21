@@ -54,3 +54,8 @@
 #    # Postgres: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
 #    driver = "postgres"
 #    url = "postgresql://postgres@localhost:15432/eri?sslmode=disable"
+
+  [server.graphql]
+    prettyOutput = true
+    graphiQL = true
+    playground = true

@@ -64,6 +64,11 @@ type Config struct {
 		//	Driver string `toml:"driver"`
 		//	URL    string `toml:"url"`
 		//} `toml:"backend"`
+		GraphQL struct {
+			PrettyOutput bool `toml:"prettyOutput"`
+			GraphiQL     bool `toml:"graphiQL"`
+			Playground   bool `toml:"playground"`
+		} `toml:"graphql"`
 	} `toml:"server"`
 }
 

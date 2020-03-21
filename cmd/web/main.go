@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -24,6 +26,9 @@ import (
 
 	"github.com/Dynom/TySug/finder"
 	"github.com/sirupsen/logrus"
+
+	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/handler"
 )
 
 // Version contains the app version, the value is changed during compile time to the appropriate Git tag
@@ -96,6 +101,71 @@ func main() {
 
 	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
 	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder))
+
+	suggestionType := graphql.NewObject(graphql.ObjectConfig{
+		Name: "suggestion",
+		Fields: graphql.Fields{
+			"alternatives": &graphql.Field{
+				Description: "The list of alternatives. If no better match is found, the input is returned. 1 or more.",
+				Type:        graphql.NewList(graphql.String),
+			},
+
+			"malformedSyntax": &graphql.Field{
+				Description: "Boolean value that when true, means the address can't be valid. Conversely when false, doesn't mean it is.",
+				Type:        graphql.Boolean,
+			},
+		},
+		Description: "",
+	})
+
+	fields := graphql.Fields{
+		"suggestion": &graphql.Field{
+			Type: suggestionType,
+			Args: graphql.FieldConfigArgument{
+				"email": &graphql.ArgumentConfig{
+					Type:        graphql.String,
+					Description: "The e-mail address you'd like to get suggestions for",
+				},
+			},
+			Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
+				if value, ok := p.Args["email"]; ok {
+					var err error
+					email := value.(string)
+					result, sugErr := suggestSvc.Suggest(p.Context, email)
+					if sugErr != nil && sugErr != validator.ErrEmailAddressSyntax {
+						err = sugErr
+					}
+
+					return erihttp.SuggestResponse{
+						Alternatives:    result.Alternatives,
+						MalformedSyntax: sugErr == validator.ErrEmailAddressSyntax,
+					}, err
+				}
+
+				return nil, errors.New("missing required parameters")
+			},
+			Description: "Get suggestions",
+		},
+	}
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{
+			Name:   "RootQuery",
+			Fields: fields,
+		}),
+	})
+
+	if err != nil {
+		logger.WithError(err).Error("Unable to build schema")
+		os.Exit(1)
+	}
+
+	mux.Handle("/graph", handler.New(&handler.Config{
+		Schema:     &schema,
+		Pretty:     conf.Server.GraphQL.PrettyOutput,
+		GraphiQL:   conf.Server.GraphQL.GraphiQL,
+		Playground: conf.Server.GraphQL.Playground,
+	}))
 
 	lw := logger.WriterLevel(logger.Level)
 	defer func() {
