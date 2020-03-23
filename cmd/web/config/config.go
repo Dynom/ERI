@@ -1,10 +1,18 @@
 package config
 
 import (
+	"encoding"
 	"fmt"
 	"io/ioutil"
+	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
+)
+
+var (
+	VTStructure ValidatorType = "structure"
+	VTLookup    ValidatorType = "lookup"
 )
 
 func NewConfig(fileName string) (Config, error) {
@@ -23,6 +31,7 @@ func NewConfig(fileName string) (Config, error) {
 	return c, nil
 }
 
+// @todo restructure, not all elements belong beneath "Server" and separating "CORS" makes little sense as well
 // Config holds central config parameters
 type Config struct {
 	Client struct {
@@ -45,16 +54,76 @@ type Config struct {
 			UseBuckets bool `toml:"useBuckets"`
 		} `toml:"finder"`
 		Validator struct {
-			Resolver string `toml:"resolver"`
+			Resolver         string        `toml:"resolver"`
+			SuggestValidator ValidatorType `toml:"suggest"`
 		} `toml:"validator"`
 		Profiler struct {
 			Enable bool   `toml:"enable"`
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
+		//Backend struct {
+		//	Driver string `toml:"driver"`
+		//	URL    string `toml:"url"`
+		//} `toml:"backend"`
+		GraphQL struct {
+			PrettyOutput bool `toml:"prettyOutput"`
+			GraphiQL     bool `toml:"graphiQL"`
+			Playground   bool `toml:"playground"`
+		} `toml:"graphql"`
+		RateLimiter struct {
+			Rate      uint     `toml:"rate"`
+			Capacity  uint     `toml:"capacity"`
+			ParkedTTL duration `toml:"parkedTTL"`
+		} `toml:"rateLimiter"`
 	} `toml:"server"`
 }
 
 type Header struct {
 	Name  string `toml:"name"`
 	Value string `toml:"value"`
+}
+
+var (
+	_ encoding.TextUnmarshaler
+)
+
+type ValidatorType string
+type ValidatorTypes []ValidatorType
+
+func (v ValidatorTypes) AsStringSlice() []string {
+	var result = make([]string, 0, len(v))
+	for _, part := range v {
+		result = append(result, string(part))
+	}
+
+	return result
+}
+
+func (vt *ValidatorType) UnmarshalText(value []byte) error {
+	var validTypes = ValidatorTypes{VTStructure, VTLookup}
+
+	v := string(value)
+	for _, t := range validTypes.AsStringSlice() {
+		if t == v {
+			*vt = ValidatorType(v)
+			return nil
+		}
+	}
+
+	expected := strings.Join(validTypes.AsStringSlice(), ", ")
+	return fmt.Errorf("unsupported value %q for validator type. Expected one of: %q", value, expected)
+}
+
+type duration struct {
+	duration time.Duration
+}
+
+func (d duration) AsDuration() time.Duration {
+	return d.duration
+}
+
+func (d *duration) UnmarshalText(text []byte) error {
+	var err error
+	d.duration, err = time.ParseDuration(string(text))
+	return err
 }
