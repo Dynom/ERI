@@ -1,9 +1,9 @@
 [client]
 
-  # The maximum amount of references the client can send to test against (@todo)
-  #referencesMax = 100
   # The maximum length (in bytes) of the "input" field, to accept to the finder.
   inputLengthMax = 50
+
+
 
 [CORS]
   # Not defining allowedOrigins will use wildcard '*', meaning all clients are allowed.
@@ -59,3 +59,11 @@
     prettyOutput = true
     graphiQL = true
     playground = true
+
+    [server.rateLimiter]
+    rate = 100
+    capacity = 500
+
+    # amount of time a rate-limited request is allowed to wait for. Anything above this is aborted, to help protect
+    # against connection draining.
+    parkedTTL = "100ms"

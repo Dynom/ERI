@@ -90,27 +90,28 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) 
 	}
 }
 
+// NewSuggestHandler constructs a HTTP handler that deals with suggestion requests
 func NewSuggestHandler(logger logrus.FieldLogger, svc services.SuggestSvc) http.HandlerFunc {
 	log := logger.WithField("handler", "suggest")
 	return func(w http.ResponseWriter, r *http.Request) {
-		var sugErr error
+		var err error
 		var req erihttp.SuggestRequest
 
 		log := log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 
-		body, sugErr := erihttp.GetBodyFromHTTPRequest(r)
-		if sugErr != nil {
-			log.WithError(sugErr).Error("Error handling request")
+		body, err := erihttp.GetBodyFromHTTPRequest(r)
+		if err != nil {
+			log.WithError(err).Error("Error handling request")
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte("Request failed"))
 			return
 		}
 
-		sugErr = json.Unmarshal(body, &req)
-		if sugErr != nil {
-			log.WithError(sugErr).Error("Error handling request body")
+		err = json.Unmarshal(body, &req)
+		if err != nil {
+			log.WithError(err).Error("Error handling request body")
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte("Request failed, unable to parse request body. Did you send JSON?"))
 			return
@@ -120,9 +121,13 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc services.SuggestSvc) http.
 		defer cancel()
 
 		var alts = []string{req.Email}
-		result, sugErr := svc.Suggest(ctx, req.Email)
-		if sugErr == nil && len(result.Alternatives) > 0 {
-			alts = append(alts[0:0], result.Alternatives...)
+		var sugErr error
+		{
+			var result services.SuggestResult
+			result, sugErr = svc.Suggest(ctx, req.Email)
+			if sugErr == nil && len(result.Alternatives) > 0 {
+				alts = append(alts[0:0], result.Alternatives...)
+			}
 		}
 
 		response, err := json.Marshal(erihttp.SuggestResponse{

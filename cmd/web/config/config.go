@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -69,6 +70,11 @@ type Config struct {
 			GraphiQL     bool `toml:"graphiQL"`
 			Playground   bool `toml:"playground"`
 		} `toml:"graphql"`
+		RateLimiter struct {
+			Rate      uint     `toml:"rate"`
+			Capacity  uint     `toml:"capacity"`
+			ParkedTTL duration `toml:"parkedTTL"`
+		} `toml:"rateLimiter"`
 	} `toml:"server"`
 }
 
@@ -106,4 +112,18 @@ func (vt *ValidatorType) UnmarshalText(value []byte) error {
 
 	expected := strings.Join(validTypes.AsStringSlice(), ", ")
 	return fmt.Errorf("unsupported value %q for validator type. Expected one of: %q", value, expected)
+}
+
+type duration struct {
+	duration time.Duration
+}
+
+func (d duration) AsDuration() time.Duration {
+	return d.duration
+}
+
+func (d *duration) UnmarshalText(text []byte) error {
+	var err error
+	d.duration, err = time.ParseDuration(string(text))
+	return err
 }

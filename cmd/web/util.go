@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
+
+	"github.com/Dynom/ERI/validator"
 
 	"github.com/sirupsen/logrus"
 
@@ -62,10 +65,28 @@ func setCustomResolver(dialer *net.Dialer, host string) {
 }
 
 func deferClose(toClose io.Closer, log logrus.FieldLogger) {
-	if toClose != nil {
-		err := toClose.Close()
-		if err != nil {
-			log.WithError(err).Error("Failed to close handle")
-		}
+	if toClose == nil {
+		return
 	}
+
+	err := toClose.Close()
+	if err != nil {
+		if log == nil {
+			fmt.Printf("error failed to close handle %s", err)
+			return
+		}
+
+		log.WithError(err).Error("Failed to close handle")
+	}
+}
+
+func mapValidatorTypeToValidatorFn(vt config.ValidatorType, v validator.EmailValidator) validator.CheckFn {
+	switch vt {
+	case config.VTLookup:
+		return v.CheckWithLookup
+	case config.VTStructure:
+		return v.CheckWithSyntax
+	}
+
+	panic(fmt.Sprintf("Incorrect validator %q configured.", vt))
 }

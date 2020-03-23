@@ -1,8 +1,6 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -27,8 +25,7 @@ import (
 	"github.com/Dynom/TySug/finder"
 	"github.com/sirupsen/logrus"
 
-	"github.com/graphql-go/graphql"
-	"github.com/graphql-go/handler"
+	gqlHandler "github.com/graphql-go/handler"
 )
 
 // Version contains the app version, the value is changed during compile time to the appropriate Git tag
@@ -96,71 +93,20 @@ func main() {
 	suggestSvc := services.NewSuggestService(myFinder, checkValidator, logger)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", NewHealthHandler(logger))
-	mux.HandleFunc("/health", NewHealthHandler(logger))
+	healthHandler := NewHealthHandler(logger)
+	mux.HandleFunc("/", healthHandler)
+	mux.HandleFunc("/health", healthHandler)
 
 	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
 	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder))
 
-	suggestionType := graphql.NewObject(graphql.ObjectConfig{
-		Name: "suggestion",
-		Fields: graphql.Fields{
-			"alternatives": &graphql.Field{
-				Description: "The list of alternatives. If no better match is found, the input is returned. 1 or more.",
-				Type:        graphql.NewList(graphql.String),
-			},
-
-			"malformedSyntax": &graphql.Field{
-				Description: "Boolean value that when true, means the address can't be valid. Conversely when false, doesn't mean it is.",
-				Type:        graphql.Boolean,
-			},
-		},
-		Description: "",
-	})
-
-	fields := graphql.Fields{
-		"suggestion": &graphql.Field{
-			Type: suggestionType,
-			Args: graphql.FieldConfigArgument{
-				"email": &graphql.ArgumentConfig{
-					Type:        graphql.String,
-					Description: "The e-mail address you'd like to get suggestions for",
-				},
-			},
-			Resolve: func(p graphql.ResolveParams) (i interface{}, err error) {
-				if value, ok := p.Args["email"]; ok {
-					var err error
-					email := value.(string)
-					result, sugErr := suggestSvc.Suggest(p.Context, email)
-					if sugErr != nil && sugErr != validator.ErrEmailAddressSyntax {
-						err = sugErr
-					}
-
-					return erihttp.SuggestResponse{
-						Alternatives:    result.Alternatives,
-						MalformedSyntax: sugErr == validator.ErrEmailAddressSyntax,
-					}, err
-				}
-
-				return nil, errors.New("missing required parameters")
-			},
-			Description: "Get suggestions",
-		},
-	}
-
-	schema, err := graphql.NewSchema(graphql.SchemaConfig{
-		Query: graphql.NewObject(graphql.ObjectConfig{
-			Name:   "RootQuery",
-			Fields: fields,
-		}),
-	})
-
+	schema, err := NewGraphQLSchema(&suggestSvc)
 	if err != nil {
 		logger.WithError(err).Error("Unable to build schema")
 		os.Exit(1)
 	}
 
-	mux.Handle("/graph", handler.New(&handler.Config{
+	mux.Handle("/graph", gqlHandler.New(&gqlHandler.Config{
 		Schema:     &schema,
 		Pretty:     conf.Server.GraphQL.PrettyOutput,
 		GraphiQL:   conf.Server.GraphQL.GraphiQL,
@@ -168,9 +114,7 @@ func main() {
 	}))
 
 	lw := logger.WriterLevel(logger.Level)
-	defer func() {
-		_ = lw.Close()
-	}()
+	defer deferClose(lw, nil)
 
 	if conf.Server.Profiler.Enable {
 		configureProfiler(mux, conf)
@@ -179,15 +123,13 @@ func main() {
 	// @todo status endpoint (or tick logger)
 	// @todo make the RL configurable
 
-	bucket := ratelimit.NewBucketWithRate(100, 500)
+	bucket := ratelimit.NewBucketWithRate(float64(conf.Server.RateLimiter.Rate), int64(conf.Server.RateLimiter.Capacity))
 	s := erihttp.BuildHTTPServer(mux, conf, lw,
-		//handlers.NewRateLimitHandler(logger, bucket, time.Millisecond*100),
+		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),
 		handlers.WithGzipHandler(),
 		handlers.WithHeaders(sliceToHTTPHeaders(conf.Server.Headers)),
 	)
-
-	_ = bucket
 
 	logger.WithFields(logrus.Fields{
 		"listen_on": conf.Server.ListenOn,
@@ -195,15 +137,4 @@ func main() {
 	err = s.ListenAndServe()
 
 	logger.Errorf("HTTP server stopped %s", err)
-}
-
-func mapValidatorTypeToValidatorFn(vt config.ValidatorType, v validator.EmailValidator) validator.CheckFn {
-	switch vt {
-	case config.VTLookup:
-		return v.CheckWithLookup
-	case config.VTStructure:
-		return v.CheckWithSyntax
-	}
-
-	panic(fmt.Sprintf("Incorrect validator %q configured.", vt))
 }
