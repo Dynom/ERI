@@ -3,8 +3,6 @@
   # The maximum length (in bytes) of the "input" field, to accept to the finder.
   inputLengthMax = 50
 
-
-
 [CORS]
   # Not defining allowedOrigins will use wildcard '*', meaning all clients are allowed.
   #allowedOrigins = [
