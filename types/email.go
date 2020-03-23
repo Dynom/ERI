@@ -10,8 +10,12 @@ var (
 )
 
 // NewEmailFromParts reconstructs EmailParts from two parts
-func NewEmailFromParts(local, domain string) (EmailParts, error) {
-	return NewEmailParts(local + `@` + domain)
+func NewEmailFromParts(local, domain string) EmailParts {
+	return EmailParts{
+		Address: local + `@` + domain,
+		Local:   local,
+		Domain:  domain,
+	}
 }
 
 // NewEmailParts takes an e-mail address and returns it lower-cased and in parts. It performs only the most minimal form

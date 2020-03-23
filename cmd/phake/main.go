@@ -12,7 +12,10 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 	"unicode/utf8"
+
+	"github.com/Dynom/ERI/validator"
 )
 
 const batchMaxSize = 5000
@@ -101,6 +104,9 @@ func main() {
 					if isInvisible(char) || !utf8.ValidRune(char) {
 						fmt.Printf("\t '%s' has character: '%s' = 0x%x on position %d\n", domain, string(char), char, pos)
 					}
+				}
+
+				if !validator.MightBeAHostOrIP(domain) {
 					continue
 				}
 
@@ -116,7 +122,7 @@ func main() {
 					}
 
 					// truncate domains
-					domains = domains[:0] //[]string{}
+					domains = domains[:0:0] //[]string{}
 				}
 
 				continue
@@ -146,7 +152,17 @@ func generateAndSendBatches(result io.StringWriter, numberOfAddresses int64, dom
 		batchSize = numberOfAddresses
 	}
 
-	client := http.DefaultClient
+	client := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:           0,
+			MaxIdleConnsPerHost:    0,
+			MaxConnsPerHost:        0,
+			IdleConnTimeout:        10 * time.Second,
+			MaxResponseHeaderBytes: 1 << 19,
+		},
+		Timeout: 0, //10 * time.Second,
+	}
+
 	for batchIndex := int64(0); batchIndex < numberOfAddresses; batchIndex += batchSize {
 
 		var toLearn = make([]LearnValue, batchSize)

@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"net/mail"
@@ -11,8 +10,20 @@ import (
 	"github.com/Dynom/ERI/validator/validations"
 )
 
+type ValidationError struct {
+	Validator string
+	Internal  error
+	error
+}
+
 // checkEmailAddressSyntax checks for "common sense" e-mail address syntax. It doesn't try to be fully compliant.
 func checkEmailAddressSyntax(a *Artifact) error {
+	if a.Steps.HasFlag(validations.FSyntax) {
+		return nil
+	}
+
+	a.Steps.SetFlag(validations.FSyntax)
+
 	var err error
 
 	start := time.Now()
@@ -20,51 +31,64 @@ func checkEmailAddressSyntax(a *Artifact) error {
 
 	_, err = mail.ParseAddress(a.email.Address)
 	if err != nil {
-		return err
+		return ValidationError{
+			Validator: "checkEmailAddressSyntax",
+			Internal:  err,
+			error:     ErrEmailAddressSyntax,
+		}
 	}
 
 	// Perform additional checks to weed out commonly occurring errors (see tests for details)
 	if !looksLikeValidLocalPart(a.email.Local) {
-		return fmt.Errorf("local part '%s' has invalid syntax", a.email.Local)
+		return ValidationError{
+			Validator: "checkEmailAddressSyntax",
+			Internal:  fmt.Errorf("local part '%s' has invalid syntax", a.email.Local),
+			error:     ErrEmailAddressSyntax,
+		}
 	}
 
 	if !looksLikeValidDomain(a.email.Domain) {
-		return fmt.Errorf("domain part '%s' has invalid syntax", a.email.Domain)
+		return ValidationError{
+			Validator: "checkEmailAddressSyntax",
+			Internal:  fmt.Errorf("domain part '%s' has invalid syntax", a.email.Domain),
+			error:     ErrEmailAddressSyntax,
+		}
 	}
 
-	a.Validations = a.Validations.MergeWithNext(validations.VFSyntax)
+	a.Validations = a.Validations.SetFlag(validations.FSyntax)
 	return nil
 }
 
 // checkDomainSyntax checks if the Domain part has a sensible syntax. It ignores the Local part, so that can be omitted
 func checkDomainSyntax(a *Artifact) error {
+	if a.Steps.HasFlag(validations.FSyntax) {
+		return nil
+	}
+
+	a.Steps.SetFlag(validations.FSyntax)
+
 	start := time.Now()
 	defer a.Timings.Add("checkDomainSyntax", time.Since(start))
 
 	if !looksLikeValidDomain(a.email.Domain) {
-		return fmt.Errorf("domain part '%s' has invalid syntax", a.email.Domain)
-	}
-
-	a.Validations = a.Validations.MergeWithNext(validations.VFSyntax)
-	return nil
-}
-
-// getEarliestDeadlineCTX returns a context with the deadline set to whatever is earliest
-func getEarliestDeadlineCTX(parentCTX context.Context, ttl time.Duration) (context.Context, context.CancelFunc) {
-
-	parentDeadline, ok := parentCTX.Deadline()
-	if ok {
-		ourDeadline := time.Now().Add(ttl)
-		if ourDeadline.Before(parentDeadline) {
-			return context.WithDeadline(parentCTX, ourDeadline)
+		return ValidationError{
+			Validator: "checkDomainSyntax",
+			Internal:  fmt.Errorf("domain part '%s' has invalid syntax", a.email.Domain),
+			error:     ErrEmailAddressSyntax,
 		}
 	}
 
-	return context.WithTimeout(parentCTX, ttl)
+	a.Validations.SetFlag(validations.FSyntax)
+	return nil
 }
 
 // checkIfDomainHasMX performs a DNS lookup and fetches MX records.
 func checkIfDomainHasMX(a *Artifact) error {
+	if a.Steps.HasFlag(validations.FMXLookup) {
+		return nil
+	}
+
+	a.Steps.SetFlag(validations.FMXLookup)
 
 	const ttl = 100 * time.Millisecond
 	ctx, cancel := getEarliestDeadlineCTX(a.ctx, ttl)
@@ -79,18 +103,28 @@ func checkIfDomainHasMX(a *Artifact) error {
 			_ = e
 			// @todo what do we do when it's a temporary error?
 		}
-		return err
+
+		return ValidationError{
+			Validator: "checkIfDomainHasMX",
+			Internal:  err,
+			error:     ErrEmailAddressSyntax,
+		}
 	}
 
 	a.mx = mxs
-	a.Validations = a.Validations.MergeWithNext(validations.VFMXLookup)
+	a.Validations.SetFlag(validations.FMXLookup)
 	return nil
 }
 
 // checkIfMXHasIP performs a NS lookup and fetches the IP addresses of the MX hosts
 func checkIfMXHasIP(a *Artifact) error {
-	var err error
+	if a.Steps.HasFlag(validations.FDomainHasIP) {
+		return nil
+	}
 
+	a.Steps.SetFlag(validations.FDomainHasIP)
+
+	var err error
 	for i, domain := range a.mx {
 		start := time.Now()
 		ips, innerErr := a.dialer.Resolver.LookupIPAddr(a.ctx, domain)
@@ -111,16 +145,25 @@ func checkIfMXHasIP(a *Artifact) error {
 	}
 
 	if err != nil {
-		return err
+		return ValidationError{
+			Validator: "checkIfMXHasIP",
+			Internal:  err,
+			error:     ErrEmailAddressSyntax,
+		}
 	}
 
-	a.Validations = a.Validations.MergeWithNext(validations.VFDomainHasIP)
+	a.Validations.SetFlag(validations.FDomainHasIP)
 	return nil
 }
 
 // checkMXAcceptsConnect checks if an MX host accepts connections. Expensive and requires a valid PTR setup for most
 // real world applications
 func checkMXAcceptsConnect(a *Artifact) error {
+	if a.Steps.HasFlag(validations.FHostConnect) {
+		return nil
+	}
+
+	a.Steps.SetFlag(validations.FHostConnect)
 
 	start := time.Now()
 	var mxToCheck string
@@ -140,18 +183,28 @@ func checkMXAcceptsConnect(a *Artifact) error {
 	}
 
 	if err != nil {
-		return err
+		return ValidationError{
+			Validator: "checkMXAcceptsConnect",
+			Internal:  err,
+			error:     ErrEmailAddressSyntax,
+		}
 	}
 
 	a.conn = conn
-	a.Validations = a.Validations.MergeWithNext(validations.VFHostConnect)
+	a.Validations.SetFlag(validations.FHostConnect)
 	return nil
 }
 
 // checkRCPT issues mail commands to the mail server, asking politely if a recipient inbox exists. High chance of false
 // positives on real world applications, due to security reasons.
 func checkRCPT(a *Artifact) error {
-	if a.HasFlag(validations.VFValidRCPT) {
+	if a.Steps.HasFlag(validations.FValidRCPT) {
+		return nil
+	}
+
+	a.Steps.SetFlag(validations.FValidRCPT)
+
+	if a.Validations.HasFlag(validations.FValidRCPT) {
 		return nil
 	}
 
@@ -162,7 +215,11 @@ func checkRCPT(a *Artifact) error {
 	client, err = smtp.NewClient(a.conn, a.email.Domain)
 
 	if err != nil {
-		return err
+		return ValidationError{
+			Validator: "checkRCPT",
+			Internal:  err,
+			error:     ErrEmailAddressSyntax,
+		}
 	}
 
 	defer func() {
@@ -174,8 +231,12 @@ func checkRCPT(a *Artifact) error {
 	a.Timings.Add("checkRCPT", time.Since(start))
 
 	if err == nil {
-		a.Validations = a.Validations.MergeWithNext(validations.VFValidRCPT)
+		a.Validations.SetFlag(validations.FValidRCPT)
 	}
 
-	return err
+	return ValidationError{
+		Validator: "checkRCPT",
+		Internal:  err,
+		error:     ErrEmailAddressSyntax,
+	}
 }

@@ -9,7 +9,8 @@ import (
 )
 
 type Artifact struct {
-	validations.Validations
+	Validations validations.Validations
+	Steps       validations.Steps
 	Timings
 	email  types.EmailParts
 	mx     []string
@@ -19,3 +20,23 @@ type Artifact struct {
 }
 
 type stateFn func(a *Artifact) error
+
+type Result struct {
+	Validations validations.Validations
+	Steps       validations.Steps
+}
+
+func (r Result) ValidatorsRan() bool {
+	return r.Steps > 0
+}
+
+func (r Result) HasValidStructure() bool {
+	return r.ValidatorsRan() && r.Validations.HasFlag(validations.FSyntax) && r.Steps.HasFlag(validations.FSyntax)
+}
+
+func createResult(a Artifact) Result {
+	return Result{
+		Validations: a.Validations,
+		Steps:       a.Steps,
+	}
+}

@@ -1,15 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
-	validator "github.com/Dynom/ERI/validator"
-
+	"github.com/Dynom/ERI/cmd/web/hitlist"
 	"github.com/minio/highwayhash"
 
-	"github.com/Dynom/ERI/cmd/web/hitlist"
+	"github.com/juju/ratelimit"
+
+	"github.com/Dynom/ERI/validator"
 
 	"github.com/Dynom/ERI/cmd/web/services"
 
@@ -50,7 +53,11 @@ func main() {
 		panic(err)
 	}
 
-	hitList := hitlist.New(h, time.Hour*60) // @todo figure out what todo with TTLs
+	hitList := hitlist.New(
+		h,
+		time.Hour*60, // @todo figure out what todo with TTLs
+	)
+
 	myFinder, err := finder.New(
 		hitList.GetValidAndUsageSortedDomains(),
 		finder.WithLengthTolerance(0.2),
@@ -67,20 +74,28 @@ func main() {
 		setCustomResolver(dialer, conf.Server.Validator.Resolver)
 	}
 
+	validationResultCache := &sync.Map{}
+	validationResultPersister := &sync.Map{}
+
 	val := validator.NewEmailAddressValidator(dialer)
-	checkSvc := services.NewCheckService(hitList, myFinder, val.CheckWithSyntax, logger)
-	learnSvc := services.NewLearnService(hitList, myFinder, val.CheckWithSyntax, logger)
+
+	// Pick the validator we want to use
+	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.SuggestValidator, val)
+
+	// Wrap it
+	checkValidator = validatorPersistProxy(validationResultPersister, logger, checkValidator)
+	checkValidator = validatorUpdateFinderProxy(myFinder, hitList, logger, checkValidator)
+	checkValidator = validatorCacheProxy(validationResultCache, logger, checkValidator)
+
+	// Use it
+	suggestSvc := services.NewSuggestService(myFinder, checkValidator, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", NewHealthHandler(logger))
 	mux.HandleFunc("/health", NewHealthHandler(logger))
 
-	mux.HandleFunc("/check", NewCheckHandler(logger, checkSvc))
-	mux.HandleFunc("/learn", NewLearnHandler(logger, learnSvc))
+	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
 	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder))
-
-	// Debug
-	mux.HandleFunc("/dumphl", NewDebugHandler(hitList))
 
 	lw := logger.WriterLevel(logger.Level)
 	defer func() {
@@ -92,12 +107,17 @@ func main() {
 	}
 
 	// @todo status endpoint (or tick logger)
+	// @todo make the RL configurable
 
+	bucket := ratelimit.NewBucketWithRate(100, 500)
 	s := erihttp.BuildHTTPServer(mux, conf, lw,
+		//handlers.NewRateLimitHandler(logger, bucket, time.Millisecond*100),
 		handlers.WithRequestLogger(logger),
 		handlers.WithGzipHandler(),
 		handlers.WithHeaders(sliceToHTTPHeaders(conf.Server.Headers)),
 	)
+
+	_ = bucket
 
 	logger.WithFields(logrus.Fields{
 		"listen_on": conf.Server.ListenOn,
@@ -105,4 +125,15 @@ func main() {
 	err = s.ListenAndServe()
 
 	logger.Errorf("HTTP server stopped %s", err)
+}
+
+func mapValidatorTypeToValidatorFn(vt config.ValidatorType, v validator.EmailValidator) validator.CheckFn {
+	switch vt {
+	case config.VTLookup:
+		return v.CheckWithLookup
+	case config.VTStructure:
+		return v.CheckWithSyntax
+	}
+
+	panic(fmt.Sprintf("Incorrect validator %q configured.", vt))
 }
