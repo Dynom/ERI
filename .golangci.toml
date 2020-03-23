@@ -2,6 +2,11 @@
     concurrency = 4
     tests = false
 
+    skip-dirs = [
+        "cmd/phake"
+    ]
+
+
 [linters-settings]
     [linters-settings.gocyclo]
         min-complexity = 12
@@ -36,7 +41,7 @@
         "unconvert",
         "goconst",
         "gocyclo",
-        "maligned",
+        #"maligned", # tricky to solve
         "depguard",
         "misspell",
         "unparam",

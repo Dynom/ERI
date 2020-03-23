@@ -26,7 +26,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) 
 		var err error
 		var req erihttp.AutoCompleteRequest
 
-		log := log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
+		log := log.WithField(handlers.RequestID.String(), r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 
@@ -97,7 +97,7 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc services.SuggestSvc) http.
 		var err error
 		var req erihttp.SuggestRequest
 
-		log := log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
+		log := log.WithField(handlers.RequestID.String(), r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 
@@ -162,7 +162,7 @@ func NewHealthHandler(logger logrus.FieldLogger) http.HandlerFunc {
 	log := logger.WithField("handler", "health")
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		log := log.WithField(handlers.RequestID, r.Context().Value(handlers.RequestID))
+		log := log.WithField(handlers.RequestID.String(), r.Context().Value(handlers.RequestID))
 
 		w.Header().Set("content-type", "text/plain")
 		w.WriteHeader(http.StatusOK)

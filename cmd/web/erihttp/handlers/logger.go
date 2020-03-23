@@ -11,8 +11,14 @@ import (
 )
 
 const (
-	RequestID = "request_id"
+	RequestID contextValue = "request_id"
 )
+
+type contextValue string
+
+func (cv contextValue) String() string {
+	return string(cv)
+}
 
 func WithRequestLogger(logger *logrus.Logger) HandlerWrapper {
 	return func(handler http.Handler) http.Handler {

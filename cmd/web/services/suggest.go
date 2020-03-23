@@ -38,8 +38,8 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 	}
 
 	log := c.logger.WithFields(logrus.Fields{
-		handlers.RequestID: ctx.Value(handlers.RequestID),
-		"email":            email,
+		handlers.RequestID.String(): ctx.Value(handlers.RequestID),
+		"email":                     email,
 	})
 
 	parts, err := types.NewEmailParts(email)

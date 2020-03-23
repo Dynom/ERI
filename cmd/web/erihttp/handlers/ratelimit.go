@@ -13,9 +13,9 @@ func NewRateLimitHandler(logger logrus.FieldLogger, b *ratelimit.Bucket, maxDela
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			logger := logger.WithFields(logrus.Fields{
-				"remote_addr": r.RemoteAddr,
-				RequestID:     r.Context().Value(RequestID),
-				"max_delay":   maxDelay,
+				"remote_addr":      r.RemoteAddr,
+				RequestID.String(): r.Context().Value(RequestID),
+				"max_delay":        maxDelay,
 			})
 
 			d, ok := b.TakeMaxDuration(1, maxDelay)

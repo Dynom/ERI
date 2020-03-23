@@ -20,7 +20,7 @@ func validatorCacheProxy(cache *sync.Map, logger *logrus.Logger, fn validator.Ch
 		var vr validator.Result
 		var afn = options
 
-		log := log.WithField(handlers.RequestID, ctx.Value(handlers.RequestID))
+		log := log.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
 
 		cvr, cacheHit := cache.Load(parts.Domain)
 		if cacheHit {
@@ -55,7 +55,7 @@ func validatorPersistProxy(persist *sync.Map, logger *logrus.Logger, fn validato
 	log := logger.WithField("middleware", "persist_proxy")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 
-		log := log.WithField(handlers.RequestID, ctx.Value(handlers.RequestID))
+		log := log.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
 		vr := fn(ctx, parts, options...)
 
 		if vr.HasValidStructure() {
@@ -77,7 +77,7 @@ func validatorUpdateFinderProxy(finder *finder.Finder, hitList *hitlist.HitList,
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 		var err error
 
-		log := log.WithField(handlers.RequestID, ctx.Value(handlers.RequestID))
+		log := log.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
 
 		vr := fn(ctx, parts, options...)
 
