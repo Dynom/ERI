@@ -5,6 +5,8 @@
 !.gitignore
 !.editorconfig
 !.golangci.toml
+!.dockerignore
+!Dockerfile
 
 # Don't ignore directories, recursively
 !*/
