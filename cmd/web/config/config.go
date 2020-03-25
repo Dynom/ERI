@@ -75,6 +75,7 @@ type Config struct {
 			Capacity  uint     `toml:"capacity"`
 			ParkedTTL duration `toml:"parkedTTL"`
 		} `toml:"rateLimiter"`
+		PathStrip string `toml:"pathStrip"`
 	} `toml:"server"`
 }
 

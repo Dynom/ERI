@@ -14,6 +14,10 @@
   # The interface and port to listen on, "0.0.0.0" means all interfaces
   listenOn = "0.0.0.0:1338"
 
+  # The path to strip from the request, this allows for path prefixing in ingresses (e.g. in k8s). Paths should
+  # start with, but not end with, a `/`. The result is that both /eri/suggest and /suggest will work.
+  pathStrip = "/eri"
+
   headers = [
     {name = "Strict-Transport-Security", value = "max-age=31536000; includeSubDomains"},
     {name = "Content-Security-Policy", value = "default-src 'none'"},

@@ -125,6 +125,7 @@ func main() {
 
 	bucket := ratelimit.NewBucketWithRate(float64(conf.Server.RateLimiter.Rate), int64(conf.Server.RateLimiter.Capacity))
 	s := erihttp.BuildHTTPServer(mux, conf, lw,
+		handlers.WithPathStrip(logger, conf.Server.PathStrip),
 		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),
 		handlers.WithGzipHandler(),
