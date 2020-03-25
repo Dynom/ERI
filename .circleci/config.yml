@@ -20,10 +20,14 @@ jobs:
       - run: go get -u ./...
       - run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
 
+      - run:
+          # Check if we have updates to minor/patch level packages we're explicitly referencing
+          name: Dep check
+          command: |
+            go list -u -f '{{if (and (not (or .Main .Indirect)) .Update)}}{{.Path}}: {{.Version}} -> {{.Update.Version}}{{end}}' -m all 2> /dev/null
 
       - run:
           name: Build
-
           command: |
             TAG=${CIRCLE_TAG:-dev}
             CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "${TEST_RESULTS}/${BINARY_NAME}" -a -ldflags="-w -s -X main.Version=${TAG}" ./cmd/web
