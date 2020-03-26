@@ -17,12 +17,12 @@ func NewGraphQLSchema(suggestSvc *services.SuggestSvc) (graphql.Schema, error) {
 		Fields: graphql.Fields{
 			"alternatives": &graphql.Field{
 				Description: "The list of alternatives. If no better match is found, the input is returned. 1 or more.",
-				Type:        graphql.NewList(graphql.String),
+				Type:        graphql.NewList(graphql.NewNonNull(graphql.String)),
 			},
 
 			"malformedSyntax": &graphql.Field{
 				Description: "Boolean value that when true, means the address can't be valid. Conversely when false, doesn't mean it is.",
-				Type:        graphql.Boolean,
+				Type:        graphql.NewNonNull(graphql.Boolean),
 			},
 		},
 		Description: "",
