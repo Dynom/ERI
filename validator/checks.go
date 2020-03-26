@@ -18,10 +18,6 @@ type ValidationError struct {
 
 // checkEmailAddressSyntax checks for "common sense" e-mail address syntax. It doesn't try to be fully compliant.
 func checkEmailAddressSyntax(a *Artifact) error {
-	if a.Steps.HasFlag(validations.FSyntax) {
-		return nil
-	}
-
 	a.Steps.SetFlag(validations.FSyntax)
 
 	var err error
@@ -61,10 +57,6 @@ func checkEmailAddressSyntax(a *Artifact) error {
 
 // checkDomainSyntax checks if the Domain part has a sensible syntax. It ignores the Local part, so that can be omitted
 func checkDomainSyntax(a *Artifact) error {
-	if a.Steps.HasFlag(validations.FSyntax) {
-		return nil
-	}
-
 	a.Steps.SetFlag(validations.FSyntax)
 
 	start := time.Now()
@@ -85,6 +77,13 @@ func checkDomainSyntax(a *Artifact) error {
 // checkIfDomainHasMX performs a DNS lookup and fetches MX records.
 func checkIfDomainHasMX(a *Artifact) error {
 	if a.Steps.HasFlag(validations.FMXLookup) {
+		if !a.Validations.HasFlag(validations.FMXLookup) {
+			return ValidationError{
+				Validator: "checkIfDomainHasMX",
+				error:     ErrEmailAddressSyntax,
+			}
+		}
+
 		return nil
 	}
 
@@ -119,6 +118,13 @@ func checkIfDomainHasMX(a *Artifact) error {
 // checkIfMXHasIP performs a NS lookup and fetches the IP addresses of the MX hosts
 func checkIfMXHasIP(a *Artifact) error {
 	if a.Steps.HasFlag(validations.FDomainHasIP) {
+		if !a.Validations.HasFlag(validations.FDomainHasIP) {
+			return ValidationError{
+				Validator: "checkIfMXHasIP",
+				error:     ErrEmailAddressSyntax,
+			}
+		}
+
 		return nil
 	}
 
@@ -160,6 +166,13 @@ func checkIfMXHasIP(a *Artifact) error {
 // real world applications
 func checkMXAcceptsConnect(a *Artifact) error {
 	if a.Steps.HasFlag(validations.FHostConnect) {
+		if !a.Validations.HasFlag(validations.FHostConnect) {
+			return ValidationError{
+				Validator: "checkMXAcceptsConnect",
+				error:     ErrEmailAddressSyntax,
+			}
+		}
+
 		return nil
 	}
 
@@ -199,6 +212,13 @@ func checkMXAcceptsConnect(a *Artifact) error {
 // positives on real world applications, due to security reasons.
 func checkRCPT(a *Artifact) error {
 	if a.Steps.HasFlag(validations.FValidRCPT) {
+		if !a.Validations.HasFlag(validations.FValidRCPT) {
+			return ValidationError{
+				Validator: "checkRCPT",
+				error:     ErrEmailAddressSyntax,
+			}
+		}
+
 		return nil
 	}
 

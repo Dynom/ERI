@@ -8,7 +8,6 @@ import (
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/ERI/validator"
-	"github.com/Dynom/ERI/validator/validations"
 	"github.com/Dynom/TySug/finder"
 	"github.com/sirupsen/logrus"
 )
@@ -29,7 +28,8 @@ func validatorCacheProxy(cache *sync.Map, logger *logrus.Logger, fn validator.Ch
 
 					// The cache allows us to skip expensive steps that we might be doing. However basic syntax validation should
 					// always be done. We're discriminating on domain, so we can't vouch for the entire address without a basic test
-					artifact.Steps = tvr.Steps.RemoveFlag(validations.FSyntax)
+					artifact.Steps = tvr.Steps
+					artifact.Validations = tvr.Validations
 				})
 			}
 		}
