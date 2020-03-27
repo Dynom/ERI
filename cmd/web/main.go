@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Pimmr/rig"
+
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 	"github.com/minio/highwayhash"
 
@@ -36,6 +38,11 @@ func main() {
 	var err error
 
 	conf, err = config.NewConfig("config.toml")
+	if err != nil {
+		panic(err)
+	}
+
+	err = rig.ParseStruct(&conf)
 	if err != nil {
 		panic(err)
 	}
@@ -129,7 +136,7 @@ func main() {
 		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),
 		handlers.WithGzipHandler(),
-		handlers.WithHeaders(sliceToHTTPHeaders(conf.Server.Headers)),
+		handlers.WithHeaders(confHeadersToHTTPHeaders(conf.Server.Headers)),
 	)
 
 	logger.WithFields(logrus.Fields{

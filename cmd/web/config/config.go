@@ -41,8 +41,8 @@ type Config struct {
 		AllowedOrigins []string `toml:"allowedOrigins"`
 	} `toml:"CORS"`
 	Server struct {
-		ListenOn string   `toml:"listenOn"`
-		Headers  []Header `toml:"headers"`
+		ListenOn string  `toml:"listenOn"`
+		Headers  Headers `toml:"headers"`
 		Log      struct {
 			Level string `toml:"level"`
 		} `toml:"log"`
@@ -55,7 +55,7 @@ type Config struct {
 		} `toml:"finder"`
 		Validator struct {
 			Resolver         string        `toml:"resolver"`
-			SuggestValidator ValidatorType `toml:"suggest"`
+			SuggestValidator ValidatorType `toml:"suggest" flag:"-"`
 		} `toml:"validator"`
 		Profiler struct {
 			Enable bool   `toml:"enable"`
@@ -66,10 +66,10 @@ type Config struct {
 		//	URL    string `toml:"url"`
 		//} `toml:"backend"`
 		GraphQL struct {
-			PrettyOutput bool `toml:"prettyOutput"`
-			GraphiQL     bool `toml:"graphiQL"`
+			PrettyOutput bool `toml:"prettyOutput" flag:"pretty" env:"PRETTY"`
+			GraphiQL     bool `toml:"graphiQL" flag:"graphiql" env:"GRAPHIQL"`
 			Playground   bool `toml:"playground"`
-		} `toml:"graphql"`
+		} `toml:"graphql" flag:"graphql" env:"GRAPHQL"`
 		RateLimiter struct {
 			Rate      uint     `toml:"rate"`
 			Capacity  uint     `toml:"capacity"`
@@ -79,9 +79,29 @@ type Config struct {
 	} `toml:"server"`
 }
 
-type Header struct {
-	Name  string `toml:"name"`
-	Value string `toml:"value"`
+type Headers map[string]string
+
+func (h Headers) String() string {
+	var v string
+	for header, value := range h {
+		v += `"` + header + `:` + value + `",`
+	}
+	return v[0 : len(v)-1]
+}
+
+func (h *Headers) Set(v string) error {
+	s := strings.SplitN(v, `:`, 2)
+	if len(s) != 2 {
+		return fmt.Errorf("invalid Header argument %q, expecting <header name>:<header value>", v)
+	}
+
+	if *h == nil {
+		*h = make(map[string]string, 1)
+	}
+
+	(*h)[s[0]] = s[1]
+
+	return nil
 }
 
 var (

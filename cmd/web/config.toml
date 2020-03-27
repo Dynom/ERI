@@ -18,14 +18,13 @@
   # start with, but not end with, a `/`. The result is that both /eri/suggest and /suggest will work.
   pathStrip = "/eri"
 
-  headers = [
-    {name = "Strict-Transport-Security", value = "max-age=31536000; includeSubDomains"},
-    {name = "Content-Security-Policy", value = "default-src 'none'"},
-    {name = "X-Frame-Options", value = "DENY"},
-    {name = "X-XSS-Protection", value = "1; mode=block"},
-    {name = "X-Content-Type-Options", value = "nosniff"},
-    {name = "Referrer-Policy", value = "strict-origin"}
-  ]
+  [server.headers]
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Content-Security-Policy = "default-src 'none'"
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin"
 
   [server.hash]
     # The key for the 128bit highwayhash algorithm. Must be exactly 32 bytes.
