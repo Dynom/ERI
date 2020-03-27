@@ -87,7 +87,12 @@ func (h Headers) String() string {
 	for header, value := range h {
 		v += `"` + header + `:` + value + `",`
 	}
-	return v[0 : len(v)-1]
+
+	if len(v) > 0 {
+		v = v[0 : len(v)-1]
+	}
+
+	return v
 }
 
 func (h *Headers) Set(v string) error {
