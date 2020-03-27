@@ -55,7 +55,7 @@ type Config struct {
 		} `toml:"finder"`
 		Validator struct {
 			Resolver         string        `toml:"resolver"`
-			SuggestValidator ValidatorType `toml:"suggest" flag:"-"`
+			SuggestValidator ValidatorType `toml:"suggest"`
 		} `toml:"validator"`
 		Profiler struct {
 			Enable bool   `toml:"enable"`
@@ -109,6 +109,16 @@ var (
 )
 
 type ValidatorType string
+
+func (vt ValidatorType) String() string {
+	return string(vt)
+}
+
+func (vt *ValidatorType) Set(v string) error {
+	*vt = ValidatorType(v)
+	return nil
+}
+
 type ValidatorTypes []ValidatorType
 
 func (v ValidatorTypes) AsStringSlice() []string {
