@@ -25,21 +25,24 @@ func confHeadersToHTTPHeaders(ch config.Headers) http.Header {
 	return headers
 }
 
-func newLogger(conf config.Config) (*logrus.Logger, error) {
+func newLogger(conf config.Config) (*logrus.Logger, *io.PipeWriter, error) {
 	var err error
 	logger := logrus.New()
 
 	// @todo change to config, once we have runtime overrides
 	if Version == "dev" {
-		logger.Formatter = &logrus.TextFormatter{}
+		logger.SetFormatter(&logrus.TextFormatter{})
 	} else {
-		logger.Formatter = &logrus.JSONFormatter{}
+		logger.SetFormatter(&logrus.JSONFormatter{})
 	}
 
-	logger.Out = os.Stdout
-	logger.Level, err = logrus.ParseLevel(conf.Server.Log.Level)
+	logger.SetOutput(os.Stdout)
+	level, err := logrus.ParseLevel(conf.Server.Log.Level)
+	if err == nil {
+		logger.SetLevel(level)
+	}
 
-	return logger, err
+	return logger, logger.WriterLevel(level), err
 }
 
 func configureProfiler(mux *http.ServeMux, conf config.Config) {

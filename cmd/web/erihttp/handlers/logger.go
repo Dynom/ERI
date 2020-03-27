@@ -20,7 +20,7 @@ func (cv contextValue) String() string {
 	return string(cv)
 }
 
-func WithRequestLogger(logger *logrus.Logger) HandlerWrapper {
+func WithRequestLogger(logger logrus.FieldLogger) HandlerWrapper {
 	return func(handler http.Handler) http.Handler {
 
 		var reqID uint64

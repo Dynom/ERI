@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -49,14 +50,18 @@ func main() {
 		panic(err)
 	}
 
-	logger, err := newLogger(conf)
+	var logger logrus.FieldLogger
+	var logWriter *io.PipeWriter
+	logger, logWriter, err = newLogger(conf)
 	if err != nil {
 		panic(err)
 	}
 
+	defer deferClose(logWriter, nil)
+
+	logger = logger.WithField("version", Version)
 	logger.WithFields(logrus.Fields{
-		"version": Version,
-		"config":  conf,
+		"config": conf,
 	}).Info("Starting up...")
 
 	h, err := highwayhash.New128([]byte(conf.Server.Hash.Key))
@@ -122,9 +127,6 @@ func main() {
 		Playground: conf.Server.GraphQL.Playground,
 	}))
 
-	lw := logger.WriterLevel(logger.Level)
-	defer deferClose(lw, nil)
-
 	if conf.Server.Profiler.Enable {
 		configureProfiler(mux, conf)
 	}
@@ -137,7 +139,7 @@ func main() {
 		AllowedOrigins: conf.Server.CORS.AllowedOrigins,
 		AllowedHeaders: conf.Server.CORS.AllowedHeaders,
 	})
-	s := erihttp.BuildHTTPServer(mux, conf, lw,
+	s := erihttp.BuildHTTPServer(mux, conf, logWriter,
 		handlers.WithPathStrip(logger, conf.Server.PathStrip),
 		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),

@@ -13,7 +13,7 @@ import (
 )
 
 // validatorCacheProxy caches expensive validation steps for domains only
-func validatorCacheProxy(cache *sync.Map, logger *logrus.Logger, fn validator.CheckFn) validator.CheckFn {
+func validatorCacheProxy(cache *sync.Map, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
 	log := logger.WithField("middleware", "cache_proxy")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 		var vr validator.Result
@@ -51,7 +51,7 @@ func validatorCacheProxy(cache *sync.Map, logger *logrus.Logger, fn validator.Ch
 }
 
 // validatorPersistProxy persist the result of the validator.
-func validatorPersistProxy(persist *sync.Map, logger *logrus.Logger, fn validator.CheckFn) validator.CheckFn {
+func validatorPersistProxy(persist *sync.Map, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
 	log := logger.WithField("middleware", "persist_proxy")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 
@@ -72,7 +72,7 @@ func validatorPersistProxy(persist *sync.Map, logger *logrus.Logger, fn validato
 }
 
 // validatorUpdateFinderProxy updates Finder whenever a new and good domain has been discovered
-func validatorUpdateFinderProxy(finder *finder.Finder, hitList *hitlist.HitList, logger *logrus.Logger, fn validator.CheckFn) validator.CheckFn {
+func validatorUpdateFinderProxy(finder *finder.Finder, hitList *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
 	log := logger.WithField("middleware", "finder_updater")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 		var err error
