@@ -28,8 +28,14 @@ func confHeadersToHTTPHeaders(ch config.Headers) http.Header {
 func newLogger(conf config.Config) (*logrus.Logger, error) {
 	var err error
 	logger := logrus.New()
-	//logger.Formatter = &logrus.JSONFormatter{}
-	logger.Formatter = &logrus.TextFormatter{}
+
+	// @todo change to config, once we have runtime overrides
+	if Version == "dev" {
+		logger.Formatter = &logrus.TextFormatter{}
+	} else {
+		logger.Formatter = &logrus.JSONFormatter{}
+	}
+
 	logger.Out = os.Stdout
 	logger.Level, err = logrus.ParseLevel(conf.Server.Log.Level)
 
