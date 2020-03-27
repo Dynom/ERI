@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/cors"
+
 	"github.com/Pimmr/rig"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
@@ -131,12 +133,17 @@ func main() {
 	// @todo make the RL configurable
 
 	bucket := ratelimit.NewBucketWithRate(float64(conf.Server.RateLimiter.Rate), int64(conf.Server.RateLimiter.Capacity))
+	ct := cors.New(cors.Options{
+		AllowedOrigins: conf.Server.CORS.AllowedOrigins,
+		AllowedHeaders: conf.Server.CORS.AllowedHeaders,
+	})
 	s := erihttp.BuildHTTPServer(mux, conf, lw,
 		handlers.WithPathStrip(logger, conf.Server.PathStrip),
 		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),
 		handlers.WithGzipHandler(),
 		handlers.WithHeaders(confHeadersToHTTPHeaders(conf.Server.Headers)),
+		ct.Handler,
 	)
 
 	logger.WithFields(logrus.Fields{

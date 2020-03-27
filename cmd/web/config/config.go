@@ -35,15 +35,16 @@ func NewConfig(fileName string) (Config, error) {
 // Config holds central config parameters
 type Config struct {
 	Client struct {
-		InputLengthMax uint64 `toml:"inputLengthMax"`
+		InputLengthMax uint64 `toml:"inputLengthMax" usage:"The maximum amount of bytes allowed, for any argument"`
 	} `toml:"client"`
-	CORS struct {
-		AllowedOrigins []string `toml:"allowedOrigins"`
-	} `toml:"CORS"`
 	Server struct {
-		ListenOn string  `toml:"listenOn"`
-		Headers  Headers `toml:"headers"`
-		Log      struct {
+		ListenOn string `toml:"listenOn"`
+		CORS     struct {
+			AllowedOrigins []string `toml:"allowedOrigins"`
+			AllowedHeaders []string `toml:"allowedHeaders"`
+		} `toml:"CORS"`
+		Headers Headers `toml:"headers"`
+		Log     struct {
 			Level string `toml:"level"`
 		} `toml:"log"`
 		Hash struct {
@@ -54,11 +55,11 @@ type Config struct {
 			UseBuckets bool `toml:"useBuckets"`
 		} `toml:"finder"`
 		Validator struct {
-			Resolver         string        `toml:"resolver"`
+			Resolver         string        `toml:"resolver" usage:"The resolver to use for DNS lookups"`
 			SuggestValidator ValidatorType `toml:"suggest"`
-		} `toml:"validator"`
+		} `toml:"validator" flag:",inline" env:",inline"`
 		Profiler struct {
-			Enable bool   `toml:"enable"`
+			Enable bool   `toml:"enable" default:"false"`
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
 		//Backend struct {
@@ -76,7 +77,7 @@ type Config struct {
 			ParkedTTL duration `toml:"parkedTTL"`
 		} `toml:"rateLimiter"`
 		PathStrip string `toml:"pathStrip"`
-	} `toml:"server"`
+	} `toml:"server" flag:",inline" env:",inline"`
 }
 
 type Headers map[string]string

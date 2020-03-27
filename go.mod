@@ -16,6 +16,7 @@ require (
 	github.com/minio/highwayhash v1.0.0
 	github.com/pelletier/go-toml v1.6.1-0.20200325172125-99f8a2a010d2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.5.0
 	github.com/stretchr/testify v1.4.0 // indirect
 	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd // indirect

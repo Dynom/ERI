@@ -3,13 +3,6 @@
   # The maximum length (in bytes) of the "input" field, to accept to the finder.
   inputLengthMax = 50
 
-[CORS]
-  # Not defining allowedOrigins will use wildcard '*', meaning all clients are allowed.
-  #allowedOrigins = [
-  #  "http://example.org",
-  #  "https://api.example.com",
-  #]
-
 [server]
   # The interface and port to listen on, "0.0.0.0" means all interfaces
   listenOn = "0.0.0.0:1338"
@@ -17,6 +10,16 @@
   # The path to strip from the request, this allows for path prefixing in ingresses (e.g. in k8s). Paths should
   # start with, but not end with, a `/`. The result is that both /eri/suggest and /suggest will work.
   pathStrip = "/eri"
+
+  [server.CORS]
+    # @see https://github.com/rs/cors#parameters
+    allowedOrigins = [
+      "*"
+    ]
+
+    allowedHeaders = [
+      "*"
+    ]
 
   [server.headers]
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
@@ -35,7 +38,7 @@
     level = "debug"
 
   [server.profiler]
-    enable = true
+    enable = false
     prefix = "debug"
 
   [server.finder]
@@ -58,8 +61,8 @@
 
   [server.graphql]
     prettyOutput = true
-    graphiQL = true
-    playground = true
+    graphiQL = false
+    playground = false
 
     [server.rateLimiter]
     rate = 100
