@@ -35,15 +35,16 @@ func NewConfig(fileName string) (Config, error) {
 // Config holds central config parameters
 type Config struct {
 	Client struct {
-		InputLengthMax uint64 `toml:"inputLengthMax"`
+		InputLengthMax uint64 `toml:"inputLengthMax" usage:"The maximum amount of bytes allowed, for any argument"`
 	} `toml:"client"`
-	CORS struct {
-		AllowedOrigins []string `toml:"allowedOrigins"`
-	} `toml:"CORS"`
 	Server struct {
-		ListenOn string   `toml:"listenOn"`
-		Headers  []Header `toml:"headers"`
-		Log      struct {
+		ListenOn string `toml:"listenOn"`
+		CORS     struct {
+			AllowedOrigins []string `toml:"allowedOrigins"`
+			AllowedHeaders []string `toml:"allowedHeaders"`
+		} `toml:"CORS"`
+		Headers Headers `toml:"headers"`
+		Log     struct {
 			Level string `toml:"level"`
 		} `toml:"log"`
 		Hash struct {
@@ -54,11 +55,11 @@ type Config struct {
 			UseBuckets bool `toml:"useBuckets"`
 		} `toml:"finder"`
 		Validator struct {
-			Resolver         string        `toml:"resolver"`
+			Resolver         string        `toml:"resolver" usage:"The resolver to use for DNS lookups"`
 			SuggestValidator ValidatorType `toml:"suggest"`
-		} `toml:"validator"`
+		} `toml:"validator" flag:",inline" env:",inline"`
 		Profiler struct {
-			Enable bool   `toml:"enable"`
+			Enable bool   `toml:"enable" default:"false"`
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
 		//Backend struct {
@@ -66,22 +67,47 @@ type Config struct {
 		//	URL    string `toml:"url"`
 		//} `toml:"backend"`
 		GraphQL struct {
-			PrettyOutput bool `toml:"prettyOutput"`
-			GraphiQL     bool `toml:"graphiQL"`
+			PrettyOutput bool `toml:"prettyOutput" flag:"pretty" env:"PRETTY"`
+			GraphiQL     bool `toml:"graphiQL" flag:"graphiql" env:"GRAPHIQL"`
 			Playground   bool `toml:"playground"`
-		} `toml:"graphql"`
+		} `toml:"graphql" flag:"graphql" env:"GRAPHQL"`
 		RateLimiter struct {
 			Rate      uint     `toml:"rate"`
 			Capacity  uint     `toml:"capacity"`
 			ParkedTTL duration `toml:"parkedTTL"`
 		} `toml:"rateLimiter"`
 		PathStrip string `toml:"pathStrip"`
-	} `toml:"server"`
+	} `toml:"server" flag:",inline" env:",inline"`
 }
 
-type Header struct {
-	Name  string `toml:"name"`
-	Value string `toml:"value"`
+type Headers map[string]string
+
+func (h Headers) String() string {
+	var v string
+	for header, value := range h {
+		v += `"` + header + `:` + value + `",`
+	}
+
+	if len(v) > 0 {
+		v = v[0 : len(v)-1]
+	}
+
+	return v
+}
+
+func (h *Headers) Set(v string) error {
+	s := strings.SplitN(v, `:`, 2)
+	if len(s) != 2 {
+		return fmt.Errorf("invalid Header argument %q, expecting <header name>:<header value>", v)
+	}
+
+	if *h == nil {
+		*h = make(map[string]string, 1)
+	}
+
+	(*h)[s[0]] = s[1]
+
+	return nil
 }
 
 var (
@@ -89,6 +115,16 @@ var (
 )
 
 type ValidatorType string
+
+func (vt ValidatorType) String() string {
+	return string(vt)
+}
+
+func (vt *ValidatorType) Set(v string) error {
+	*vt = ValidatorType(v)
+	return nil
+}
+
 type ValidatorTypes []ValidatorType
 
 func (v ValidatorTypes) AsStringSlice() []string {
