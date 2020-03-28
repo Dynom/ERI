@@ -134,7 +134,11 @@ func main() {
 	// @todo status endpoint (or tick logger)
 	// @todo make the RL configurable
 
-	bucket := ratelimit.NewBucketWithRate(float64(conf.Server.RateLimiter.Rate), int64(conf.Server.RateLimiter.Capacity))
+	var bucket *ratelimit.Bucket
+	if conf.Server.RateLimiter.Rate > 0 && conf.Server.RateLimiter.Capacity > 0 {
+		bucket = ratelimit.NewBucketWithRate(float64(conf.Server.RateLimiter.Rate), int64(conf.Server.RateLimiter.Capacity))
+	}
+
 	ct := cors.New(cors.Options{
 		AllowedOrigins: conf.Server.CORS.AllowedOrigins,
 		AllowedHeaders: conf.Server.CORS.AllowedHeaders,

@@ -13,6 +13,9 @@ import (
 var (
 	VTStructure ValidatorType = "structure"
 	VTLookup    ValidatorType = "lookup"
+
+	LFJSON LogFormat = "json"
+	LGText LogFormat = "text"
 )
 
 func NewConfig(fileName string) (Config, error) {
@@ -45,14 +48,15 @@ type Config struct {
 		} `toml:"CORS"`
 		Headers Headers `toml:"headers"`
 		Log     struct {
-			Level string `toml:"level"`
+			Level  string    `toml:"level"`
+			Format LogFormat `toml:"format" usage:"The log output format \"json\" or \"text\""`
 		} `toml:"log"`
 		Hash struct {
 			Key string `toml:"key"`
 			//Enable bool   `toml:"enable"`
 		} `toml:"hash"`
 		Finder struct {
-			UseBuckets bool `toml:"useBuckets"`
+			UseBuckets bool `toml:"useBuckets" usage:"Buckets speedup matching, but assumes no mistakes are made at the start"`
 		} `toml:"finder"`
 		Validator struct {
 			Resolver         string        `toml:"resolver" usage:"The resolver to use for DNS lookups"`
@@ -74,7 +78,7 @@ type Config struct {
 		RateLimiter struct {
 			Rate      uint     `toml:"rate"`
 			Capacity  uint     `toml:"capacity"`
-			ParkedTTL duration `toml:"parkedTTL"`
+			ParkedTTL Duration `toml:"parkedTTL" flag:"parked-ttl"`
 		} `toml:"rateLimiter"`
 		PathStrip string `toml:"pathStrip"`
 	} `toml:"server" flag:",inline" env:",inline"`
@@ -151,16 +155,51 @@ func (vt *ValidatorType) UnmarshalText(value []byte) error {
 	return fmt.Errorf("unsupported value %q for validator type. Expected one of: %q", value, expected)
 }
 
-type duration struct {
+type Duration struct {
 	duration time.Duration
 }
 
-func (d duration) AsDuration() time.Duration {
+func (d Duration) String() string {
+	return d.duration.String()
+}
+
+func (d *Duration) Set(v string) error {
+	var err error
+	d.duration, err = time.ParseDuration(v)
+	return err
+}
+
+func (d Duration) AsDuration() time.Duration {
 	return d.duration
 }
 
-func (d *duration) UnmarshalText(text []byte) error {
+func (d *Duration) UnmarshalText(text []byte) error {
 	var err error
 	d.duration, err = time.ParseDuration(string(text))
 	return err
+}
+
+type LogFormat string
+
+func (vt LogFormat) String() string {
+	return string(vt)
+}
+
+func (vt *LogFormat) Set(v string) error {
+	*vt = LogFormat(v)
+	return nil
+}
+
+func (vt *LogFormat) UnmarshalText(value []byte) error {
+	validTypes := []string{string(LFJSON), string(LGText)}
+	v := string(value)
+	for _, t := range validTypes {
+		if t == v {
+			*vt = LogFormat(v)
+			return nil
+		}
+	}
+
+	expected := strings.Join(validTypes, ", ")
+	return fmt.Errorf("unsupported value %q for log format. Expected one of: %q", value, expected)
 }

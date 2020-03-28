@@ -10,6 +10,15 @@ import (
 )
 
 func NewRateLimitHandler(logger logrus.FieldLogger, b *ratelimit.Bucket, maxDelay time.Duration) HandlerWrapper {
+	if b == nil {
+		logger.Info("Rate Limiter disabled, no bucket defined.")
+		return func(h http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				h.ServeHTTP(w, r)
+			})
+		}
+	}
+
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			logger := logger.WithFields(logrus.Fields{

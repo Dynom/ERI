@@ -37,16 +37,28 @@
     # The minimum logging level to report, @see https://github.com/Sirupsen/logrus#level-logging
     level = "debug"
 
+    # "json" or "text". JSON plays nice with structured loggers (like GCP's Stackdriver). Text is nice for Humans.
+    type = "json"
+
   [server.profiler]
+
+    # Enable pprof @see https://blog.golang.org/pprof
     enable = false
+
+    # The prefix to use in the request path /<prefix>/pprof/...
     prefix = "debug"
 
   [server.finder]
+
+    # Speeds up the process of finding similar strings, but assumes no mistakes made in the prefix as trade-off.
+    # @see https://github.com/Dynom/TySug/pull/14
     useBuckets = true
 
   [server.validator]
 
-    # Use this resolver, instead of the local DNS hostname configured for this system
+    # Use this resolver, instead of the local DNS hostname configured for this system. Since speed matters, pick a fast
+    # public resolver (e.g.: 1.1.1.1, 8.8.4.4 or 8.8.8.8), or if you roll your own using (e.g. SkyDNS). An empty string
+    # disables the custom resolver and uses the locally configured one (not recommended)
     resolver = "8.8.8.8"
 
     # Choose from: "structure", "lookup", "connect" (not recommended)
@@ -60,14 +72,18 @@
 #    url = "postgresql://postgres@localhost:15432/eri?sslmode=disable"
 
   [server.graphql]
+
     prettyOutput = true
     graphiQL = false
     playground = false
 
-    [server.rateLimiter]
+  [server.rateLimiter]
+
+    # Leaky bucket implementation. Rate is per second. This means ~100 req/s, with bursts / peaks. Set the capacity or
+    # rate to <= 0 to disable rate limiting entirely
     rate = 100
     capacity = 500
 
     # amount of time a rate-limited request is allowed to wait for. Anything above this is aborted, to help protect
-    # against connection draining.
+    # against connection draining. Requests are delayed
     parkedTTL = "100ms"

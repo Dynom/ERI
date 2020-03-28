@@ -29,11 +29,10 @@ func newLogger(conf config.Config) (*logrus.Logger, *io.PipeWriter, error) {
 	var err error
 	logger := logrus.New()
 
-	// @todo change to config, once we have runtime overrides
-	if Version == "dev" {
-		logger.SetFormatter(&logrus.TextFormatter{})
-	} else {
+	if conf.Server.Log.Format == config.LFJSON {
 		logger.SetFormatter(&logrus.JSONFormatter{})
+	} else {
+		logger.SetFormatter(&logrus.TextFormatter{})
 	}
 
 	logger.SetOutput(os.Stdout)
