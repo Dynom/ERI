@@ -8,6 +8,8 @@ github.com/NYTimes/gziphandler v1.1.1 h1:ZUDjpQae29j0ryrS0u/B8HZfJBtBQHjqw2rQ2cq
 github.com/NYTimes/gziphandler v1.1.1/go.mod h1:n/CVRwUEOgIxrgPvAQhUUr9oeUtvrhMomdKFjzJNB0c=
 github.com/Pimmr/rig v0.0.0-20190516134016-e7e12f9920fc h1:n9/VtDkr6OWW96Mw8iyZZdYY4JzQ6CD+0m6oKamEhro=
 github.com/Pimmr/rig v0.0.0-20190516134016-e7e12f9920fc/go.mod h1:nDE25N8qFg4yMlAhiC/k1HA679DqDSX6iRgQwUmVVbU=
+github.com/Pimmr/rig v0.0.0-20200327123708-a6d34f8b4a0b h1:24SDMBLU6tzGZ6mGNFT37FZ+Q/ufIi9L/DRYpXPLm/0=
+github.com/Pimmr/rig v0.0.0-20200327123708-a6d34f8b4a0b/go.mod h1:nDE25N8qFg4yMlAhiC/k1HA679DqDSX6iRgQwUmVVbU=
 github.com/alextanhongpin/stringdist v0.0.0-20181112144725-57e5fb016be2 h1:t2GHeJnzMuA5LXpzhuO4DPSyL79AFzi4K0xv7pAEFjQ=
 github.com/alextanhongpin/stringdist v0.0.0-20181112144725-57e5fb016be2/go.mod h1:6Bb1jYZG8v0tBZjFmU6/48W60Gt/aN6rRs2dXDBliq0=
 github.com/alextanhongpin/stringdist v0.0.1 h1:5Bygn3NKAoiUld8oYtoS8YplILTjOWxKe7FPAfXXs+U=

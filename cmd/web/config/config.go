@@ -46,7 +46,7 @@ type Config struct {
 			AllowedOrigins []string `toml:"allowedOrigins"`
 			AllowedHeaders []string `toml:"allowedHeaders"`
 		} `toml:"CORS"`
-		Headers Headers `toml:"headers"`
+		Headers Headers `toml:"headers" env:"-" usage:"Only (repeatable) flag or config file supported"`
 		Log     struct {
 			Level  string    `toml:"level"`
 			Format LogFormat `toml:"format" usage:"The log output format \"json\" or \"text\""`

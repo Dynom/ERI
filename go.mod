@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Dynom/TySug v0.1.3
 	github.com/NYTimes/gziphandler v1.1.1
-	github.com/Pimmr/rig v0.0.0-20190516134016-e7e12f9920fc
+	github.com/Pimmr/rig v0.0.0-20200327123708-a6d34f8b4a0b
 	github.com/alextanhongpin/stringdist v0.0.1 // indirect
 	github.com/graphql-go/graphql v0.7.9
 	github.com/graphql-go/handler v0.2.3
