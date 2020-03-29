@@ -1,7 +1,6 @@
 package hitlist
 
 import (
-	"encoding/hex"
 	"hash"
 	"sort"
 	"strings"
@@ -13,9 +12,19 @@ import (
 	"github.com/Dynom/ERI/types"
 )
 
+type Hits map[Domain]Hit
+type Domain string
+type Hit struct {
+	Recipients       []Recipient
+	ValidUntil       time.Time
+	ValidationResult validator.Result
+}
+
+type Recipient []byte
+
 func New(h hash.Hash, ttl time.Duration) *HitList {
 	l := HitList{
-		set:  make(map[string]domainHit),
+		hits: make(Hits),
 		lock: sync.RWMutex{},
 		h:    h,
 		ttl:  ttl,
@@ -24,76 +33,32 @@ func New(h hash.Hash, ttl time.Duration) *HitList {
 	return &l
 }
 
-// HitList is an opinionated nearly-flat tree structured type that captures e-mail address validity on two levels
+//func (hl *HitList) Refresh(h Hits) {
+//	hl.lock.Lock()
+//	hl.hits = h
+//	hl.lock.Unlock()
+//}
+
 type HitList struct {
-	set  map[string]domainHit
-	ttl  time.Duration // The default TTL for when Learning about a new e-mail address
+	hits Hits
+	ttl  time.Duration
 	lock sync.RWMutex
 	h    hash.Hash
 }
 
-type Hit struct {
-	ValidationResult validator.Result
-	ValidUntil       time.Time
-	Domain           domainHit
-}
-
-func (h Hit) TTL() time.Duration {
-	return time.Until(h.ValidUntil)
-}
-
-type Recipient string
-
-func (rcpt Recipient) String() string {
-	return hex.EncodeToString([]byte(rcpt))
-}
-
-func (rcpt Recipient) IsEmpty() bool {
-	return rcpt == ""
-}
-
-type Recipients map[Recipient]Hit
-
-type DomainHit struct {
-	ValidationResult validator.Result
-}
-
-type domainHit struct {
-	ValidationResult validator.Result
-	RCPTs            Recipients
-}
-
-type stats struct {
-	domain string
-	usage  uint
-}
-
-type ChangeType uint
-type OnChangeFn func(recipient Recipient, domain string, vr validator.Result, change ChangeType)
-
 // GetValidAndUsageSortedDomains returns the used domains, sorted by their associated recipients (high>low)
-func (h *HitList) GetValidAndUsageSortedDomains() []string {
+func (hl *HitList) GetValidAndUsageSortedDomains() []string {
 
-	h.lock.RLock()
-	var domains = getValidAndUsedFromSet(h.set)
-	h.lock.RUnlock()
+	hl.lock.RLock()
+	var domains = getValidDomains(hl.hits)
+	hl.lock.RUnlock()
 
-	sort.Slice(domains, func(i, j int) bool {
-		return domains[i].usage < domains[j].usage
-	})
-
-	// @todo Could probably be a object pool
-	var result = make([]string, 0, len(domains))
-	for _, stats := range domains {
-		result = append(result, stats.domain)
-	}
-
-	return result
+	return domains
 }
 
 // AddEmailAddressDeadline Same as AddEmailAddress, but allows for custom TTL. Duration shouldn't be negative.
-func (h *HitList) AddEmailAddressDeadline(email string, vr validator.Result, duration time.Duration) error {
-	var domain string
+func (hl *HitList) AddEmailAddressDeadline(email string, vr validator.Result, duration time.Duration) error {
+	var domain Domain
 	var safeLocal Recipient
 
 	{
@@ -103,65 +68,53 @@ func (h *HitList) AddEmailAddressDeadline(email string, vr validator.Result, dur
 			return err
 		}
 
-		safeLocal = Recipient(h.h.Sum([]byte(parts.Local)))
-		domain = parts.Domain
+		safeLocal = hl.h.Sum([]byte(parts.Local))
+		domain = Domain(parts.Domain)
 	}
 
-	h.lock.Lock()
-	defer h.lock.Unlock()
+	hl.lock.Lock()
+	defer hl.lock.Unlock()
 
 	var now = time.Now()
-	dh, ok := h.set[domain]
+	dh, ok := hl.hits[domain]
 
 	if !ok {
-		recipients := make(map[Recipient]Hit, 1)
-		recipients[safeLocal] = Hit{
-			ValidUntil:       now.Add(duration),
+
+		hl.hits[domain] = Hit{
+			Recipients:       []Recipient{safeLocal},
+			ValidUntil:       now.Add(hl.ttl),
 			ValidationResult: vr,
 		}
-
-		dh = domainHit{
-			RCPTs:            recipients,
-			ValidationResult: vr,
-		}
-
-		h.set[domain] = dh
 
 		return nil
-	}
-
-	if _, ok := dh.RCPTs[safeLocal]; !ok {
-		dh.RCPTs[safeLocal] = Hit{
-			ValidUntil:       now.Add(duration),
-			ValidationResult: vr,
-		}
 	}
 
 	dh.ValidationResult.Validations = dh.ValidationResult.Validations.MergeWithNext(vr.Validations)
 	dh.ValidationResult.Steps = dh.ValidationResult.Steps.MergeWithNext(vr.Steps)
 
-	h.set[domain] = dh
+	hl.hits[domain] = dh
 
 	return nil
 }
 
 // AddEmailAddress records validations for a particular e-mail address. AddEmailAddress clears previously seen
 // validators if you want to merge, first fetch, merge and pass the resulting Validations to AddEmailAddress()
-func (h *HitList) AddEmailAddress(email string, vr validator.Result) error {
-	return h.AddEmailAddressDeadline(email, vr, h.ttl)
+func (hl *HitList) AddEmailAddress(email string, vr validator.Result) error {
+	return hl.AddEmailAddressDeadline(email, vr, hl.ttl)
 }
 
 // AddDomain learns of a domain and it's validity. It overwrites the existing validations, when applicable for a domain
-func (h *HitList) AddDomain(domain string, vr validator.Result) error {
-	h.lock.Lock()
-	defer h.lock.Unlock()
+func (hl *HitList) AddDomain(d string, vr validator.Result) error {
+	hl.lock.Lock()
+	defer hl.lock.Unlock()
 
-	domain = strings.ToLower(domain)
+	var domain = Domain(strings.ToLower(d))
 
-	hit, ok := h.set[domain]
+	hit, ok := hl.hits[domain]
 	if !ok {
-		h.set[domain] = domainHit{
-			RCPTs:            make(map[Recipient]Hit),
+		hl.hits[domain] = Hit{
+			Recipients:       []Recipient{},
+			ValidUntil:       time.Now().Add(hl.ttl),
 			ValidationResult: vr,
 		}
 
@@ -170,53 +123,47 @@ func (h *HitList) AddDomain(domain string, vr validator.Result) error {
 
 	hit.ValidationResult.Validations = hit.ValidationResult.Validations.MergeWithNext(vr.Validations)
 	hit.ValidationResult.Steps = hit.ValidationResult.Steps.MergeWithNext(vr.Steps)
-	h.set[domain] = hit
+	hl.hits[domain] = hit
 
 	return nil
 }
 
-// getValidAndUsedFromSet returns domains which are valid
-func getValidAndUsedFromSet(set map[string]domainHit) []stats {
-	var result = make([]stats, len(set))
+// getValidDomains returns domains which are valid, sorted by their recipients in descending order
+func getValidDomains(hits Hits) []string {
+	type stats struct {
+		Domain     string
+		Recipients int64
+	}
+
+	var sortStats = make([]stats, 0, len(hits))
 
 	var now = time.Now()
-	var index int
-	for domain, details := range set {
+	for domain, details := range hits {
 
 		if !details.ValidationResult.Validations.IsValidationsForValidDomain() {
 			continue
 		}
 
-		result[index] = stats{
-			domain: domain,
-			usage:  calculateValidRCPTUsage(details.RCPTs, now), // @todo get out of the hot path
+		if !details.ValidUntil.After(now) {
+			continue
 		}
 
-		index++
+		sortStats = append(sortStats, stats{
+			Domain:     string(domain),
+			Recipients: int64(len(details.Recipients)),
+		})
+	}
+
+	// Sorting on recipient count in Descending order
+	sort.Slice(sortStats, func(i, j int) bool {
+		return sortStats[i].Recipients > sortStats[j].Recipients
+	})
+
+	// @todo Could probably be a object pool, could relieve the GC
+	result := make([]string, 0, len(sortStats))
+	for _, stats := range sortStats {
+		result = append(result, stats.Domain)
 	}
 
 	return result
-}
-
-// calculateValidRCPTUsage calculates the usage of valid, and the first-to-expire valid recipients
-func calculateValidRCPTUsage(recipients map[Recipient]Hit, referenceTime time.Time) (usage uint) {
-
-	for _, recipient := range recipients {
-		if !recipient.ValidationResult.Validations.IsValid() {
-			continue
-		}
-
-		if referenceTime.IsZero() || recipient.ValidUntil.IsZero() {
-			continue
-		}
-
-		// The recipient's validity expired, we won't consider it for "oldest"
-		if recipient.ValidUntil.Before(referenceTime) {
-			continue
-		}
-
-		usage++
-	}
-
-	return
 }
