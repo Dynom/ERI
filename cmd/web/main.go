@@ -132,7 +132,6 @@ func main() {
 	}
 
 	// @todo status endpoint (or tick logger)
-	// @todo make the RL configurable
 
 	var bucket *ratelimit.Bucket
 	if conf.Server.RateLimiter.Rate > 0 && conf.Server.RateLimiter.Capacity > 0 {
@@ -143,6 +142,7 @@ func main() {
 		AllowedOrigins: conf.Server.CORS.AllowedOrigins,
 		AllowedHeaders: conf.Server.CORS.AllowedHeaders,
 	})
+
 	s := erihttp.BuildHTTPServer(mux, conf, logWriter,
 		handlers.WithPathStrip(logger, conf.Server.PathStrip),
 		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
