@@ -82,7 +82,7 @@ func (hl *HitList) AddEmailAddressDeadline(email string, vr validator.Result, du
 
 		hl.hits[domain] = Hit{
 			Recipients:       []Recipient{safeLocal},
-			ValidUntil:       now.Add(hl.ttl),
+			ValidUntil:       now.Add(duration),
 			ValidationResult: vr,
 		}
 
@@ -91,6 +91,7 @@ func (hl *HitList) AddEmailAddressDeadline(email string, vr validator.Result, du
 
 	dh.ValidationResult.Validations = dh.ValidationResult.Validations.MergeWithNext(vr.Validations)
 	dh.ValidationResult.Steps = dh.ValidationResult.Steps.MergeWithNext(vr.Steps)
+	dh.ValidUntil = now.Add(duration)
 
 	hl.hits[domain] = dh
 
