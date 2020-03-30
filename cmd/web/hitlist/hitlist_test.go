@@ -2,344 +2,513 @@ package hitlist
 
 import (
 	"hash"
-	"math"
-	"math/rand"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/Dynom/ERI/validator"
-
 	"github.com/Dynom/ERI/validator/validations"
 )
 
-func TestHitList_AddDomain(t *testing.T) {
-	type fields struct {
-		Set  map[string]domainHit
-		ttl  time.Duration
-		lock sync.RWMutex
-		h    hash.Hash
+func Test_getValidDomains(t *testing.T) {
+	validDuration := time.Now().Add(1 * time.Hour)
+	validFlags := validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FDomainHasIP
+	validVR := validator.Result{
+		Validations: validations.Validations(validFlags),
+		Steps:       validations.Steps(validFlags),
 	}
-	type args struct {
-		domain string
-		vr     validator.Result
+
+	allValidHits := Hits{
+		Domain("a"): Hit{
+			Recipients: []Recipient{
+				[]byte("john.doe"),
+				[]byte("jane.doe"),
+				[]byte("joan.doe"),
+				[]byte("jake.doe"),
+			},
+			ValidUntil:       validDuration,
+			ValidationResult: validVR,
+		},
+		Domain("b"): Hit{
+			Recipients: []Recipient{
+				[]byte("john.doe"),
+				[]byte("jane.doe"),
+			},
+			ValidUntil:       validDuration,
+			ValidationResult: validVR,
+		},
+		Domain("c"): Hit{
+			Recipients: []Recipient{
+				[]byte("john.doe"),
+			},
+			ValidUntil:       validDuration,
+			ValidationResult: validVR,
+		},
+		Domain("d"): Hit{
+			Recipients: []Recipient{
+				[]byte("john.doe"),
+				[]byte("jane.doe"),
+				[]byte("joan.doe"),
+			},
+			ValidUntil:       validDuration,
+			ValidationResult: validVR,
+		},
+		Domain("e"): Hit{
+			Recipients: []Recipient{
+				[]byte("john.doe"),
+				[]byte("jane.doe"),
+				[]byte("joan.doe"),
+				[]byte("jake.doe"),
+				[]byte("winston.doe"),
+			},
+			ValidUntil:       validDuration,
+			ValidationResult: validVR,
+		},
 	}
+
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name string
+		hits Hits
+		want []string
 	}{
-		// TODO: Add test cases.
+		{name: "All valid", hits: allValidHits, want: []string{"e", "a", "d", "b", "c"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &HitList{
-				set:  tt.fields.Set,
-				ttl:  tt.fields.ttl,
-				lock: tt.fields.lock,
-				h:    tt.fields.h,
-			}
-			if err := h.AddDomain(tt.args.domain, tt.args.vr); (err != nil) != tt.wantErr {
-				t.Errorf("AddDomain() error = %v, wantErr %v", err, tt.wantErr)
+			if got := getValidDomains(tt.hits); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getValidDomains() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestHitList_AddEmailAddress(t *testing.T) {
-	type fields struct {
-		Set  map[string]domainHit
-		ttl  time.Duration
-		lock sync.RWMutex
-		h    hash.Hash
+// TestHitList_FunctionalAddAndReturn is a functional test, testing adding and retrieving of
+func TestHitList_FunctionalAddAndReturn(t *testing.T) {
+
+	validVR := validator.Result{
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
 	}
+
 	type args struct {
-		email string
-		vr    validator.Result
+		email    string
+		vr       validator.Result
+		duration time.Duration
 	}
+
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name             string
+		args             args
+		wantErr          bool
+		wantTotalDomains int
+		wantValidDomains int
 	}{
-		// TODO: Add test cases.
+		{
+			name: "basic add",
+			args: args{
+				email: "john.doe@example.org",
+				vr:    validVR,
+			},
+			wantErr:          false,
+			wantTotalDomains: 1,
+			wantValidDomains: 1,
+		},
+		{
+			name: "malformed add",
+			args: args{
+				email: "john.doe#example.org",
+				vr:    validVR,
+			},
+			wantErr:          true,
+			wantTotalDomains: 0,
+			wantValidDomains: 0,
+		},
 	}
+
+	ttl := time.Hour * 1
+	h := mockHasher{}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &HitList{
-				set:  tt.fields.Set,
-				ttl:  tt.fields.ttl,
-				lock: tt.fields.lock,
-				h:    tt.fields.h,
+			hl := New(h, ttl)
+			if err := hl.AddEmailAddressDeadline(tt.args.email, tt.args.vr, ttl); (err != nil) != tt.wantErr {
+				t.Errorf("AddEmailAddressDeadline() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if err := h.AddEmailAddress(tt.args.email, tt.args.vr); (err != nil) != tt.wantErr {
-				t.Errorf("AddEmailAddress() error = %v, wantErr %v", err, tt.wantErr)
+
+			if len(hl.hits) != tt.wantTotalDomains {
+				t.Errorf("Expected %d domains known to HL, instead I have %d", tt.wantTotalDomains, len(hl.hits))
+			}
+
+			if vds := hl.GetValidAndUsageSortedDomains(); len(vds) != tt.wantValidDomains {
+				t.Errorf("Expected %d valid domains in HL, instead I have %d", tt.wantValidDomains, len(vds))
 			}
 		})
 	}
 }
 
 func TestHitList_AddEmailAddressDeadline(t *testing.T) {
+	validVR := validator.Result{
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
+	}
+
+	populatedHitList := New(mockHasher{}, time.Hour*1)
+	_ = populatedHitList.AddEmailAddress("john.doe@example.org", validVR) // example caseR
+	_ = populatedHitList.AddEmailAddress("jane.doe@example.org", validVR)
+	_ = populatedHitList.AddEmailAddress("alexander@example.com", validVR)
+	_ = populatedHitList.AddEmailAddress("edward@example.com", validVR)
+
 	type fields struct {
-		Set  map[string]domainHit
+		hits Hits
 		ttl  time.Duration
 		lock sync.RWMutex
 		h    hash.Hash
 	}
+
 	type args struct {
-		email    string
-		vr       validator.Result
-		duration time.Duration
+		emailLocal  string
+		emailDomain string
+		vr          validator.Result
+		duration    time.Duration
 	}
+
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Add with future duration",
+			fields: fields{
+				hits: make(Hits),
+				ttl:  time.Hour * 2, // Not used in this case
+				lock: sync.RWMutex{},
+				h:    mockHasher{},
+			},
+			args: args{
+				emailLocal:  "john.doe",
+				emailDomain: "example.org",
+				vr:          validVR,
+				duration:    time.Hour * 1,
+			},
+			wantErr: false,
+		},
+		{
+			name: "Add with expired duration",
+			fields: fields{
+				hits: make(Hits),
+				ttl:  time.Hour * 2, // Not used in this case
+				lock: sync.RWMutex{},
+				h:    mockHasher{},
+			},
+			args: args{
+				emailLocal:  "john.doe",
+				emailDomain: "example.org",
+				vr:          validVR,
+				duration:    time.Hour * -1,
+			},
+			wantErr: false,
+		},
+		{
+			name: "Add duplicate",
+			fields: fields{
+				hits: populatedHitList.hits,
+				ttl:  time.Hour * 2,
+				lock: sync.RWMutex{},
+				h:    mockHasher{},
+			},
+			args: args{
+				emailLocal:  "john.doe",
+				emailDomain: "example.org",
+				vr:          validVR,
+				duration:    time.Hour * -1,
+			},
+			wantErr: false,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &HitList{
-				set:  tt.fields.Set,
+			hl := &HitList{
+				hits: tt.fields.hits,
 				ttl:  tt.fields.ttl,
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
 			}
-			if err := h.AddEmailAddressDeadline(tt.args.email, tt.args.vr, tt.args.duration); (err != nil) != tt.wantErr {
+
+			email := tt.args.emailLocal + `@` + tt.args.emailDomain
+
+			if err := hl.AddEmailAddressDeadline(email, tt.args.vr, tt.args.duration); (err != nil) != tt.wantErr {
 				t.Errorf("AddEmailAddressDeadline() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			hit, ok := hl.hits[Domain(tt.args.emailDomain)]
+			if !ok {
+				t.Errorf("Expected %q to be present, it's not", tt.args.emailDomain)
+				return
+			}
+
+			// Adding time to now, to compensate for test execution time
+			now := time.Now().Add(time.Second * 10)
+			if expect := now.Add(tt.args.duration); hit.ValidUntil.After(expect) {
+				t.Errorf("Expected the validity to not expire before %q, instead it was %q", expect, hit.ValidUntil)
 			}
 		})
 	}
 }
 
+type mockHasher struct {
+	v []byte
+}
+
+func (s mockHasher) Write(p []byte) (int, error) {
+	s.v = p
+	return len(p), nil
+}
+
+func (s mockHasher) Sum(_ []byte) []byte {
+	return s.v
+}
+
+func (s mockHasher) Reset() {
+
+}
+
+func (s mockHasher) Size() int {
+	return len(s.v)
+}
+
+func (s mockHasher) BlockSize() int {
+	return 128
+}
+
 func TestHitList_GetValidAndUsageSortedDomains(t *testing.T) {
+	validVR := validator.Result{
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
+	}
+
+	invalidVR := validator.Result{
+		Validations: validations.Validations(0),
+	}
+
+	populatedFullyValidHitList := New(mockHasher{}, time.Hour*1)
+	_ = populatedFullyValidHitList.AddEmailAddress("john.doe@example.org", validVR) // example case
+	_ = populatedFullyValidHitList.AddEmailAddress("jane.doe@example.org", validVR)
+	_ = populatedFullyValidHitList.AddEmailAddress("alexander@example.com", validVR)
+
+	populatedHitListFaultyDomains := New(mockHasher{}, time.Hour*1)
+	_ = populatedHitListFaultyDomains.AddEmailAddress("john.doe@example.or", invalidVR)
+	_ = populatedHitListFaultyDomains.AddEmailAddress("alexan der@example.com", invalidVR)
+
+	_ = populatedHitListFaultyDomains.AddEmailAddress("jane.doe@eXamplE.org", validVR)
+
+	populatedHitListExpiredDomains := New(mockHasher{}, time.Hour*1 /* Not used for this test set */)
+	_ = populatedHitListExpiredDomains.AddEmailAddressDeadline("john.doe@example.org", validVR, 0)
+	_ = populatedHitListExpiredDomains.AddEmailAddressDeadline("alexander@example.com", validVR, 0)
+
+	_ = populatedHitListExpiredDomains.AddEmailAddressDeadline("jane.doe@example.org", validVR, 0)
+
 	type fields struct {
-		Set  map[string]domainHit
+		hits Hits
 		ttl  time.Duration
 		lock sync.RWMutex
 		h    hash.Hash
 	}
+
 	tests := []struct {
 		name   string
 		fields fields
 		want   []string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "All valid domains",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedFullyValidHitList.h,
+			},
+			want: []string{
+				"example.org",
+				"example.com",
+			},
+		},
+		{
+			name: "With faulty domains",
+			fields: fields{
+				hits: populatedHitListFaultyDomains.hits,
+				ttl:  populatedHitListFaultyDomains.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedHitListFaultyDomains.h,
+			},
+			want: []string{
+				"example.org",
+			},
+		},
+		{
+			name: "With expired domains",
+			fields: fields{
+				hits: populatedHitListExpiredDomains.hits,
+				ttl:  populatedHitListExpiredDomains.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedHitListExpiredDomains.h,
+			},
+			want: []string{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &HitList{
-				set:  tt.fields.Set,
+			hl := &HitList{
+				hits: tt.fields.hits,
 				ttl:  tt.fields.ttl,
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
 			}
-			if got := h.GetValidAndUsageSortedDomains(); !reflect.DeepEqual(got, tt.want) {
+			if got := hl.GetValidAndUsageSortedDomains(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetValidAndUsageSortedDomains() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestNewHitList(t *testing.T) {
+func TestHitList_AddEmailAddress(t *testing.T) {
+	validVR := validator.Result{
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
+	}
+
+	hl := New(mockHasher{}, time.Hour*1)
+
+	now := time.Now()
+	_ = hl.AddEmailAddress("john.doe@example.org", validVR) // example caseR
+
+	if vu, expected := hl.hits[Domain("example.org")].ValidUntil.Round(time.Second*1), now.Add(hl.ttl).Round(time.Second*1); !expected.Equal(vu) {
+		t.Errorf("Expected the TTL to have been set with the short-hand AddEmailAddress. \nExpected %v, \ngot      %v", expected, vu)
+	}
+}
+
+func TestHitList_AddDomain(t *testing.T) {
+	validVR := validator.Result{
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
+	}
+
+	invalidVR := validator.Result{
+		Validations: validations.Validations(0),
+	}
+
+	populatedFullyValidHitList := New(mockHasher{}, time.Hour*1)
+	_ = populatedFullyValidHitList.AddDomain("example.org", validVR)
+
+	type fields struct {
+		hits Hits
+		ttl  time.Duration
+		lock sync.RWMutex
+		h    hash.Hash
+	}
+
 	type args struct {
-		h   hash.Hash
-		ttl time.Duration
+		d  string
+		vr validator.Result
 	}
+
 	tests := []struct {
-		name string
-		args args
-		want *HitList
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+		wantVR  validator.Result
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Unknown",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedFullyValidHitList.h,
+			},
+			args: args{
+				d:  "example1.com",
+				vr: validVR,
+			},
+			wantErr: false,
+			wantVR:  validVR,
+		},
+		{
+			name: "Unknown, invalid VR",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedFullyValidHitList.h,
+			},
+			args: args{
+				d:  "example2.com",
+				vr: invalidVR,
+			},
+			wantErr: false,
+			wantVR:  invalidVR,
+		},
+		{
+			name: "Known, with same VR",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedFullyValidHitList.h,
+			},
+			args: args{
+				d:  "example.org",
+				vr: validVR,
+			},
+			wantErr: false,
+			wantVR:  validVR,
+		},
+		{
+			name: "Known, with different VR",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedFullyValidHitList.h,
+			},
+			args: args{
+				d: "example.org",
+				vr: validator.Result{
+					Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FDomainHasIP),
+				},
+			},
+			wantErr: false,
+			wantVR: validator.Result{
+				Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FDomainHasIP),
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := New(tt.args.h, tt.args.ttl); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("New() = %v, want %v", got, tt.want)
+			hl := &HitList{
+				hits: tt.fields.hits,
+				ttl:  tt.fields.ttl,
+				lock: tt.fields.lock,
+				h:    tt.fields.h,
+			}
+
+			if err := hl.AddDomain(tt.args.d, tt.args.vr); (err != nil) != tt.wantErr {
+				t.Errorf("AddDomain() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if vr := hl.hits[Domain(tt.args.d)].ValidationResult; !reflect.DeepEqual(vr, tt.wantVR) {
+				t.Errorf("Expected the Validation Result to be \n%+v, instead I got \n%+v", tt.wantVR, vr)
 			}
 		})
 	}
-}
-
-func TestRCPT_String(t *testing.T) {
-	tests := []struct {
-		name string
-		rcpt Recipient
-		want string
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.rcpt.String(); got != tt.want {
-				t.Errorf("String() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_calculateValidRCPTUsage(t *testing.T) {
-	referenceTime := time.Date(2019, 11, 27, 5, 31, 0, 0, time.UTC)
-
-	t.Run("testing oldest", func(t *testing.T) {
-		rcpts := make(Recipients, 2)
-
-		validA := referenceTime.Add(10 * time.Hour)
-		validOldest := referenceTime.Add(1 * time.Hour)
-
-		rcpts["john@example.org"] = Hit{
-			ValidationResult: validator.Result{
-				Validations: validations.Validations(validations.FValid),
-				Steps:       0,
-			},
-			ValidUntil: validA,
-		}
-
-		rcpts["jane@example.org"] = Hit{
-			ValidationResult: validator.Result{
-				Validations: validations.Validations(validations.FValid),
-				Steps:       0,
-			},
-			ValidUntil: validOldest,
-		}
-
-		gotUsage := calculateValidRCPTUsage(rcpts, referenceTime)
-		if wantUsage := uint(len(rcpts)); gotUsage != wantUsage {
-			t.Errorf("calculateValidRCPTUsage() gotUsage = %v, want %v", gotUsage, wantUsage)
-		}
-	})
-
-	t.Run("testing usage", func(t *testing.T) {
-		rcpts := make(Recipients, 3)
-
-		want := uint(2)
-		validTime := referenceTime.Add(10 * time.Hour)
-		expiredTime := referenceTime.Add(-1 * time.Hour)
-
-		rcpts["john@example.org"] = Hit{
-			ValidationResult: validator.Result{
-				Validations: validations.Validations(validations.FValid),
-				Steps:       0,
-			},
-			ValidUntil: validTime,
-		}
-
-		rcpts["jane@example.org"] = Hit{
-			ValidationResult: validator.Result{
-				Validations: validations.Validations(validations.FValid),
-				Steps:       0,
-			},
-			ValidUntil: validTime,
-		}
-
-		// Validity expired
-		rcpts["late@example.org"] = Hit{
-			ValidationResult: validator.Result{
-				Validations: validations.Validations(validations.FValid),
-				Steps:       0,
-			},
-			ValidUntil: expiredTime,
-		}
-
-		// Invalid
-		rcpts["not-valid@example.org"] = Hit{
-			ValidationResult: validator.Result{
-				Validations: 0,
-				Steps:       0,
-			},
-			ValidUntil: validTime,
-		}
-
-		got := calculateValidRCPTUsage(rcpts, referenceTime)
-		if got != want {
-			t.Errorf("calculateValidRCPTUsage() got = %v, want %v", got, want)
-		}
-	})
-}
-
-type FakeInt8 struct {
-	Validations int8
-}
-type FakeInt16 struct {
-	Validations int16
-}
-type FakeInt32 struct {
-	Validations int32
-}
-type FakeInt64 struct {
-	Validations int64
-}
-
-var bigMapInt8 map[string]FakeInt8
-var bigMapInt16 map[string]FakeInt16
-var bigMapInt32 map[string]FakeInt32
-var bigMapInt64 map[string]FakeInt64
-
-func BenchmarkMemoryUsage(b *testing.B) {
-
-	const mapSize = 1000
-	const keySize = 5
-	const alnum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-	var keys = make([]string, mapSize)
-	for i := 0; i < mapSize; i++ {
-		var key = make([]byte, keySize)
-		for i := uint(0); i < keySize; i++ {
-			key[i] = alnum[rand.Intn(len(alnum))]
-		}
-
-		keys[i] = string(key)
-	}
-
-	b.Run("int8", func(t *testing.B) {
-		for j := 0; j < t.N; j++ {
-			bigMapInt8 = make(map[string]FakeInt8, mapSize)
-			for _, key := range keys {
-				bigMapInt8[key] = FakeInt8{
-					Validations: math.MaxInt8,
-				}
-			}
-		}
-	})
-	b.Run("int16", func(t *testing.B) {
-		for j := 0; j < t.N; j++ {
-			bigMapInt16 = make(map[string]FakeInt16, mapSize)
-			for _, key := range keys {
-				bigMapInt16[key] = FakeInt16{
-					Validations: math.MaxInt16,
-				}
-			}
-		}
-	})
-	b.Run("int32", func(t *testing.B) {
-		for j := 0; j < t.N; j++ {
-			bigMapInt32 = make(map[string]FakeInt32, mapSize)
-			for _, key := range keys {
-				bigMapInt32[key] = FakeInt32{
-					Validations: math.MaxInt32,
-				}
-			}
-		}
-	})
-	b.Run("int64", func(t *testing.B) {
-		for j := 0; j < t.N; j++ {
-			bigMapInt64 = make(map[string]FakeInt64, mapSize)
-			for _, key := range keys {
-				bigMapInt64[key] = FakeInt64{
-					Validations: math.MaxInt64,
-				}
-			}
-		}
-	})
-
-	_ = bigMapInt8
-	_ = bigMapInt16
-	_ = bigMapInt32
-	_ = bigMapInt64
 }

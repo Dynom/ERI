@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"time"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
 
@@ -82,9 +81,5 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 }
 
 func didDeadlineExpire(ctx context.Context) bool {
-	if t, set := ctx.Deadline(); set {
-		return t.After(time.Now())
-	}
-
-	return false
+	return ctx.Err() != nil
 }
