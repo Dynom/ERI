@@ -1,7 +1,9 @@
 package hitlist
 
 import (
+	"hash"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -81,10 +83,13 @@ func Test_getValidDomains(t *testing.T) {
 	}
 }
 
-func TestHitList_AddEmailAddressDeadline(t *testing.T) {
+// TestHitList_FunctionalAddAndReturn is a functional test, testing adding and retrieving of
+func TestHitList_FunctionalAddAndReturn(t *testing.T) {
 
 	validVR := validator.Result{
-		Validations: validations.Validations(validations.FValid | validations.FSyntax),
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
 	}
 
 	type args struct {
@@ -94,10 +99,11 @@ func TestHitList_AddEmailAddressDeadline(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		args        args
-		wantErr     bool
-		wantDomains int
+		name             string
+		args             args
+		wantErr          bool
+		wantTotalDomains int
+		wantValidDomains int
 	}{
 		{
 			name: "basic add",
@@ -105,8 +111,9 @@ func TestHitList_AddEmailAddressDeadline(t *testing.T) {
 				email: "john.doe@example.org",
 				vr:    validVR,
 			},
-			wantErr:     false,
-			wantDomains: 1,
+			wantErr:          false,
+			wantTotalDomains: 1,
+			wantValidDomains: 1,
 		},
 		{
 			name: "malformed add",
@@ -114,8 +121,9 @@ func TestHitList_AddEmailAddressDeadline(t *testing.T) {
 				email: "john.doe#example.org",
 				vr:    validVR,
 			},
-			wantErr:     true,
-			wantDomains: 0,
+			wantErr:          true,
+			wantTotalDomains: 0,
+			wantValidDomains: 0,
 		},
 	}
 
@@ -129,8 +137,125 @@ func TestHitList_AddEmailAddressDeadline(t *testing.T) {
 				t.Errorf("AddEmailAddressDeadline() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if len(hl.hits) != tt.wantDomains {
-				t.Errorf("Expected %d domains in HL, instead I have %d", tt.wantDomains, len(hl.hits))
+			if len(hl.hits) != tt.wantTotalDomains {
+				t.Errorf("Expected %d domains known to HL, instead I have %d", tt.wantTotalDomains, len(hl.hits))
+			}
+
+			if vds := hl.GetValidAndUsageSortedDomains(); len(vds) != tt.wantValidDomains {
+				t.Errorf("Expected %d valid domains in HL, instead I have %d", tt.wantValidDomains, len(vds))
+			}
+		})
+	}
+}
+
+func TestHitList_AddEmailAddressDeadline(t *testing.T) {
+	validVR := validator.Result{
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
+	}
+
+	populatedHitList := New(mockHasher{}, time.Hour*1)
+	_ = populatedHitList.AddEmailAddress("john.doe@example.org", validVR) // example caseR
+	_ = populatedHitList.AddEmailAddress("jane.doe@example.org", validVR)
+	_ = populatedHitList.AddEmailAddress("alexander@example.com", validVR)
+	_ = populatedHitList.AddEmailAddress("edward@example.com", validVR)
+
+	type fields struct {
+		hits Hits
+		ttl  time.Duration
+		lock sync.RWMutex
+		h    hash.Hash
+	}
+
+	type args struct {
+		emailLocal  string
+		emailDomain string
+		vr          validator.Result
+		duration    time.Duration
+	}
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Add with future duration",
+			fields: fields{
+				hits: make(Hits),
+				ttl:  time.Hour * 2, // Not used in this case
+				lock: sync.RWMutex{},
+				h:    mockHasher{},
+			},
+			args: args{
+				emailLocal:  "john.doe",
+				emailDomain: "example.org",
+				vr:          validVR,
+				duration:    time.Hour * 1,
+			},
+			wantErr: false,
+		},
+		{
+			name: "Add with expired duration",
+			fields: fields{
+				hits: make(Hits),
+				ttl:  time.Hour * 2, // Not used in this case
+				lock: sync.RWMutex{},
+				h:    mockHasher{},
+			},
+			args: args{
+				emailLocal:  "john.doe",
+				emailDomain: "example.org",
+				vr:          validVR,
+				duration:    time.Hour * -1,
+			},
+			wantErr: false,
+		},
+		{
+			name: "Add duplicate",
+			fields: fields{
+				hits: populatedHitList.hits,
+				ttl:  time.Hour * 2,
+				lock: sync.RWMutex{},
+				h:    mockHasher{},
+			},
+			args: args{
+				emailLocal:  "john.doe",
+				emailDomain: "example.org",
+				vr:          validVR,
+				duration:    time.Hour * -1,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hl := &HitList{
+				hits: tt.fields.hits,
+				ttl:  tt.fields.ttl,
+				lock: tt.fields.lock,
+				h:    tt.fields.h,
+			}
+
+			email := tt.args.emailLocal + `@` + tt.args.emailDomain
+
+			if err := hl.AddEmailAddressDeadline(email, tt.args.vr, tt.args.duration); (err != nil) != tt.wantErr {
+				t.Errorf("AddEmailAddressDeadline() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			hit, ok := hl.hits[Domain(tt.args.emailDomain)]
+			if !ok {
+				t.Errorf("Expected %q to be present, it's not", tt.args.emailDomain)
+				return
+			}
+
+			// Adding time to now, to compensate for test execution time
+			now := time.Now().Add(time.Second * 10)
+			if expect := now.Add(tt.args.duration); hit.ValidUntil.After(expect) {
+				t.Errorf("Expected the validity to not expire before %q, instead it was %q", expect, hit.ValidUntil)
 			}
 		})
 	}
@@ -159,4 +284,231 @@ func (s mockHasher) Size() int {
 
 func (s mockHasher) BlockSize() int {
 	return 128
+}
+
+func TestHitList_GetValidAndUsageSortedDomains(t *testing.T) {
+	validVR := validator.Result{
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
+	}
+
+	invalidVR := validator.Result{
+		Validations: validations.Validations(0),
+	}
+
+	populatedFullyValidHitList := New(mockHasher{}, time.Hour*1)
+	_ = populatedFullyValidHitList.AddEmailAddress("john.doe@example.org", validVR) // example case
+	_ = populatedFullyValidHitList.AddEmailAddress("jane.doe@example.org", validVR)
+	_ = populatedFullyValidHitList.AddEmailAddress("alexander@example.com", validVR)
+
+	populatedHitListFaultyDomains := New(mockHasher{}, time.Hour*1)
+	_ = populatedHitListFaultyDomains.AddEmailAddress("john.doe@example.or", invalidVR)
+	_ = populatedHitListFaultyDomains.AddEmailAddress("alexan der@example.com", invalidVR)
+
+	_ = populatedHitListFaultyDomains.AddEmailAddress("jane.doe@eXamplE.org", validVR)
+
+	populatedHitListExpiredDomains := New(mockHasher{}, time.Hour*1 /* Not used for this test set */)
+	_ = populatedHitListExpiredDomains.AddEmailAddressDeadline("john.doe@example.org", validVR, 0)
+	_ = populatedHitListExpiredDomains.AddEmailAddressDeadline("alexander@example.com", validVR, 0)
+
+	_ = populatedHitListExpiredDomains.AddEmailAddressDeadline("jane.doe@example.org", validVR, 0)
+
+	type fields struct {
+		hits Hits
+		ttl  time.Duration
+		lock sync.RWMutex
+		h    hash.Hash
+	}
+
+	tests := []struct {
+		name   string
+		fields fields
+		want   []string
+	}{
+		{
+			name: "All valid domains",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedFullyValidHitList.h,
+			},
+			want: []string{
+				"example.org",
+				"example.com",
+			},
+		},
+		{
+			name: "With faulty domains",
+			fields: fields{
+				hits: populatedHitListFaultyDomains.hits,
+				ttl:  populatedHitListFaultyDomains.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedHitListFaultyDomains.h,
+			},
+			want: []string{
+				"example.org",
+			},
+		},
+		{
+			name: "With expired domains",
+			fields: fields{
+				hits: populatedHitListExpiredDomains.hits,
+				ttl:  populatedHitListExpiredDomains.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedHitListExpiredDomains.h,
+			},
+			want: []string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hl := &HitList{
+				hits: tt.fields.hits,
+				ttl:  tt.fields.ttl,
+				lock: tt.fields.lock,
+				h:    tt.fields.h,
+			}
+			if got := hl.GetValidAndUsageSortedDomains(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetValidAndUsageSortedDomains() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHitList_AddEmailAddress(t *testing.T) {
+	validVR := validator.Result{
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
+	}
+
+	hl := New(mockHasher{}, time.Hour*1)
+
+	now := time.Now()
+	_ = hl.AddEmailAddress("john.doe@example.org", validVR) // example caseR
+
+	if vu, expected := hl.hits[Domain("example.org")].ValidUntil.Round(time.Second*1), now.Add(hl.ttl).Round(time.Second*1); !expected.Equal(vu) {
+		t.Errorf("Expected the TTL to have been set with the short-hand AddEmailAddress. \nExpected %v, \ngot      %v", expected, vu)
+	}
+}
+
+func TestHitList_AddDomain(t *testing.T) {
+	validVR := validator.Result{
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
+	}
+
+	invalidVR := validator.Result{
+		Validations: validations.Validations(0),
+	}
+
+	populatedFullyValidHitList := New(mockHasher{}, time.Hour*1)
+	_ = populatedFullyValidHitList.AddDomain("example.org", validVR)
+
+	type fields struct {
+		hits Hits
+		ttl  time.Duration
+		lock sync.RWMutex
+		h    hash.Hash
+	}
+
+	type args struct {
+		d  string
+		vr validator.Result
+	}
+
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+		wantVR  validator.Result
+	}{
+		{
+			name: "Unknown",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedFullyValidHitList.h,
+			},
+			args: args{
+				d:  "example1.com",
+				vr: validVR,
+			},
+			wantErr: false,
+			wantVR:  validVR,
+		},
+		{
+			name: "Unknown, invalid VR",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedFullyValidHitList.h,
+			},
+			args: args{
+				d:  "example2.com",
+				vr: invalidVR,
+			},
+			wantErr: false,
+			wantVR:  invalidVR,
+		},
+		{
+			name: "Known, with same VR",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedFullyValidHitList.h,
+			},
+			args: args{
+				d:  "example.org",
+				vr: validVR,
+			},
+			wantErr: false,
+			wantVR:  validVR,
+		},
+		{
+			name: "Known, with different VR",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				lock: sync.RWMutex{},
+				h:    populatedFullyValidHitList.h,
+			},
+			args: args{
+				d: "example.org",
+				vr: validator.Result{
+					Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FDomainHasIP),
+				},
+			},
+			wantErr: false,
+			wantVR: validator.Result{
+				Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FDomainHasIP),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hl := &HitList{
+				hits: tt.fields.hits,
+				ttl:  tt.fields.ttl,
+				lock: tt.fields.lock,
+				h:    tt.fields.h,
+			}
+
+			if err := hl.AddDomain(tt.args.d, tt.args.vr); (err != nil) != tt.wantErr {
+				t.Errorf("AddDomain() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if vr := hl.hits[Domain(tt.args.d)].ValidationResult; !reflect.DeepEqual(vr, tt.wantVR) {
+				t.Errorf("Expected the Validation Result to be \n%+v, instead I got \n%+v", tt.wantVR, vr)
+			}
+		})
+	}
 }
