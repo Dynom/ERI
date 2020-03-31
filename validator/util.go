@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Dynom/ERI/types"
 )
@@ -17,7 +18,7 @@ var (
 	ErrEmailAddressSyntax = errors.New("invalid syntax")
 )
 
-func getNewArtifact(ctx context.Context, ep types.EmailParts, dialer *net.Dialer, options ...ArtifactFn) Artifact {
+func getNewArtifact(ctx context.Context, ep types.EmailParts, options ...ArtifactFn) Artifact {
 	a := Artifact{
 		Validations: 0,
 		Steps:       0,
@@ -25,19 +26,40 @@ func getNewArtifact(ctx context.Context, ep types.EmailParts, dialer *net.Dialer
 		email:       ep,
 		mx:          []string{""},
 		ctx:         ctx,
-		dialer:      dialer,
-		conn:        nil,
+		dialer: &net.Dialer{
+			Timeout:  time.Second * 60,
+			Deadline: time.Time{},
+		},
+		conn: nil,
 	}
 
 	for _, opt := range options {
 		opt(&a)
 	}
 
-	if deadline, set := ctx.Deadline(); set {
-		a.dialer.Deadline = deadline
+	return a
+}
+
+func WithDialer(dialer *net.Dialer) ArtifactFn {
+	if dialer.Resolver == nil {
+		dialer.Resolver = net.DefaultResolver
 	}
 
-	return a
+	return func(artifact *Artifact) {
+		artifact.dialer = dialer
+	}
+}
+
+func WithDurationCTX(ctx context.Context) ArtifactFn {
+	return func(artifact *Artifact) {
+		if artifact.dialer == nil {
+			return
+		}
+
+		if d, ok := ctx.Deadline(); ok {
+			artifact.dialer.Deadline = d
+		}
+	}
 }
 
 // getConnection attempts to connect to a host with one of the common email ports.
@@ -147,8 +169,12 @@ func MightBeAHostOrIP(h string) bool {
 	return dotCount > 0
 }
 
-var reLocal = regexp.MustCompile(`(?i)\A[\p{L}\p{N}!#$%&'*+/=?^_` + "`" + `{|}~-]+(?:\.[\p{L}\p{N}!#$%&'*+/=?^_` + "`" + `{|}~-]+)*\z`)
-var reDomain = regexp.MustCompile(`(?i)\A(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)+[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\z`)
+// Note: These explicitly exclude 0x00A0. NBSP is a frequently occurring erroneous character in e-mail addresses
+//       (possibly introduced by a copy & paste from rich formatted documents) and not expected to be desired.
+var (
+	reLocal  = regexp.MustCompile(`(?i)\A(?:(?:[\p{L}\p{N}]|[!#$%&'*+\-/=?^_\x60{|}~]|[\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])+(?:\.(?:[\p{L}\p{N}]|[!#$%&'*+\-/=?^_\x60{|}~]|[\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])+)*)\z`)
+	reDomain = regexp.MustCompile(`(?i)\A(?:[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}](?:[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}-]*[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])?\.)+[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}](?:[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}-]*[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])?\z`)
+)
 
 //nolint:gocyclo
 func looksLikeValidLocalPart(local string) bool {
@@ -180,13 +206,13 @@ func looksLikeValidLocalPart(local string) bool {
 		case c == 63 /* ? */ :
 		case c == 94 /* ^ */ :
 		case c == 95 /* _ */ :
-		case c == 96 /* ` */ :
+		case c == '\x60' /* ` (96) */ :
 		case c == 123 /* { */ :
 		case c == 124 /* | */ :
 		case c == 125 /* } */ :
 		case c == 126 /* ~ */ :
 		default:
-			if c > 255 {
+			if c > utf8.RuneSelf {
 				tryRegex = true
 				break
 			}
@@ -222,7 +248,7 @@ func looksLikeValidDomain(domain string) bool {
 		case c == 45 && 0 < i && i < lastIndexPos /* dash - */ :
 
 		default:
-			if c > 255 {
+			if c > utf8.RuneSelf {
 				tryRegex = true
 				break
 			}

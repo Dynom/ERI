@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/mail"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,7 +43,6 @@ func TestEmailValidator_CheckWithLookup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := &EmailValidator{
 
-				// Missing PTR?
 				dialer: &net.Dialer{
 					Deadline: time.Now().Add(10 * time.Second),
 					Timeout:  10 * time.Second,
@@ -54,7 +54,6 @@ func TestEmailValidator_CheckWithLookup(t *testing.T) {
 			}
 
 			got := v.CheckWithLookup(tt.args.ctx, tt.args.emailParts)
-			t.Logf("Got: %b", got.Validations)
 			if got.Validations.IsValid() == tt.wantErr {
 				t.Errorf("Expected validations to be invalid on error: %b", got.Validations)
 			}
@@ -63,22 +62,19 @@ func TestEmailValidator_CheckWithLookup(t *testing.T) {
 }
 
 func TestEmailValidator_getNewArtifact(t *testing.T) {
-	d := net.Dialer{}
-	v := NewEmailAddressValidator(&d)
 
 	t.Run("Context deadline is propagated", func(t *testing.T) {
-
 		deadline := time.Now().Add(time.Minute * 1)
 		ctx, _ := context.WithDeadline(context.Background(), deadline)
 
-		a := getNewArtifact(ctx, types.EmailParts{}, v.dialer)
+		a := getNewArtifact(ctx, types.EmailParts{}, WithDurationCTX(ctx))
 		if a.dialer.Deadline.UTC() != deadline.UTC() {
 			t.Errorf("Expected the deadline to propagate, it didn't %s\n%+v", deadline, a)
 		}
 	})
 }
 
-func Test_checkSyntax(t *testing.T) {
+func Test_checkEmailAddressSyntax(t *testing.T) {
 	tests := []struct {
 		name    string
 		email   string
@@ -89,24 +85,33 @@ func Test_checkSyntax(t *testing.T) {
 		{name: "with subdomain", email: "john@doe.example.org"},
 		{name: "wrong tld, but valid syntax", email: "js@example.mail"},
 
+		{name: "Unicode", email: "ทีเ@อชนิค.ไทย"},
+
 		// All bad
 		{name: "Invalid visible character", email: "js@d.org>", wantErr: true},
 		{name: "ending on a dot", email: "js@example.org.", wantErr: true},
-		{name: "missing local part and @", email: "example.org", wantErr: true},
-		{name: "missing local part", email: "@example.org", wantErr: true},
 
 		// Not picked up by mail.ParseAddress
-		{name: "Invalid characters (NBSP)", email: "js@example.org   ", wantErr: true},
+		{name: "Invalid characters (NBSP)", email: "j\u00a0s@example.org", wantErr: true},
+		{name: "Invalid characters (NBSP)", email: "js@example.org\u00a0", wantErr: true},
+		{name: "Invalid characters (NL)", email: "john.doe@example.org\njane@foo", wantErr: true},
+		{name: "Invalid characters (NL) with valid e-mail suffix", email: "john.doe@example.org\njane@example.org", wantErr: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var err error
+
 			a := &Artifact{
 				Validations: 0,
 				Timings:     make(Timings, 10),
 			}
 
-			a.email, _ = types.NewEmailParts(tt.email)
+			a.email, err = types.NewEmailParts(tt.email)
+			if err != nil {
+				t.Errorf("types.NewEmailParts(%q) error = %v", tt.email, err)
+			}
+
 			if err := checkEmailAddressSyntax(a); (err != nil) != tt.wantErr {
 				t.Errorf("checkEmailAddressSyntax() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -117,11 +122,62 @@ func Test_checkSyntax(t *testing.T) {
 		})
 	}
 }
+func Test_checkDomainSyntax(t *testing.T) {
+	tests := []struct {
+		name    string
+		domain  string
+		wantErr bool
+	}{
+		// All good
+		{name: "valid but short", domain: "wx.yz"},
+		{name: "with subdomain", domain: "doe.example.org"},
+		{name: "wrong tld, but valid syntax", domain: "example.mail"},
+
+		{name: "Unicode", domain: "อชนิค.ไทย"},
+
+		// All bad
+		{name: "Invalid visible character", domain: "d.org>", wantErr: true},
+		{name: "ending on a dot", domain: "example.org.", wantErr: true},
+		{name: "too long", domain: strings.Repeat("a", 250) + ".org", wantErr: true},
+
+		// Not picked up by mail.ParseAddress
+		{name: "Invalid characters (NBSP)", domain: "example.org\u00a0", wantErr: true},
+		{name: "Invalid characters (NL)", domain: "example.org\nexample.com", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &Artifact{
+				Validations: 0,
+				Timings:     make(Timings, 10),
+				email: types.EmailParts{
+					Address: "",
+					Local:   "",
+					Domain:  tt.domain,
+				},
+			}
+
+			if err := checkDomainSyntax(a); (err != nil) != tt.wantErr {
+				t.Errorf("checkEmailAddressSyntax() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_looksLikeValidLocalPartSpecifics(t *testing.T) {
+
+	// Should match up with the classes we test in our regexes
+	localSpecifics := "!#$%&'*+-/=?^_\x60{|}~"
+
+	for _, r := range localSpecifics {
+		local := `john` + string(r) + `doe`
+		if !looksLikeValidLocalPart(local) {
+			t.Errorf("looksLikeValidLocalPart(%q) = false, want true", local)
+		}
+	}
+}
 
 func Test_looksLikeValidLocalPart(t *testing.T) {
-
-	// @todo Unicode support
-
 	tests := []struct {
 		local string
 		want  bool
@@ -130,6 +186,15 @@ func Test_looksLikeValidLocalPart(t *testing.T) {
 		{want: true, local: "john.doe"},
 		{want: true, local: "j0hn.doe"},
 		{want: true, local: "John.doe"},
+		{want: true, local: "john`doe"}, // \x60
+
+		// The good, Unicode
+		{want: true, local: "用户"},       // Chinese
+		{want: true, local: "अजय"},      // Hindi
+		{want: true, local: "квіточка"}, // Ukrainian
+		{want: true, local: "θσερ"},     // Greek
+		{want: true, local: "Dörte"},    // German
+		{want: true, local: "коля"},     // Russian
 
 		// The bad
 		{local: ""},
@@ -137,6 +202,7 @@ func Test_looksLikeValidLocalPart(t *testing.T) {
 		{local: "john doe"},
 		{local: "john\ndoe"},
 		{local: "john.doe\n"},
+		{local: "john.doe\u00a0"},
 	}
 	for _, tt := range tests {
 		t.Run("testing "+tt.local, func(t *testing.T) {
@@ -149,6 +215,7 @@ func Test_looksLikeValidLocalPart(t *testing.T) {
 
 func Test_looksLikeValidDomain(t *testing.T) {
 	const (
+
 		// Explicitly testing real-world occurring characters
 		char0020 rune = 0x0020 // U+0020 (SP)
 		char00A0 rune = 0x00a0 // U+00A0 (NBSP)
@@ -170,7 +237,7 @@ func Test_looksLikeValidDomain(t *testing.T) {
 		{want: true, domain: "ex-ample.org"},
 		{want: true, domain: "eXample.org"},
 		{want: true, domain: "ex4mple.org"},
-		{want: true, domain: "短.co"}, // @todo much better unicode coverage, current implementation isn't great
+		{want: true, domain: "短.co"},
 
 		// The bad - length
 		{domain: ""},
