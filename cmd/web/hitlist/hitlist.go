@@ -7,9 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Dynom/ERI/validator"
-
 	"github.com/Dynom/ERI/types"
+	"github.com/Dynom/ERI/validator"
 )
 
 type Hits map[Domain]Hit
@@ -92,6 +91,7 @@ func (hl *HitList) AddEmailAddressDeadline(email string, vr validator.Result, du
 	dh.ValidationResult.Validations = dh.ValidationResult.Validations.MergeWithNext(vr.Validations)
 	dh.ValidationResult.Steps = dh.ValidationResult.Steps.MergeWithNext(vr.Steps)
 	dh.ValidUntil = now.Add(duration)
+	dh.Recipients = append(dh.Recipients, safeLocal)
 
 	hl.hits[domain] = dh
 
