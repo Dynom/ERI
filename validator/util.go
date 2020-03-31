@@ -238,11 +238,12 @@ func looksLikeValidDomain(domain string) bool {
 	}
 
 	var tryRegex bool
+	var hasDot bool
 	for i, c := range domain {
 		switch {
 		case 97 <= c && c <= 122 /* a-z */ :
 		case c == 46 && 0 < i && i < lastIndexPos /* dot . */ :
-
+			hasDot = true
 		case 48 <= c && c <= 57 /* 0-9 */ :
 		case 65 <= c && c <= 90 /* A-Z */ :
 		case c == 45 && 0 < i && i < lastIndexPos /* dash - */ :
@@ -262,7 +263,7 @@ func looksLikeValidDomain(domain string) bool {
 		return reDomain.MatchString(domain)
 	}
 
-	return true
+	return hasDot
 }
 
 // wrapError wraps an error with the parent error and ignores the parent when it's nil

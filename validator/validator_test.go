@@ -237,7 +237,23 @@ func Test_looksLikeValidDomain(t *testing.T) {
 		{want: true, domain: "ex-ample.org"},
 		{want: true, domain: "eXample.org"},
 		{want: true, domain: "ex4mple.org"},
-		{want: true, domain: "短.co"},
+
+		// Unicode
+		{want: true, domain: "إختبار.إختبار"},       // Arabic
+		{want: true, domain: "آزمایشی.آزمایشی"},     // Persian	Arabic
+		{want: true, domain: "测试.测试"},               // Chinese	Han (Simplified variant)
+		{want: true, domain: "測試.測試"},               // Chinese	Han (Traditional variant)
+		{want: true, domain: "испытание.испытание"}, // Russian	Cyrillic
+		{want: true, domain: "परीक्षा.परीक्षा"},     // Hindi	Devanagari (Nagari)
+		{want: true, domain: "δοκιμή.δοκιμή"},       // Greek, Modern (1453-)	Greek
+		{want: true, domain: "테스트.테스트"},             // Korean	Hangul (Hangŭl, Hangeul)
+		{want: true, domain: "טעסט.טעסט"},           // Yiddish	Hebrew
+		{want: true, domain: "テスト.テスト"},             // Japanese	Katakana
+		{want: true, domain: "பரிட்சை.பரிட்சை"},     // Tamil	Tamil
+
+		// Punycoded domains
+		{want: true, domain: "xn--kgbechtv.xn--kgbechtv"},
+		{want: true, domain: "xn--hgbk6aj7f53bba.xn--hgbk6aj7f53bba"},
 
 		// The bad - length
 		{domain: ""},
