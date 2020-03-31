@@ -148,6 +148,23 @@ func TestHitList_FunctionalAddAndReturn(t *testing.T) {
 	}
 }
 
+func TestHitList_AddEmailAddressDeadlineDuplicates(t *testing.T) {
+	validVR := validator.Result{
+
+		// Validations need to be valid for a domain for this test
+		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
+	}
+
+	populatedHitList := New(mockHasher{}, time.Hour*1)
+	_ = populatedHitList.AddEmailAddress("john.doe@example.org", validVR) // example caseR
+	_ = populatedHitList.AddEmailAddress("jane.doe@example.org", validVR)
+
+	expect := 2
+	if got := len(populatedHitList.hits[Domain("example.org")].Recipients); got != expect {
+		t.Errorf("Expecting multiple recipients to be added for the same domain. Expected %d, got %d", expect, got)
+	}
+}
+
 func TestHitList_AddEmailAddressDeadline(t *testing.T) {
 	validVR := validator.Result{
 
@@ -370,6 +387,7 @@ func TestHitList_GetValidAndUsageSortedDomains(t *testing.T) {
 				lock: tt.fields.lock,
 				h:    tt.fields.h,
 			}
+
 			if got := hl.GetValidAndUsageSortedDomains(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetValidAndUsageSortedDomains() = %v, want %v", got, tt.want)
 			}

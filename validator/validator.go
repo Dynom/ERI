@@ -31,6 +31,10 @@ type EmailValidator struct {
 	dialer *net.Dialer
 }
 
+func prependOptions(options []ArtifactFn, o ...ArtifactFn) []ArtifactFn {
+	return append(o, options...)
+}
+
 // CheckWithConnect performs a thorough check, which has the least chance of false-positives. It requires a valid PTR
 // and is probably not something you want to offer as a user-facing service.
 func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.EmailParts, options ...ArtifactFn) Result {
@@ -41,7 +45,7 @@ func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.
 	}
 
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, v.dialer, options...),
+		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDeadlineCTX(ctx))...),
 		[]stateFn{
 			syntaxCheck,
 			checkIfDomainHasMX,
@@ -62,7 +66,7 @@ func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.E
 	}
 
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, v.dialer, options...),
+		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDeadlineCTX(ctx))...),
 		[]stateFn{
 			syntaxCheck,
 			checkIfDomainHasMX,
@@ -81,7 +85,7 @@ func (v *EmailValidator) CheckWithSyntax(ctx context.Context, emailParts types.E
 	}
 
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, v.dialer, options...),
+		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDeadlineCTX(ctx))...),
 		[]stateFn{
 			syntaxCheck,
 		})
