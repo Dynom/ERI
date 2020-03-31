@@ -47,6 +47,9 @@ jobs:
       - store_test_results:
           path: "/tmp/test-results"
 
+      - store_artifacts:
+          path: "/tmp/test-results"
+
       - run:
           name: Codecov upload
           command: |
