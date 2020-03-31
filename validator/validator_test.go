@@ -67,7 +67,7 @@ func TestEmailValidator_getNewArtifact(t *testing.T) {
 		deadline := time.Now().Add(time.Minute * 1)
 		ctx, _ := context.WithDeadline(context.Background(), deadline)
 
-		a := getNewArtifact(ctx, types.EmailParts{}, WithDurationCTX(ctx))
+		a := getNewArtifact(ctx, types.EmailParts{}, WithDeadlineCTX(ctx))
 		if a.dialer.Deadline.UTC() != deadline.UTC() {
 			t.Errorf("Expected the deadline to propagate, it didn't %s\n%+v", deadline, a)
 		}

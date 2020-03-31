@@ -45,7 +45,7 @@ func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.
 	}
 
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDurationCTX(ctx))...),
+		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDeadlineCTX(ctx))...),
 		[]stateFn{
 			syntaxCheck,
 			checkIfDomainHasMX,
@@ -66,7 +66,7 @@ func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.E
 	}
 
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDurationCTX(ctx))...),
+		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDeadlineCTX(ctx))...),
 		[]stateFn{
 			syntaxCheck,
 			checkIfDomainHasMX,
@@ -85,7 +85,7 @@ func (v *EmailValidator) CheckWithSyntax(ctx context.Context, emailParts types.E
 	}
 
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDurationCTX(ctx))...),
+		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDeadlineCTX(ctx))...),
 		[]stateFn{
 			syntaxCheck,
 		})

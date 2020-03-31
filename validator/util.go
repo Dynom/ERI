@@ -27,8 +27,7 @@ func getNewArtifact(ctx context.Context, ep types.EmailParts, options ...Artifac
 		mx:          []string{""},
 		ctx:         ctx,
 		dialer: &net.Dialer{
-			Timeout:  time.Second * 60,
-			Deadline: time.Time{},
+			Timeout: time.Second * 60,
 		},
 		conn: nil,
 	}
@@ -50,7 +49,7 @@ func WithDialer(dialer *net.Dialer) ArtifactFn {
 	}
 }
 
-func WithDurationCTX(ctx context.Context) ArtifactFn {
+func WithDeadlineCTX(ctx context.Context) ArtifactFn {
 	return func(artifact *Artifact) {
 		if artifact.dialer == nil {
 			return
