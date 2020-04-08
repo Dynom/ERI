@@ -24,7 +24,7 @@ jobs:
           name: Build
           command: |
             TAG=${CIRCLE_TAG:-dev}
-            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "${TEST_RESULTS}/${BINARY_NAME}" -a -ldflags="-w -s -X main.Version=${TAG}" ./cmd/web
+            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "${BINARY_NAME}" -a -ldflags="-w -s -X main.Version=${TAG}" ./cmd/web
 
       - run:
           # Check if we have updates to minor/patch level packages we're explicitly referencing
@@ -43,6 +43,7 @@ jobs:
             go test -test.v ./... | go-junit-report > ${TEST_RESULTS}/report.xml
             go test -test.cover -test.coverprofile=${TEST_RESULTS}/coverage.txt -test.covermode=atomic  ./...
             go test -test.race ./...
+            go tool cover -html=${TEST_RESULTS}/coverage.txt -o ${TEST_RESULTS}/coverage.html
 
       - store_test_results:
           path: "/tmp/test-results"
