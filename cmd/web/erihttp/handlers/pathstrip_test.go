@@ -2,7 +2,8 @@ package handlers
 
 import (
 	"net/http"
-	"reflect"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -63,21 +64,41 @@ func Test_normalizeSlashes(t *testing.T) {
 }
 
 func TestWithPathStrip(t *testing.T) {
-	type args struct {
-		logger logrus.FieldLogger
-		path   string
-	}
 	tests := []struct {
-		name string
-		args args
-		want func(h http.Handler) http.Handler
+		stripPath   string
+		requestPath string
+		wantPath    string
 	}{
-		// TODO: Add test cases.
+		{stripPath: "/", requestPath: "/foo", wantPath: "/foo"},
+		{stripPath: "/eri", requestPath: "/eri/foo", wantPath: "/foo"},
+		{stripPath: "/eri/", requestPath: "/eri/foo", wantPath: "/foo"},
+		{stripPath: "/eri/", requestPath: "/eri/foo/", wantPath: "/foo/"},
+
+		// Non matching request path
+		{stripPath: "/eri", requestPath: "/foo", wantPath: "/foo"},
+
+		// strip path should be prepended with a '/'
+		{stripPath: "eri/", requestPath: "/eri/foo/", wantPath: "/foo/"},
+
+		// Only left-hand matching is what we want
+		{stripPath: "/foo", requestPath: "/eri/foo", wantPath: "/eri/foo"},
 	}
+
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := WithPathStrip(tt.args.logger, tt.args.path); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("WithPathStrip() = %v, want %v", got, tt.want)
+		t.Run("Testing path "+tt.stripPath, func(t *testing.T) {
+			mux := http.NewServeMux()
+
+			logger, _ := testLog.NewNullLogger()
+			h := WithPathStrip(logger, tt.stripPath)
+
+			// Creating a mock response and request object
+			mockResponse := httptest.NewRecorder()
+			mockRequest := httptest.NewRequest(http.MethodPost, tt.requestPath, strings.NewReader(""))
+
+			h(mux).ServeHTTP(mockResponse, mockRequest)
+
+			if got := mockRequest.URL.Path; got != tt.wantPath {
+				t.Errorf("WithPathStrip() = %q, want %q", got, tt.wantPath)
 			}
 		})
 	}
