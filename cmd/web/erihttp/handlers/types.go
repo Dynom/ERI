@@ -15,7 +15,6 @@ type CustomResponseWriter struct {
 func NewCustomResponseWriter(w http.ResponseWriter) *CustomResponseWriter {
 	return &CustomResponseWriter{
 		ResponseWriter: w,
-		//Status:         200,
 	}
 }
 
