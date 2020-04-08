@@ -1,12 +1,19 @@
 package main
 
 import (
+	"context"
 	"io"
-	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
+
+	"github.com/Dynom/ERI/cmd/web/pubsub/gcp"
+	"github.com/Dynom/ERI/runtimer"
+	"google.golang.org/api/option"
+
+	gcppubsub "cloud.google.com/go/pubsub"
 
 	"github.com/rs/cors"
 
@@ -16,8 +23,6 @@ import (
 	"github.com/minio/highwayhash"
 
 	"github.com/juju/ratelimit"
-
-	"github.com/Dynom/ERI/validator"
 
 	"github.com/Dynom/ERI/cmd/web/services"
 
@@ -60,14 +65,64 @@ func main() {
 	defer deferClose(logWriter, nil)
 
 	logger = logger.WithField("version", Version)
+	if conf.Server.InstanceID != "" {
+		logger = logger.WithField("instance_id", conf.Server.InstanceID)
+	}
+
 	logger.WithFields(logrus.Fields{
 		"config": conf,
 	}).Info("Starting up...")
 
 	h, err := highwayhash.New128([]byte(conf.Server.Hash.Key))
 	if err != nil {
-		panic(err)
+		logger.WithError(err).Error("Unable to create our hash.Hash")
+		os.Exit(1)
 	}
+
+	psClientCtx, psClientCtxCancel := context.WithCancel(context.Background())
+	psClient, err := gcppubsub.NewClient(
+		psClientCtx,
+		conf.Server.GCP.ProjectID,
+		option.WithUserAgent("eri-"+Version),
+		option.WithCredentialsFile(conf.Server.GCP.CredentialsFile),
+	)
+
+	if err != nil {
+		logger.WithError(err).Error("Unable to create the pub/sub client")
+		os.Exit(1)
+	}
+
+	psSvc := gcp.NewPubSubSvc(
+		logger,
+		psClient,
+		conf.Server.GCP.PubSubTopic,
+		gcp.WithSubscriptionLabels([]string{Version, conf.Server.InstanceID, strconv.FormatInt(time.Now().Unix(), 10)}),
+		gcp.WithSubscriptionConcurrencyCount(5),
+	)
+
+	// Setting up listening to notifications
+	pubSubCtx, cancel := context.WithCancel(context.Background())
+
+	rt := runtimer.New(os.Interrupt, os.Kill)
+	rt.RegisterCallback(func(s os.Signal) {
+		logger.Printf("Captured signal: %v. Starting cleanup", s)
+		logger.Debug("Canceling pub/sub context")
+		cancel()
+	})
+
+	rt.RegisterCallback(func(s os.Signal) {
+		logger.Debug("Closing Pub/Sub service")
+		deferClose(psSvc, logger)
+	})
+
+	rt.RegisterCallback(func(s os.Signal) {
+		logger.Debug("Canceling GCP client context")
+		psClientCtxCancel()
+	})
+
+	rt.RegisterCallback(func(_ os.Signal) {
+		os.Exit(0)
+	})
 
 	hitList := hitlist.New(
 		h,
@@ -82,34 +137,27 @@ func main() {
 	)
 
 	if err != nil {
-		panic(err)
+		logger.WithError(err).Error("Unable to create Finder")
+		os.Exit(1)
 	}
 
-	var dialer = &net.Dialer{}
-	if conf.Server.Validator.Resolver != "" {
-		setCustomResolver(dialer, conf.Server.Validator.Resolver)
+	logger.Debug("Starting listener...")
+	err = psSvc.Listen(pubSubCtx, pubSubNotificationHandler(hitList, logger, myFinder))
+
+	if err != nil {
+		logger.WithError(err).Error("Failed constructing pub/sub client")
+		os.Exit(1)
 	}
 
-	validationResultCache := &sync.Map{}
+	// @todo add a real persisting layer
 	validationResultPersister := &sync.Map{}
 
-	val := validator.NewEmailAddressValidator(dialer)
-
-	// Pick the validator we want to use
-	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.SuggestValidator, val)
-
-	// Wrap it
-	checkValidator = validatorPersistProxy(validationResultPersister, logger, checkValidator)
-	checkValidator = validatorUpdateFinderProxy(myFinder, hitList, logger, checkValidator)
-	checkValidator = validatorCacheProxy(validationResultCache, logger, checkValidator)
-
-	// Use it
-	suggestSvc := services.NewSuggestService(myFinder, checkValidator, logger)
+	validatorFn := createProxiedValidator(conf, logger, hitList, myFinder, psSvc, validationResultPersister)
+	suggestSvc := services.NewSuggestService(myFinder, validatorFn, logger)
 
 	mux := http.NewServeMux()
-	healthHandler := NewHealthHandler(logger)
-	mux.HandleFunc("/", healthHandler)
-	mux.HandleFunc("/health", healthHandler)
+	registerProfileHandler(mux, conf)
+	registerHealthHandler(mux, logger)
 
 	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
 	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder))
@@ -127,15 +175,11 @@ func main() {
 		Playground: conf.Server.GraphQL.Playground,
 	}))
 
-	if conf.Server.Profiler.Enable {
-		configureProfiler(mux, conf)
-	}
-
 	// @todo status endpoint (or tick logger)
 
 	var bucket *ratelimit.Bucket
 	if conf.Server.RateLimiter.Rate > 0 && conf.Server.RateLimiter.Capacity > 0 {
-		bucket = ratelimit.NewBucketWithRate(float64(conf.Server.RateLimiter.Rate), int64(conf.Server.RateLimiter.Capacity))
+		bucket = ratelimit.NewBucketWithRate(float64(conf.Server.RateLimiter.Rate), conf.Server.RateLimiter.Capacity)
 	}
 
 	ct := cors.New(cors.Options{

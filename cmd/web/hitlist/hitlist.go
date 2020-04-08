@@ -1,6 +1,8 @@
 package hitlist
 
 import (
+	"bytes"
+	"errors"
 	"hash"
 	"sort"
 	"strings"
@@ -9,6 +11,10 @@ import (
 
 	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/ERI/validator"
+)
+
+var (
+	ErrInvalidDomainSyntax = errors.New("invalid domain syntax")
 )
 
 type Hits map[Domain]Hit
@@ -32,17 +38,43 @@ func New(h hash.Hash, ttl time.Duration) *HitList {
 	return &l
 }
 
-//func (hl *HitList) Refresh(h Hits) {
-//	hl.lock.Lock()
-//	hl.hits = h
-//	hl.lock.Unlock()
-//}
-
 type HitList struct {
 	hits Hits
 	ttl  time.Duration
 	lock sync.RWMutex
 	h    hash.Hash
+}
+
+// Has returns true if HitList knows about (part of) the argument
+func (hl *HitList) Has(parts types.EmailParts) (domain, local bool) {
+	var hit Hit
+
+	hl.lock.RLock()
+	defer hl.lock.RUnlock()
+
+	if hit, domain = hl.hits[Domain(parts.Domain)]; domain {
+		recipient := Recipient(hl.h.Sum([]byte(parts.Local)))
+		for _, v := range hit.Recipients {
+			if bytes.Equal(recipient, v) {
+				local = true
+				return
+			}
+		}
+	}
+
+	return
+}
+
+func (hl *HitList) GetDomainValidationResult(d Domain) (validator.Result, bool) {
+	hl.lock.RLock()
+	hit, ok := hl.hits[d]
+	hl.lock.RUnlock()
+
+	if ok {
+		return hit.ValidationResult, ok
+	}
+
+	return validator.Result{}, ok
 }
 
 // GetValidAndUsageSortedDomains returns the used domains, sorted by their associated recipients (high>low)
@@ -54,6 +86,14 @@ func (hl *HitList) GetValidAndUsageSortedDomains() []string {
 	return domains
 }
 
+func (hl *HitList) Add(parts types.EmailParts, vr validator.Result) error {
+	if parts.Local == "" {
+		return hl.AddDomain(parts.Domain, vr)
+	}
+
+	return hl.AddEmailAddress(parts.Address, vr)
+}
+
 // AddEmailAddressDeadline Same as AddEmailAddress, but allows for custom TTL. Duration shouldn't be negative.
 func (hl *HitList) AddEmailAddressDeadline(email string, vr validator.Result, duration time.Duration) error {
 	var domain Domain
@@ -61,9 +101,13 @@ func (hl *HitList) AddEmailAddressDeadline(email string, vr validator.Result, du
 
 	{
 		email = strings.ToLower(email)
-		parts, err := types.NewEmailParts(email)
+		parts, err := types.NewEmailParts(email) // @todo prevent multiple calls to types.NewEmailParts()
 		if err != nil {
 			return err
+		}
+
+		if len(parts.Domain) == 0 || len(parts.Local) == 0 {
+			return ErrInvalidDomainSyntax
 		}
 
 		safeLocal = hl.h.Sum([]byte(parts.Local))
@@ -105,10 +149,14 @@ func (hl *HitList) AddEmailAddress(email string, vr validator.Result) error {
 
 // AddDomain learns of a domain and it's validity. It overwrites the existing validations, when applicable for a domain
 func (hl *HitList) AddDomain(d string, vr validator.Result) error {
+	var domain = Domain(strings.ToLower(d))
+
+	if len(domain) == 0 {
+		return ErrInvalidDomainSyntax
+	}
+
 	hl.lock.Lock()
 	defer hl.lock.Unlock()
-
-	var domain = Domain(strings.ToLower(d))
 
 	hit, ok := hl.hits[domain]
 	if !ok {
@@ -159,7 +207,7 @@ func getValidDomains(hits Hits) []string {
 		return sortStats[i].Recipients > sortStats[j].Recipients
 	})
 
-	// @todo Could probably be a object pool, could relieve the GC
+	// @todo Could probably be an object pool, could relieve the GC
 	result := make([]string, 0, len(sortStats))
 	for _, stats := range sortStats {
 		result = append(result, stats.Domain)

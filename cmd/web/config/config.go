@@ -41,8 +41,9 @@ type Config struct {
 		InputLengthMax uint64 `toml:"inputLengthMax" usage:"The maximum amount of bytes allowed, for any argument"`
 	} `toml:"client"`
 	Server struct {
-		ListenOn string `toml:"listenOn"`
-		CORS     struct {
+		ListenOn   string `toml:"listenOn"`
+		InstanceID string `toml:"-"` // Extra identifier used in logs and for instance identification
+		CORS       struct {
 			AllowedOrigins []string `toml:"allowedOrigins"`
 			AllowedHeaders []string `toml:"allowedHeaders"`
 		} `toml:"CORS"`
@@ -76,10 +77,15 @@ type Config struct {
 			Playground   bool `toml:"playground"`
 		} `toml:"graphql" flag:"graphql" env:"GRAPHQL"`
 		RateLimiter struct {
-			Rate      uint     `toml:"rate"`
-			Capacity  uint     `toml:"capacity"`
+			Rate      int64    `toml:"rate"`
+			Capacity  int64    `toml:"capacity"`
 			ParkedTTL Duration `toml:"parkedTTL" flag:"parked-ttl"`
 		} `toml:"rateLimiter"`
+		GCP struct {
+			ProjectID       string `toml:"projectId"`
+			PubSubTopic     string `toml:"pubSubTopic"`
+			CredentialsFile string `toml:"credentialsFile" env:"APPLICATION_CREDENTIALS"`
+		} `toml:"GCP" flag:"gcp" env:"GOOGLE"`
 		PathStrip string `toml:"pathStrip"`
 	} `toml:"server" flag:",inline" env:",inline"`
 }
