@@ -34,7 +34,6 @@ func NewConfig(fileName string) (Config, error) {
 	return c, nil
 }
 
-// @todo restructure, not all elements belong beneath "Server" and separating "CORS" makes little sense as well
 // Config holds central config parameters
 type Config struct {
 	Client struct {
