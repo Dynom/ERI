@@ -249,11 +249,32 @@ func TestValidations_Merge(t *testing.T) {
 	}
 }
 
-func TestString(t *testing.T) {
+func TestValidations_String(t *testing.T) {
 	var v Validations
 
 	if v.String() != "00000000" {
 		t.Errorf("Expected the String method to be 0 padded")
+	}
+}
+
+func TestValidations_RemoveFlag(t *testing.T) {
+	type args struct {
+		f Flag
+	}
+	tests := []struct {
+		name string
+		v    Validations
+		args args
+		want Validations
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.v.RemoveFlag(tt.args.f); got != tt.want {
+				t.Errorf("RemoveFlag() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 

@@ -6,6 +6,9 @@ import (
 	"net"
 	"reflect"
 	"testing"
+	"time"
+
+	"github.com/Dynom/ERI/types"
 )
 
 type stubDialer struct {
@@ -122,6 +125,19 @@ func Test_getConnection(t *testing.T) {
 	}
 }
 
+func TestEmailValidator_getNewArtifact(t *testing.T) {
+
+	t.Run("Context deadline is propagated", func(t *testing.T) {
+		deadline := time.Now().Add(time.Minute * 1)
+		ctx, _ := context.WithDeadline(context.Background(), deadline)
+
+		a := getNewArtifact(ctx, types.EmailParts{}, WithDeadlineCTX(ctx))
+		if a.dialer.Deadline.UTC() != deadline.UTC() {
+			t.Errorf("Expected the deadline to propagate, it didn't %s\n%+v", deadline, a)
+		}
+	})
+}
+
 func Test_MightBeAHostOrIP(t *testing.T) {
 	type args struct {
 		h string
@@ -150,6 +166,27 @@ func Test_MightBeAHostOrIP(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := MightBeAHostOrIP(tt.args.h); got != tt.want {
 				t.Errorf("MightBeAHostOrIP() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_wrapError(t *testing.T) {
+	type args struct {
+		parent error
+		new    error
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := wrapError(tt.args.parent, tt.args.new); (err != nil) != tt.wantErr {
+				t.Errorf("wrapError() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
