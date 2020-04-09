@@ -15,6 +15,7 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
+	github.com/lib/pq v1.3.0
 	github.com/minio/highwayhash v1.0.0
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/cors v1.7.0

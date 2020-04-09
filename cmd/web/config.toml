@@ -65,11 +65,11 @@
     # For initial setup and learning, structure is probably most suitable
     suggest = "lookup"
 
-#  [server.backend]
-#    # Drivers: https://github.com/golang/go/wiki/SQLDrivers
-#    # Postgres: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
-#    driver = "postgres"
-#    url = "postgresql://postgres@localhost:15432/eri?sslmode=disable"
+  [server.backend]
+    # Drivers: https://github.com/golang/go/wiki/SQLDrivers
+    # Postgres: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+    driver = "postgres"
+    url = "postgresql://postgres@localhost:15432/eri?sslmode=disable"
 
   [server.graphql]
 

@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
-	"sync"
+	"time"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
+	"github.com/Dynom/ERI/cmd/web/persister"
 	"github.com/Dynom/ERI/cmd/web/pubsub"
 	"github.com/Dynom/ERI/cmd/web/pubsub/gcp"
 	"github.com/Dynom/ERI/types"
@@ -111,7 +113,7 @@ func mapValidatorTypeToValidatorFn(vt config.ValidatorType, v validator.EmailVal
 	panic(fmt.Sprintf("Incorrect validator %q configured.", vt))
 }
 
-func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList, myFinder *finder.Finder, psSvc *gcp.PubSubSvc, validationResultPersister *sync.Map) validator.CheckFn {
+func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList, myFinder *finder.Finder, pubSubSvc *gcp.PubSubSvc, pgPersist persister.Persist) validator.CheckFn {
 	var dialer = &net.Dialer{}
 	if conf.Server.Validator.Resolver != "" {
 		setCustomResolver(dialer, conf.Server.Validator.Resolver)
@@ -122,8 +124,15 @@ func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitLi
 	// Pick the validator we want to use
 	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.SuggestValidator, val)
 
-	checkValidator = validatorPersistProxy(validationResultPersister, hitList, logger, checkValidator)
-	checkValidator = validatorNotifyProxy(psSvc, hitList, logger, checkValidator)
+	if pgPersist != nil {
+		logger.Info("Adding persisting validator proxy")
+		checkValidator = validatorPersistProxy(pgPersist, hitList, logger, checkValidator)
+	}
+
+	if pubSubSvc != nil {
+		checkValidator = validatorNotifyProxy(pubSubSvc, hitList, logger, checkValidator)
+	}
+
 	checkValidator = validatorUpdateFinderProxy(myFinder, hitList, logger, checkValidator)
 	checkValidator = validatorHitListProxy(hitList, logger, checkValidator)
 
@@ -168,4 +177,37 @@ func pubSubNotificationHandler(hitList *hitlist.HitList, logger logrus.FieldLogg
 			myFinder.Refresh(hitList.GetValidAndUsageSortedDomains())
 		}
 	}
+}
+
+func createPGPersister(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList) (persister.Persist, io.Closer, error) {
+	if conf.Server.Backend.Driver == "" {
+		logger.Info("Not setting up persistency, driver is not defined")
+		return nil, nil, nil
+	}
+
+	sqlConn, err := sql.Open(conf.Server.Backend.Driver, conf.Server.Backend.URL)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	p := persister.New(sqlConn, logger)
+	var added uint64
+	err = p.Range(context.Background(), func(d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
+		err := hitList.AddInternalParts(d, r, vr, time.Hour*60)
+		if err != nil {
+			logger.WithError(err).Warn("Unable hydrate hitList")
+		}
+
+		added++
+		return nil
+	})
+
+	if err != nil {
+		logger.WithError(err).Warn("Unable Range the database")
+		return nil, nil, err
+	}
+
+	logger.WithField("added", added).Info("Hydrated hitList")
+	return p, sqlConn, nil
+
 }

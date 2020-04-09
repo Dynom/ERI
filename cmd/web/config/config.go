@@ -66,10 +66,10 @@ type Config struct {
 			Enable bool   `toml:"enable" default:"false"`
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
-		//Backend struct {
-		//	Driver string `toml:"driver"`
-		//	URL    string `toml:"url"`
-		//} `toml:"backend"`
+		Backend struct {
+			Driver string `toml:"driver"`
+			URL    string `toml:"url"`
+		} `toml:"backend"`
 		GraphQL struct {
 			PrettyOutput bool `toml:"prettyOutput" flag:"pretty" env:"PRETTY"`
 			GraphiQL     bool `toml:"graphiQL" flag:"graphiql" env:"GRAPHIQL"`
