@@ -56,6 +56,8 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) 
 			return
 		}
 
+		// @todo this currently leaks information, even for the most obscure domains we might have learned. We should come
+		// up with a way to threshold that only the top performing domains are returned here.
 		list, err := myFinder.GetMatchingPrefix(ctx, req.Domain, 10)
 		if err != nil {
 			log.WithError(err).Errorf("Error during lookup %s", err)
