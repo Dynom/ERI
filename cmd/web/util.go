@@ -9,15 +9,19 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"strconv"
 	"time"
 
+	gcppubsub "cloud.google.com/go/pubsub"
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 	"github.com/Dynom/ERI/cmd/web/persister"
 	"github.com/Dynom/ERI/cmd/web/pubsub"
 	"github.com/Dynom/ERI/cmd/web/pubsub/gcp"
+	"github.com/Dynom/ERI/runtimer"
 	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/ERI/validator"
 	"github.com/Dynom/TySug/finder"
+	"google.golang.org/api/option"
 
 	"github.com/sirupsen/logrus"
 
@@ -210,4 +214,59 @@ func createPGPersister(conf config.Config, logger logrus.FieldLogger, hitList *h
 	logger.WithField("added", added).Info("Hydrated hitList")
 	return p, sqlConn, nil
 
+}
+
+func createPubSubSvc(conf config.Config, logger logrus.FieldLogger, rt *runtimer.SignalHandler, hitList *hitlist.HitList, myFinder *finder.Finder) (*gcp.PubSubSvc, error) {
+	if conf.Server.GCP.PubSubTopic == "" {
+		logger.Info("Not setting up pub/sub connection, no Topic defined")
+		return nil, nil
+	}
+
+	psClientCtx, psClientCtxCancel := context.WithCancel(context.Background())
+	psClient, err := gcppubsub.NewClient(
+		psClientCtx,
+		conf.Server.GCP.ProjectID,
+		option.WithUserAgent("eri-"+Version),
+		option.WithCredentialsFile(conf.Server.GCP.CredentialsFile),
+	)
+
+	if err != nil {
+		psClientCtxCancel()
+		return nil, err
+	}
+
+	pubSubSvc := gcp.NewPubSubSvc(
+		logger,
+		psClient,
+		conf.Server.GCP.PubSubTopic,
+		gcp.WithSubscriptionLabels([]string{conf.Server.InstanceID, Version, strconv.FormatInt(time.Now().Unix(), 10)}),
+		gcp.WithSubscriptionConcurrencyCount(5),
+	)
+
+	// Setting up listening to notifications
+	pubSubCtx, cancel := context.WithCancel(context.Background())
+
+	rt.RegisterCallback(func(s os.Signal) {
+		logger.Printf("Captured signal: %v. Starting cleanup", s)
+		logger.Debug("Canceling pub/sub context")
+		cancel()
+	})
+
+	rt.RegisterCallback(func(s os.Signal) {
+		logger.Debug("Closing Pub/Sub service")
+		deferClose(pubSubSvc, logger)
+	})
+
+	rt.RegisterCallback(func(s os.Signal) {
+		logger.Debug("Canceling GCP client context")
+		psClientCtxCancel()
+	})
+
+	logger.Debug("Starting listener...")
+	err = pubSubSvc.Listen(pubSubCtx, pubSubNotificationHandler(hitList, logger, myFinder))
+	if err != nil {
+		return nil, err
+	}
+
+	return pubSubSvc, nil
 }

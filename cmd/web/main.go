@@ -1,20 +1,13 @@
 package main
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
-	"github.com/Dynom/ERI/cmd/web/persister"
 	"github.com/Dynom/ERI/cmd/web/pubsub/gcp"
 	"github.com/Dynom/ERI/runtimer"
-	"google.golang.org/api/option"
-
-	gcppubsub "cloud.google.com/go/pubsub"
-
 	"github.com/rs/cors"
 
 	"github.com/Pimmr/rig"
@@ -83,8 +76,12 @@ func main() {
 		h,
 		time.Hour*60, // @todo figure out what todo with TTLs
 	)
-	var pgPersist persister.Persist
+
 	pgPersist, toClose, err := createPGPersister(conf, logger, hitList)
+	if err != nil {
+		logger.WithError(err).Error("Unable to setup PG persister")
+		os.Exit(1)
+	}
 
 	defer deferClose(toClose, logger)
 
@@ -103,54 +100,11 @@ func main() {
 	rt := runtimer.New(os.Interrupt, os.Kill)
 
 	var pubSubSvc *gcp.PubSubSvc
-	if conf.Server.GCP.PubSubTopic != "" {
-		psClientCtx, psClientCtxCancel := context.WithCancel(context.Background())
-		psClient, err := gcppubsub.NewClient(
-			psClientCtx,
-			conf.Server.GCP.ProjectID,
-			option.WithUserAgent("eri-"+Version),
-			option.WithCredentialsFile(conf.Server.GCP.CredentialsFile),
-		)
+	pubSubSvc, err = createPubSubSvc(conf, logger, rt, hitList, myFinder)
 
-		if err != nil {
-			logger.WithError(err).Error("Unable to create the pub/sub client")
-			os.Exit(1)
-		}
-
-		pubSubSvc = gcp.NewPubSubSvc(
-			logger,
-			psClient,
-			conf.Server.GCP.PubSubTopic,
-			gcp.WithSubscriptionLabels([]string{Version, conf.Server.InstanceID, strconv.FormatInt(time.Now().Unix(), 10)}),
-			gcp.WithSubscriptionConcurrencyCount(5),
-		)
-
-		// Setting up listening to notifications
-		pubSubCtx, cancel := context.WithCancel(context.Background())
-
-		rt.RegisterCallback(func(s os.Signal) {
-			logger.Printf("Captured signal: %v. Starting cleanup", s)
-			logger.Debug("Canceling pub/sub context")
-			cancel()
-		})
-
-		rt.RegisterCallback(func(s os.Signal) {
-			logger.Debug("Closing Pub/Sub service")
-			deferClose(pubSubSvc, logger)
-		})
-
-		rt.RegisterCallback(func(s os.Signal) {
-			logger.Debug("Canceling GCP client context")
-			psClientCtxCancel()
-		})
-
-		logger.Debug("Starting listener...")
-		err = pubSubSvc.Listen(pubSubCtx, pubSubNotificationHandler(hitList, logger, myFinder))
-
-		if err != nil {
-			logger.WithError(err).Error("Failed constructing pub/sub client")
-			os.Exit(1)
-		}
+	if err != nil {
+		logger.WithError(err).Error("Unable to create the pub/sub client")
+		os.Exit(1)
 	}
 
 	rt.RegisterCallback(func(_ os.Signal) {
