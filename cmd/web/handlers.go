@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Dynom/ERI/cmd/web/hitlist"
 	"github.com/Dynom/ERI/validator"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
@@ -19,56 +20,90 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) http.HandlerFunc {
+func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder, hitList *hitlist.HitList, recipientThreshold uint64) http.HandlerFunc {
+
+	const (
+		maxSuggestions = 5
+
+		FailedRequestError      = "Request failed, unable to parse request body. Expected JSON."
+		DomainLookupFailedError = "Request failed, unable to lookup by domain."
+		FailedResponseError     = "Generating response failed."
+	)
 
 	log := logger.WithField("handler", "auto complete")
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var req erihttp.AutoCompleteRequest
 
-		log := log.WithField(handlers.RequestID.String(), r.Context().Value(handlers.RequestID))
+		log = log.WithField(handlers.RequestID.String(), r.Context().Value(handlers.RequestID))
 
 		defer deferClose(r.Body, log)
 
 		body, err := erihttp.GetBodyFromHTTPRequest(r)
 		if err != nil {
-			log.WithError(err).Errorf("Error handling request %s", err)
+			log.WithFields(logrus.Fields{
+				"error":          err,
+				"content_length": r.ContentLength,
+			}).Errorf("Error handling request %s", err)
+
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("Request failed"))
+
+			// err is expected to be safe to expose to the client
+			writeErrorJSONResponse(logger, w, &erihttp.AutoCompleteResponse{Error: err.Error()})
 			return
 		}
 
 		err = json.Unmarshal(body, &req)
 		if err != nil {
 			log.WithError(err).Errorf("Error handling request body %s", err)
+
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("Request failed, unable to parse request body. Did you send JSON?"))
+			writeErrorJSONResponse(log, w, &erihttp.AutoCompleteResponse{Error: FailedRequestError})
 			return
 		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*500)
 		defer cancel()
 
-		if len(req.Domain) == 0 {
-			log.Error("Empty argument")
+		if req.Domain == "" {
+			log.Debug("Empty argument")
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("Request failed, unable to lookup by domain"))
+			writeErrorJSONResponse(log, w, &erihttp.AutoCompleteResponse{Error: DomainLookupFailedError})
 			return
 		}
 
-		// @todo this currently leaks information, even for the most obscure domains we might have learned. We should come
-		// up with a way to threshold that only the top performing domains are returned here.
-		list, err := myFinder.GetMatchingPrefix(ctx, req.Domain, 10)
+		list, err := myFinder.GetMatchingPrefix(ctx, req.Domain, maxSuggestions*2)
 		if err != nil {
-			log.WithError(err).Errorf("Error during lookup %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte("Request failed, unable to lookup by domain"))
+			log.WithError(err).Warn("Error during lookup")
+			w.WriteHeader(http.StatusBadRequest)
+			writeErrorJSONResponse(log, w, &erihttp.AutoCompleteResponse{Error: DomainLookupFailedError})
 			return
+		}
+
+		// Filter the list, so that we don't leak rarely used domain names. This might lead to privacy problems with personal
+		// domain names for example
+		var filteredList = make([]string, 0, maxSuggestions)
+		for _, domain := range list {
+			if ctx.Err() != nil {
+				w.WriteHeader(http.StatusBadRequest)
+
+				// @todo Is this a safe error to "leak" ?
+				writeErrorJSONResponse(log, w, &erihttp.AutoCompleteResponse{Error: ctx.Err().Error()})
+				return
+			}
+
+			if cnt := hitList.GetRecipientCount(hitlist.Domain(domain)); cnt >= recipientThreshold {
+				filteredList = append(filteredList, domain)
+				if len(filteredList) >= maxSuggestions {
+					break
+				}
+			}
 		}
 
 		response, err := json.Marshal(erihttp.AutoCompleteResponse{
-			Suggestions: list,
+			Suggestions: filteredList,
 		})
+
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"response": response,
@@ -76,7 +111,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder) 
 			}).Error("Failed to marshal the response")
 
 			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte("Unable to produce a response"))
+			writeErrorJSONResponse(log, w, &erihttp.AutoCompleteResponse{Error: FailedResponseError})
 			return
 		}
 

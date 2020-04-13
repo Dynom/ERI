@@ -45,7 +45,9 @@ func WithRequestLogger(logger logrus.FieldLogger) HandlerWrapper {
 
 			r = r.WithContext(context.WithValue(r.Context(), RequestID, rid))
 
-			logger.Debug("Request start")
+			logger.WithFields(logrus.Fields{
+				"content_length": r.ContentLength,
+			}).Debug("Request start")
 
 			defer func(w *CustomResponseWriter) {
 

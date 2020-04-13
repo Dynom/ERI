@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	gcppubsub "cloud.google.com/go/pubsub"
+	"github.com/Dynom/ERI/cmd/web/erihttp"
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 	"github.com/Dynom/ERI/cmd/web/persister"
 	"github.com/Dynom/ERI/cmd/web/pubsub"
@@ -269,4 +271,25 @@ func createPubSubSvc(conf config.Config, logger logrus.FieldLogger, rt *runtimer
 	}
 
 	return pubSubSvc, nil
+}
+
+// writeErrorJSONResponse Sets the error on a response and writes it with the corresponding Content-Type
+func writeErrorJSONResponse(logger logrus.FieldLogger, w http.ResponseWriter, responseType erihttp.ERIResponse) {
+
+	responseType.PrepareResponse()
+	response, err := json.Marshal(responseType)
+	if err != nil {
+		logger.WithError(err).Error("Failed to marshal the response")
+		response = []byte(`{"error":""}`)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	c, err := w.Write(response)
+	if err != nil {
+		logger.WithFields(logrus.Fields{
+			"error":         err,
+			"bytes_written": c,
+		}).Error("Failed to write response")
+		return
+	}
 }
