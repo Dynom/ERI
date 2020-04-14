@@ -188,15 +188,27 @@ func TestLogFormat_UnmarshalText(t *testing.T) {
 	tests := []struct {
 		name    string
 		vt      LogFormat
+		want    LogFormat
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			vt:   "test",
+			want: "json",
+			args: args{
+				value: []byte("json"),
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.vt.UnmarshalText(tt.args.value); (err != nil) != tt.wantErr {
 				t.Errorf("UnmarshalText() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.vt != tt.want {
+				t.Errorf("Expected UnmarshalText(%q) to result in vt == %v", tt.args.value, tt.vt)
 			}
 		})
 	}
