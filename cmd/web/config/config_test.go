@@ -212,7 +212,22 @@ func TestValidatorType_Set(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			vt:   "test",
+			args: args{
+				v: "test",
+			},
+			wantErr: false,
+		},
+		{
+			name: "",
+			vt:   "",
+			args: args{
+				v: "",
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -229,7 +244,16 @@ func TestValidatorType_String(t *testing.T) {
 		vt   ValidatorType
 		want string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			vt:   "test",
+			want: "test",
+		},
+		{
+			name: "",
+			vt:   "",
+			want: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
