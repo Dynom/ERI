@@ -1,22 +1,41 @@
 package erihttp
 
-type AutoCompleteResponse struct {
-	Suggestions []string `json:"suggestions"`
+import "errors"
+
+var (
+	ErrMissingBody            = errors.New("missing body")
+	ErrInvalidRequest         = errors.New("request is invalid")
+	ErrBodyTooLarge           = errors.New("request body too large")
+	ErrUnsupportedContentType = errors.New("unsupported content-type")
+)
+
+type ERIResponse interface {
+
+	// Hacking around Generics, like it's 1999.
+	PrepareResponse()
 }
 
-type CheckResponse struct {
-	Valid       bool   `json:"valid"`
-	Reason      string `json:"reason,omitempty"`
-	Alternative string `json:"alternative,omitempty"`
+type AutoCompleteResponse struct {
+	Suggestions []string `json:"suggestions"`
+	Error       string   `json:",omitempty"`
+}
+
+func (r *AutoCompleteResponse) PrepareResponse() {
+	if r.Suggestions == nil {
+		r.Suggestions = []string{}
+	}
 }
 
 type SuggestResponse struct {
 	Alternatives    []string `json:"alternatives"`
 	MalformedSyntax bool     `json:"malformed_syntax"`
+	Error           string   `json:",omitempty"`
 }
 
-type ErrorResponse struct {
-	Error string `json:"error"`
+func (r *SuggestResponse) PrepareResponse() {
+	if r.Alternatives == nil {
+		r.Alternatives = []string{}
+	}
 }
 
 type AutoCompleteRequest struct {
@@ -25,19 +44,4 @@ type AutoCompleteRequest struct {
 
 type SuggestRequest struct {
 	Email string `json:"email"`
-}
-
-type CheckRequest struct {
-	Email        string `json:"email"`
-	Alternatives bool   `json:"with_alternatives"`
-}
-
-type LearnRequest struct {
-	Emails  []ToLearn `json:"emails"`
-	Domains []ToLearn `json:"domains"`
-}
-
-type ToLearn struct {
-	Value string `json:"value"`
-	Valid bool   `json:"valid"`
 }

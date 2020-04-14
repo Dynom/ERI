@@ -30,7 +30,7 @@ func NewPubSubSvc(logger logrus.FieldLogger, client *gcppubsub.Client, topicName
 	}
 
 	labels := svc.subscriptionLabels
-	svc.subscriptionLabels = []string{"eri"}
+	svc.subscriptionLabels = svc.subscriptionLabels[0:0]
 	for _, l := range labels {
 		if l == "" {
 			continue

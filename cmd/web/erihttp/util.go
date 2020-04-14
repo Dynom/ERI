@@ -6,15 +6,26 @@ import (
 	"net/http"
 )
 
+const (
+	MaxBodySize int64 = 1 << 20
+)
+
 func GetBodyFromHTTPRequest(r *http.Request) ([]byte, error) {
 	var empty []byte
-	const maxSizePlusOne int64 = 1<<20 + 1
 
 	if r.Body == nil {
 		return empty, ErrMissingBody
 	}
 
-	b, err := ioutil.ReadAll(io.LimitReader(r.Body, maxSizePlusOne))
+	if r.ContentLength > MaxBodySize {
+		return empty, ErrBodyTooLarge
+	}
+
+	if ct := r.Header.Get("Content-Type"); ct != "application/json" {
+		return empty, ErrUnsupportedContentType
+	}
+
+	b, err := ioutil.ReadAll(io.LimitReader(r.Body, MaxBodySize+1))
 	if err != nil {
 		if err == io.EOF {
 			return empty, ErrMissingBody
@@ -22,7 +33,7 @@ func GetBodyFromHTTPRequest(r *http.Request) ([]byte, error) {
 		return empty, ErrInvalidRequest
 	}
 
-	if int64(len(b)) == maxSizePlusOne {
+	if int64(len(b)) > MaxBodySize {
 		return empty, ErrBodyTooLarge
 	}
 

@@ -53,7 +53,6 @@ type Config struct {
 		} `toml:"log"`
 		Hash struct {
 			Key string `toml:"key"`
-			//Enable bool   `toml:"enable"`
 		} `toml:"hash"`
 		Finder struct {
 			UseBuckets bool `toml:"useBuckets" usage:"Buckets speedup matching, but assumes no mistakes are made at the start"`
@@ -62,14 +61,19 @@ type Config struct {
 			Resolver         string        `toml:"resolver" usage:"The resolver to use for DNS lookups"`
 			SuggestValidator ValidatorType `toml:"suggest"`
 		} `toml:"validator" flag:",inline" env:",inline"`
+		Services struct {
+			Autocomplete struct {
+				RecipientThreshold uint64 `usage:"Define the minimum amount of recipients a domain needs before allowed in the autocomplete"`
+			} `toml:"autocomplete"`
+		} `toml:"services"`
 		Profiler struct {
 			Enable bool   `toml:"enable" default:"false"`
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
-		//Backend struct {
-		//	Driver string `toml:"driver"`
-		//	URL    string `toml:"url"`
-		//} `toml:"backend"`
+		Backend struct {
+			Driver string `toml:"driver"`
+			URL    string `toml:"url"`
+		} `toml:"backend"`
 		GraphQL struct {
 			PrettyOutput bool `toml:"prettyOutput" flag:"pretty" env:"PRETTY"`
 			GraphiQL     bool `toml:"graphiQL" flag:"graphiql" env:"GRAPHIQL"`
