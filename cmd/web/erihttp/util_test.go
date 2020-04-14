@@ -1,28 +1,97 @@
 package erihttp
 
 import (
+	"bytes"
+	"math"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 )
 
 func TestGetBodyFromHTTPRequest(t *testing.T) {
-	type args struct {
-		r *http.Request
-	}
 	tests := []struct {
 		name    string
-		args    args
+		req     func(body []byte) *http.Request
 		want    []byte
-		wantErr bool
+		wantErr error
 	}{
-		// TODO: Add test cases.
+		{
+			wantErr: nil,
+			name:    "All good",
+			req: func(body []byte) *http.Request {
+				req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body))
+				req.Header.Set("Content-Type", "application/json")
+				return req
+			},
+			want: []byte("{}"),
+		},
+		{
+			wantErr: ErrMissingBody,
+			name:    "Nil body",
+			req: func(_ []byte) *http.Request {
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+				req.Body = nil
+
+				return req
+			},
+			want: nil,
+		},
+		{
+			wantErr: ErrBodyTooLarge,
+			name:    "Too lengthy/Content-Length",
+			req: func(_ []byte) *http.Request {
+				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
+				req.Header.Set("Content-Type", "application/json")
+				req.ContentLength = math.MaxInt64
+				return req
+			},
+			want: nil,
+		},
+		{
+			wantErr: ErrBodyTooLarge,
+			name:    "Too lengthy/Body",
+			req: func(_ []byte) *http.Request {
+				body := strings.Repeat("a", int(MaxBodySize+1))
+				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+				req.Header.Set("Content-Type", "application/json")
+				req.ContentLength = int64(len(body) - 1)
+
+				return req
+			},
+			want: nil,
+		},
+		{
+			wantErr: ErrUnsupportedContentType,
+			name:    "Content-Type/Missing",
+			req: func(_ []byte) *http.Request {
+				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
+				req.Header.Del("Content-Type")
+				return req
+			},
+			want: nil,
+		},
+		{
+			wantErr: ErrUnsupportedContentType,
+			name:    "Content-Type/Wrong",
+			req: func(_ []byte) *http.Request {
+				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
+				req.Header.Set("Content-Type", "plain/text")
+				return req
+			},
+			want: nil,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetBodyFromHTTPRequest(tt.args.r)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetBodyFromHTTPRequest() error = %v, wantErr %v", err, tt.wantErr)
+			req := tt.req(tt.want)
+			got, err := GetBodyFromHTTPRequest(req)
+
+			if err != tt.wantErr {
+				t.Errorf("GetBodyFromHTTPRequest() error = %v, wantErr %q", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {

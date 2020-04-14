@@ -1,19 +1,12 @@
 package erihttp
 
 import (
-	"errors"
 	"io"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/Dynom/ERI/cmd/web/config"
-)
-
-var (
-	ErrMissingBody    = errors.New("missing body")
-	ErrInvalidRequest = errors.New("request is invalid")
-	ErrBodyTooLarge   = errors.New("request body too large")
 )
 
 func BuildHTTPServer(mux http.Handler, config config.Config, logWriter io.Writer, handlers ...func(h http.Handler) http.Handler) *http.Server {

@@ -87,3 +87,9 @@
     # amount of time a rate-limited request is allowed to wait for. Anything above this is aborted, to help protect
     # against connection draining. Requests are delayed
     parkedTTL = "100ms"
+
+  [server.services.autocomplete]
+
+    # Domains need at least (inclusive) this amount of recipients to be considered for the autocomplete API
+    # This is mostly to prevent leaking possibly private information
+    recipientThreshold = 1000

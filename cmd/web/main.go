@@ -119,7 +119,7 @@ func main() {
 	registerHealthHandler(mux, logger)
 
 	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
-	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder))
+	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder, hitList, conf.Server.Services.Autocomplete.RecipientThreshold))
 
 	schema, err := NewGraphQLSchema(&suggestSvc)
 	if err != nil {

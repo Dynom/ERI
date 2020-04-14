@@ -726,3 +726,55 @@ func TestHitList_GetInternalTypes(t *testing.T) {
 		})
 	}
 }
+
+func TestHitList_GetRecipientCount(t *testing.T) {
+
+	tests := []struct {
+		name       string
+		toAdd      []types.EmailParts
+		domain     Domain
+		wantAmount uint64
+	}{
+		{
+			name: "basics",
+			toAdd: []types.EmailParts{
+				types.NewEmailFromParts("john", "example.org"),
+			},
+			domain:     "example.org",
+			wantAmount: 1,
+		},
+		{
+			name: "multiple",
+			toAdd: []types.EmailParts{
+				types.NewEmailFromParts("john", "example.org"),
+				types.NewEmailFromParts("jane", "example.org"),
+			},
+			domain:     "example.org",
+			wantAmount: 2,
+		},
+		{
+			name: "no domain match",
+			toAdd: []types.EmailParts{
+				types.NewEmailFromParts("john", "example.org"),
+			},
+			domain:     "a",
+			wantAmount: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hl := New(mockHasher{}, time.Second*1)
+			for _, a := range tt.toAdd {
+				err := hl.Add(a, validator.Result{})
+				if err != nil {
+					t.Errorf("Preparing test failed %s", err)
+					t.FailNow()
+				}
+			}
+
+			if gotAmount := hl.GetRecipientCount(tt.domain); gotAmount != tt.wantAmount {
+				t.Errorf("GetRecipientCount() = %v, want %v", gotAmount, tt.wantAmount)
+			}
+		})
+	}
+}

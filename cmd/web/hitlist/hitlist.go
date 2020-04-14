@@ -102,6 +102,17 @@ func (hl *HitList) GetValidAndUsageSortedDomains() []string {
 	return domains
 }
 
+// GetRecipientCount returns the amount of recipients known for a domain
+func (hl *HitList) GetRecipientCount(d Domain) (amount uint64) {
+	hl.lock.RLock()
+	if hit, exists := hl.hits[d]; exists {
+		amount = uint64(len(hit.Recipients))
+	}
+	hl.lock.RUnlock()
+
+	return
+}
+
 // AddInternalParts adds values considered "safe". Typically you would only use this on provisioning HitList from a storage layer
 func (hl *HitList) AddInternalParts(domain Domain, recipient Recipient, vr validator.Result, duration time.Duration) error {
 
