@@ -150,15 +150,36 @@ func TestLogFormat_Set(t *testing.T) {
 	tests := []struct {
 		name    string
 		vt      LogFormat
+		want    LogFormat
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			vt:   "test",
+			want: "test",
+			args: args{
+				v: "test",
+			},
+			wantErr: false,
+		},
+		{
+			name: "",
+			vt:   "",
+			want: "",
+			args: args{
+				v: "",
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.vt.Set(tt.args.v); (err != nil) != tt.wantErr {
 				t.Errorf("Set() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.vt != tt.want {
+				t.Errorf("Expected Set(%q) to result in vt == %v", tt.args.v, tt.vt)
 			}
 		})
 	}
@@ -170,7 +191,16 @@ func TestLogFormat_String(t *testing.T) {
 		vt   LogFormat
 		want string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			vt:   "test",
+			want: "test",
+		},
+		{
+			name: "",
+			vt:   "",
+			want: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -195,6 +225,15 @@ func TestLogFormat_UnmarshalText(t *testing.T) {
 		{
 			name: "test",
 			vt:   "test",
+			want: "json",
+			args: args{
+				value: []byte("json"),
+			},
+			wantErr: false,
+		},
+		{
+			name: "",
+			vt:   "",
 			want: "json",
 			args: args{
 				value: []byte("json"),
