@@ -24,14 +24,6 @@ func (s MockHasher) Write(p []byte) (int, error) {
 }
 
 func (s MockHasher) Sum(p []byte) []byte {
-
-	// Make sure we did something, reverse the input
-	//var r = make([]byte, len(p))
-	//for i, v := range p {
-	//	j := len(r) - 1 - i
-	//	r[j] = v
-	//}
-
 	return p
 }
 
@@ -75,13 +67,13 @@ func TestStorage_Range(t *testing.T) {
 
 	testData := []testDataS{
 		{
-			parts: types.NewEmailFromParts("john", "gmail.com"),
+			parts: types.NewEmailFromParts("john", "example.org"),
 			vr: validator.Result{
 				Validations: validations.Validations(validations.FSyntax),
 				Steps:       validations.Steps(validations.FSyntax | validations.FMXLookup),
 			},
 		}, {
-			parts: types.NewEmailFromParts("jane", "gmail.com"),
+			parts: types.NewEmailFromParts("jane", "example.org"),
 			vr: validator.Result{
 				Validations: validations.Validations(validations.FSyntax | validations.FMXLookup),
 				Steps:       validations.Steps(validations.FSyntax | validations.FMXLookup),
@@ -180,7 +172,7 @@ func TestStorage_Range(t *testing.T) {
 		s := NewMemory(list).(*Memory)
 
 		// Preparing data with a good key, and with a bad vr type.
-		s.m.Store("john@gmail.com", "bar")
+		s.m.Store("john@example.org", "bar")
 
 		var collected uint
 		const want = 0
@@ -217,7 +209,7 @@ func TestStorage_Store(t *testing.T) {
 			name: "Basic store",
 			args: args{
 				ctx:   ctxNormal,
-				parts: types.NewEmailFromParts("john", "gmail.com"),
+				parts: types.NewEmailFromParts("john", "example.org"),
 			},
 			wantErr:    false,
 			wantStored: true,
@@ -226,7 +218,7 @@ func TestStorage_Store(t *testing.T) {
 			name: "Canceled context",
 			args: args{
 				ctx:   ctxCanceled,
-				parts: types.NewEmailFromParts("john", "gmail.com"),
+				parts: types.NewEmailFromParts("john", "example.org"),
 			},
 			wantErr:    true,
 			wantStored: false,
@@ -258,7 +250,7 @@ func TestStorage_Store(t *testing.T) {
 				return nil
 			})
 
-			if got := (collected > 0); tt.wantStored != got {
+			if got := collected > 0; tt.wantStored != got {
 				t.Errorf("Expected the items to have been stored, want %t, got %t ", tt.wantStored, got)
 			}
 		})

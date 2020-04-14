@@ -688,9 +688,9 @@ func TestHitList_GetInternalTypes(t *testing.T) {
 	}{
 		{
 			name:          "All good",
-			p:             types.NewEmailFromParts("john", "gmail.com"),
+			p:             types.NewEmailFromParts("john", "example.org"),
 			wantRecipient: []byte("nhoj"),
-			wantDomain:    "gmail.com",
+			wantDomain:    "example.org",
 			wantErr:       false,
 		},
 		{
@@ -702,7 +702,7 @@ func TestHitList_GetInternalTypes(t *testing.T) {
 		},
 		{
 			name:          "No recipient",
-			p:             types.NewEmailFromParts("", "gmail.com"),
+			p:             types.NewEmailFromParts("", "example.org"),
 			wantRecipient: Recipient(""),
 			wantDomain:    "",
 			wantErr:       true,

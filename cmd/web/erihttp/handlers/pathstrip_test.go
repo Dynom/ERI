@@ -91,7 +91,6 @@ func TestWithPathStrip(t *testing.T) {
 			logger, _ := testLog.NewNullLogger()
 			h := WithPathStrip(logger, tt.stripPath)
 
-			// Creating a mock response and request object
 			mockResponse := httptest.NewRecorder()
 			mockRequest := httptest.NewRequest(http.MethodPost, tt.requestPath, strings.NewReader(""))
 
