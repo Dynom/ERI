@@ -209,12 +209,14 @@ func TestValidatorType_Set(t *testing.T) {
 	tests := []struct {
 		name    string
 		vt      ValidatorType
+		want    ValidatorType
 		args    args
 		wantErr bool
 	}{
 		{
 			name: "test",
 			vt:   "test",
+			want: "test",
 			args: args{
 				v: "test",
 			},
@@ -223,6 +225,7 @@ func TestValidatorType_Set(t *testing.T) {
 		{
 			name: "",
 			vt:   "",
+			want: "",
 			args: args{
 				v: "",
 			},
@@ -233,6 +236,9 @@ func TestValidatorType_Set(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.vt.Set(tt.args.v); (err != nil) != tt.wantErr {
 				t.Errorf("Set() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.vt != tt.want {
+				t.Errorf("Expected Set(%q) to result in vt == %v", tt.args.v, tt.vt)
 			}
 		})
 	}
