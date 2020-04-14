@@ -49,11 +49,14 @@ type HitList struct {
 func (hl *HitList) Has(parts types.EmailParts) (domain, local bool) {
 	var hit Hit
 
+	inputDomain := Domain(strings.ToLower(parts.Domain))
+
 	hl.lock.RLock()
 	defer hl.lock.RUnlock()
 
-	if hit, domain = hl.hits[Domain(parts.Domain)]; domain {
-		recipient := Recipient(hl.h.Sum([]byte(parts.Local)))
+	if hit, domain = hl.hits[inputDomain]; domain {
+		inputLocal := strings.ToLower(parts.Local)
+		recipient := Recipient(hl.h.Sum([]byte(inputLocal)))
 		for _, v := range hit.Recipients {
 			if bytes.Equal(recipient, v) {
 				local = true

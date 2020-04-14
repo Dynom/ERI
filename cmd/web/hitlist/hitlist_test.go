@@ -619,7 +619,7 @@ func TestHitList_Has(t *testing.T) {
 				types.NewEmailFromParts("JOHN", "EXAMPLE.ORG"),
 			},
 			args: args{
-				parts: types.NewEmailFromParts("john", "example.org"),
+				parts: types.NewEmailFromParts("joHn", "eXample.org"),
 			},
 			wantDomain: true,
 			wantLocal:  true,
