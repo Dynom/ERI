@@ -196,6 +196,11 @@ func createPGPersister(conf config.Config, logger logrus.FieldLogger, hitList *h
 		return nil, nil, err
 	}
 
+	err = sqlConn.Ping()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	p := persister.New(sqlConn, logger)
 	var added uint64
 	err = p.Range(context.Background(), func(d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {

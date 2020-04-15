@@ -110,52 +110,6 @@ type hitListRow struct {
 	Steps       int64  `sql:"steps"`
 }
 
-/*
-func preloadValues(conn *sql.DB, list *hitlist.HitList, logger logrus.FieldLogger) (uint, error) {
-
-	if err := conn.Ping(); err != nil {
-		return 0, err
-	}
-
-	stmt, err := conn.Prepare("SELECT domain, recipient, validations FROM hitlist")
-	if err != nil {
-		return 0, err
-	}
-
-	rows, err := stmt.Query()
-	if err != nil {
-		return 0, err
-	}
-
-	var dbCollected uint
-	for rows.Next() {
-		var row hitListRow
-
-		if err := rows.Scan(&row.Domain, &row.Recipient, &row.Validations); err != nil {
-			logger.WithError(err).Error("Error scanning field")
-			continue
-		}
-
-		logger.WithField("row", row).Info("Got one!")
-		var err error
-		if row.Recipient == "" {
-			err = list.AddDomain(row.Domain, validations.Validations(row.Validations))
-		} else {
-			err = list.AddEmailAddress(row.Recipient+`@`+row.Domain, validations.Validations(row.Validations))
-		}
-
-		if err != nil {
-			logger.WithError(err).Error("Error Adding e-mail address / domain to hit list")
-			continue
-		}
-
-		dbCollected++
-	}
-
-	return dbCollected, nil
-}
-*/
-
 func deferClose(toClose io.Closer, log logrus.FieldLogger) {
 	if toClose == nil {
 		return
