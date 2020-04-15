@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"sync"
 
+	"github.com/Dynom/ERI/cmd/web/persister"
 	"github.com/Dynom/ERI/cmd/web/pubsub"
 	"github.com/Dynom/ERI/cmd/web/pubsub/gcp"
 	"github.com/Dynom/ERI/validator/validations"
@@ -55,7 +55,7 @@ func validatorHitListProxy(hitList *hitlist.HitList, logger logrus.FieldLogger, 
 }
 
 // validatorPersistProxy persist the result of the validator.
-func validatorPersistProxy(persist *sync.Map, hitList *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
+func validatorPersistProxy(storage persister.Persist, hitList *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
 	logger = logger.WithField("middleware", "persist_proxy")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 
@@ -66,12 +66,26 @@ func validatorPersistProxy(persist *sync.Map, hitList *hitlist.HitList, logger l
 		vr := fn(ctx, parts, options...)
 
 		if !existed && vr.HasValidStructure() {
-			persist.Store(parts.Address, vr)
-			log.WithFields(logrus.Fields{
+
+			log = log.WithFields(logrus.Fields{
 				"email":       parts.Address,
 				"steps":       vr.Steps.String(),
 				"validations": vr.Validations.String(),
-			}).Debug("Persisted result")
+			})
+
+			d, r, err := hitList.CreateInternalTypes(parts)
+			if err != nil {
+				log.WithError(err).Warn("Unable to create internal structure from parts")
+				return vr
+			}
+
+			err = storage.Store(ctx, d, r, vr)
+			if err != nil {
+				log.WithError(err).Error("Failed to persist value")
+				return vr
+			}
+
+			log.Debug("Persisted result")
 		}
 
 		return vr

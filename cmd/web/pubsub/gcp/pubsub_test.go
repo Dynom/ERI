@@ -10,10 +10,10 @@ func TestPubSubSvc_getSubscriptionID(t *testing.T) {
 		labels []string
 		want   string
 	}{
-		{name: "no label", labels: []string{}, want: "eri"},
-		{name: "single label", labels: []string{"a"}, want: "eri-a"},
-		{name: "multi label", labels: []string{"a", "b"}, want: "eri-a-b"},
-		{name: "multi label skip empty", labels: []string{"a", "", "b"}, want: "eri-a-b"},
+		{name: "no label", labels: []string{}, want: ""},
+		{name: "single label", labels: []string{"a"}, want: "a"},
+		{name: "multi label", labels: []string{"a", "b"}, want: "a-b"},
+		{name: "multi label skip empty", labels: []string{"a", "", "b"}, want: "a-b"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
