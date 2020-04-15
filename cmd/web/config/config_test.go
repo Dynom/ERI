@@ -132,7 +132,16 @@ func TestHeaders_String(t *testing.T) {
 		h    Headers
 		want string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			h:    1,
+			want: "test",
+		},
+		{
+			name: "",
+			h:    "",
+			want: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
