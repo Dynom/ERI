@@ -1,6 +1,9 @@
 package config
 
 import (
+	"reflect"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 )
@@ -130,13 +133,30 @@ func TestHeaders_String(t *testing.T) {
 	tests := []struct {
 		name string
 		h    Headers
-		want string
+		want []string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Testing the happy flow",
+			h: map[string]string{
+				"a":            "b",
+				"Content-Type": "application/json",
+			},
+			want: []string{"a:b", "Content-Type:application/json"},
+		},
+		{
+			name: "Testing zero value",
+			h:    map[string]string{},
+			want: []string{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.h.String(); got != tt.want {
+
+			// Converting to a slice and sorting, to make sure we have a consistent comparision.
+			got := strings.Split(tt.h.String(), ",")
+			sort.Strings(got)
+
+			if got := tt.h.String(); reflect.DeepEqual(got, tt.want) {
 				t.Errorf("String() = %v, want %v", got, tt.want)
 			}
 		})
