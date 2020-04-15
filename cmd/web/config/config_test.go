@@ -17,7 +17,20 @@ func TestDuration_AsDuration(t *testing.T) {
 		fields fields
 		want   time.Duration
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			fields: fields{
+				duration: time.Hour,
+			},
+			want: time.Hour,
+		},
+		{
+			name: "",
+			fields: fields{
+				duration: time.Duration(0),
+			},
+			want: time.Duration(0),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -44,7 +57,26 @@ func TestDuration_Set(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			fields: fields{
+				duration: time.Hour,
+			},
+			args: args{
+				v: "1h0m0s",
+			},
+			wantErr: false,
+		},
+		{
+			name: "",
+			fields: fields{
+				duration: time.Duration(0),
+			},
+			args: args{
+				v: "0",
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -67,7 +99,20 @@ func TestDuration_String(t *testing.T) {
 		fields fields
 		want   string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			fields: fields{
+				duration: time.Hour,
+			},
+			want: "1h0m0s",
+		},
+		{
+			name: "",
+			fields: fields{
+				duration: time.Duration(0),
+			},
+			want: "0s",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -94,7 +139,26 @@ func TestDuration_UnmarshalText(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			fields: fields{
+				duration: time.Hour,
+			},
+			args: args{
+				text: []byte("60m"),
+			},
+			wantErr: false,
+		},
+		{
+			name: "",
+			fields: fields{
+				duration: time.Duration(0),
+			},
+			args: args{
+				text: []byte("60m"),
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -115,15 +179,39 @@ func TestHeaders_Set(t *testing.T) {
 	tests := []struct {
 		name    string
 		h       Headers
+		want    []string
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Test",
+			h: map[string]string{
+				"a":            "b",
+				"Content-Type": "application/json",
+			},
+			want: []string{"a:b", "Content-Type:application/json"},
+			args: args{
+				v: "Content-Type:application/json",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Testing zero value",
+			h:    map[string]string{},
+			want: []string{},
+			args: args{
+				v: "Content-Type:application/json",
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.h.Set(tt.args.v); (err != nil) != tt.wantErr {
 				t.Errorf("Set() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got := tt.h.String(); reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Expected Set(%q) to result in vt == %v", tt.args.v, got)
 			}
 		})
 	}
@@ -170,15 +258,36 @@ func TestLogFormat_Set(t *testing.T) {
 	tests := []struct {
 		name    string
 		vt      LogFormat
+		want    LogFormat
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			vt:   "test",
+			want: "test",
+			args: args{
+				v: "test",
+			},
+			wantErr: false,
+		},
+		{
+			name: "",
+			vt:   "",
+			want: "",
+			args: args{
+				v: "",
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.vt.Set(tt.args.v); (err != nil) != tt.wantErr {
 				t.Errorf("Set() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.vt != tt.want {
+				t.Errorf("Expected Set(%q) to result in vt == %v", tt.args.v, tt.vt)
 			}
 		})
 	}
@@ -190,7 +299,16 @@ func TestLogFormat_String(t *testing.T) {
 		vt   LogFormat
 		want string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			vt:   "test",
+			want: "test",
+		},
+		{
+			name: "",
+			vt:   "",
+			want: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -208,15 +326,36 @@ func TestLogFormat_UnmarshalText(t *testing.T) {
 	tests := []struct {
 		name    string
 		vt      LogFormat
+		want    LogFormat
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			vt:   "test",
+			want: "json",
+			args: args{
+				value: []byte("json"),
+			},
+			wantErr: false,
+		},
+		{
+			name: "",
+			vt:   "",
+			want: "json",
+			args: args{
+				value: []byte("json"),
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.vt.UnmarshalText(tt.args.value); (err != nil) != tt.wantErr {
 				t.Errorf("UnmarshalText() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.vt != tt.want {
+				t.Errorf("Expected UnmarshalText(%q) to result in vt == %v", tt.args.value, tt.vt)
 			}
 		})
 	}
@@ -229,15 +368,36 @@ func TestValidatorType_Set(t *testing.T) {
 	tests := []struct {
 		name    string
 		vt      ValidatorType
+		want    ValidatorType
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			vt:   "test",
+			want: "test",
+			args: args{
+				v: "test",
+			},
+			wantErr: false,
+		},
+		{
+			name: "",
+			vt:   "",
+			want: "",
+			args: args{
+				v: "",
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.vt.Set(tt.args.v); (err != nil) != tt.wantErr {
 				t.Errorf("Set() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.vt != tt.want {
+				t.Errorf("Expected Set(%q) to result in vt == %v", tt.args.v, tt.vt)
 			}
 		})
 	}
@@ -249,7 +409,16 @@ func TestValidatorType_String(t *testing.T) {
 		vt   ValidatorType
 		want string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			vt:   "test",
+			want: "test",
+		},
+		{
+			name: "",
+			vt:   "",
+			want: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
