@@ -10,7 +10,10 @@ func TestWithGzipHandler(t *testing.T) {
 		name string
 		want HandlerWrapper
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			want: WithGzipHandler(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
