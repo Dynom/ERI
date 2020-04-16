@@ -179,18 +179,20 @@ func Test_wrapError(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
+		want    string
 		wantErr bool
 	}{
 		{
-			name: "test",
+			name: "Testing if error has been wrapped",
 			args: args{
 				parent: errors.New("test"),
-				new:    errors.New("test"),
+				new:    errors.New("wrap"),
 			},
+			want:    "test wrap",
 			wantErr: true,
 		},
 		{
-			name: "",
+			name: "Testing with zero-value",
 			args: args{
 				parent: nil,
 				new:    nil,
@@ -202,6 +204,9 @@ func Test_wrapError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := wrapError(tt.args.parent, tt.args.new); (err != nil) != tt.wantErr {
 				t.Errorf("wrapError() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err := wrapError(tt.args.parent, tt.args.new); tt.want != err.Error() {
+				t.Errorf("wrapError() error = %v, want %v", err.Error(), tt.want)
 			}
 		})
 	}

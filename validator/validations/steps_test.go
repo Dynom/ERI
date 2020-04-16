@@ -11,12 +11,12 @@ func TestSteps_HasBeenValidated(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "test",
+			name: "Testing if steps have been taken",
 			s:    255,
 			want: true,
 		},
 		{
-			name: "",
+			name: "Testing with no steps",
 			s:    0,
 			want: false,
 		},
@@ -41,7 +41,7 @@ func TestSteps_HasFlag(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "test",
+			name: "Testing if the type has a flag",
 			s:    255,
 			args: args{
 				f: 1,
@@ -49,7 +49,7 @@ func TestSteps_HasFlag(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "",
+			name: "Testing with no flag",
 			s:    0,
 			args: args{
 				f: 0,
@@ -77,7 +77,7 @@ func TestSteps_MergeWithNext(t *testing.T) {
 		want Steps
 	}{
 		{
-			name: "test",
+			name: "Testing if new steps are merged",
 			s:    255,
 			args: args{
 				new: Steps(255),
@@ -85,7 +85,7 @@ func TestSteps_MergeWithNext(t *testing.T) {
 			want: 255,
 		},
 		{
-			name: "",
+			name: "Testing with no steps",
 			s:    0,
 			args: args{
 				new: Steps(0),
@@ -110,13 +110,7 @@ func TestSteps_RemoveFlag(t *testing.T) {
 		want Steps
 	}{
 		{
-			name: "test",
-			s:    255,
-			f:    255,
-			want: 0,
-		},
-		{
-			name: "",
+			name: "Testing with zero-values",
 			s:    0,
 			f:    0,
 			want: 0,
@@ -144,7 +138,7 @@ func TestSteps_SetFlag(t *testing.T) {
 		want Steps
 	}{
 		{
-			name: "test",
+			name: "Testing if new flag is set",
 			s:    255,
 			args: args{
 				new: Flag(255),
@@ -152,7 +146,7 @@ func TestSteps_SetFlag(t *testing.T) {
 			want: 255,
 		},
 		{
-			name: "",
+			name: "Testing with no flag",
 			s:    0,
 			args: args{
 				new: Flag(0),
@@ -176,12 +170,12 @@ func TestSteps_String(t *testing.T) {
 		want string
 	}{
 		{
-			name: "test",
+			name: "Converting steps to string",
 			s:    255,
 			want: "11111111",
 		},
 		{
-			name: "",
+			name: "Testing with zero-value",
 			s:    0,
 			want: "00000000",
 		},
