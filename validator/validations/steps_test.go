@@ -1,6 +1,8 @@
 package validations
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestSteps_HasBeenValidated(t *testing.T) {
 	tests := []struct {
@@ -8,7 +10,16 @@ func TestSteps_HasBeenValidated(t *testing.T) {
 		s    Steps
 		want bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			s:    255,
+			want: true,
+		},
+		{
+			name: "",
+			s:    0,
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -29,7 +40,22 @@ func TestSteps_HasFlag(t *testing.T) {
 		args args
 		want bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			s:    255,
+			args: args{
+				f: 1,
+			},
+			want: true,
+		},
+		{
+			name: "",
+			s:    0,
+			args: args{
+				f: 0,
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -50,7 +76,22 @@ func TestSteps_MergeWithNext(t *testing.T) {
 		args args
 		want Steps
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			s:    255,
+			args: args{
+				new: Steps(255),
+			},
+			want: 255,
+		},
+		{
+			name: "",
+			s:    0,
+			args: args{
+				new: Steps(0),
+			},
+			want: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -68,7 +109,18 @@ func TestSteps_RemoveFlag(t *testing.T) {
 		f    Flag
 		want Steps
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			s:    255,
+			f:    255,
+			want: 0,
+		},
+		{
+			name: "",
+			s:    0,
+			f:    0,
+			want: 0,
+		},
 		{name: "Clears Single flag", s: Steps(FSyntax | FMXLookup), f: FSyntax, want: Steps(FMXLookup)},
 		{name: "Doesn't clear non existing flag", s: Steps(FSyntax | FMXLookup | FValid), f: FValidRCPT, want: Steps(FSyntax | FMXLookup | FValid)},
 	}
@@ -91,7 +143,22 @@ func TestSteps_SetFlag(t *testing.T) {
 		args args
 		want Steps
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			s:    255,
+			args: args{
+				new: Flag(255),
+			},
+			want: 255,
+		},
+		{
+			name: "",
+			s:    0,
+			args: args{
+				new: Flag(0),
+			},
+			want: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -108,7 +175,16 @@ func TestSteps_String(t *testing.T) {
 		s    Steps
 		want string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			s:    255,
+			want: "11111111",
+		},
+		{
+			name: "",
+			s:    0,
+			want: "00000000",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
