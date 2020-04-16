@@ -267,7 +267,14 @@ func TestValidations_RemoveFlag(t *testing.T) {
 		args args
 		want Validations
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			v:    Validations(255),
+			args: args{
+				f: 255,
+			},
+			want: Validations(0),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

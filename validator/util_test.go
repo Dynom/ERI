@@ -181,7 +181,22 @@ func Test_wrapError(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test",
+			args: args{
+				parent: errors.New("test"),
+				new:    errors.New("test"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "",
+			args: args{
+				parent: nil,
+				new:    nil,
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
