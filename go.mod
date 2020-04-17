@@ -20,6 +20,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.5.0
+	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
 	golang.org/x/sys v0.0.0-20200408040146-ea54a3c99b9b // indirect
 	golang.org/x/tools v0.0.0-20200408032209-46bd65c8538f // indirect
 	google.golang.org/api v0.21.0
