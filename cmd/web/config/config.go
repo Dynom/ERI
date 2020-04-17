@@ -93,6 +93,20 @@ type Config struct {
 	} `toml:"server" flag:",inline" env:",inline"`
 }
 
+// GetSensored returns a copy of Config with all sensitive values masked
+func (c Config) GetSensored() Config {
+	const mask = "**masked**"
+	c.Server.Backend.URL = mask
+	c.Server.Hash.Key = mask
+	c.Server.Profiler.Prefix = mask
+
+	return c
+}
+
+func (c *Config) String() string {
+	return fmt.Sprintf("%+v", c.GetSensored())
+}
+
 type Headers map[string]string
 
 func (h Headers) String() string {
