@@ -70,9 +70,16 @@
 
   [server.backend]
     # Drivers: https://github.com/golang/go/wiki/SQLDrivers
-    # Postgres: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
     driver = "postgres"
+
+    # Postgres: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
     url = "postgresql://postgres@localhost:15432/eri?sslmode=disable"
+
+    # Maximum connections allowed to the backend
+    maxConnections = 10
+
+    # Maximum idle connections (must be less than maxConnections). 0 Means no idle connections are retained.
+    maxIdleConnections = 2
 
   [server.graphql]
 

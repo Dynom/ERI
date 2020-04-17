@@ -72,8 +72,10 @@ type Config struct {
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
 		Backend struct {
-			Driver string `toml:"driver"`
-			URL    string `toml:"url"`
+			Driver             string `toml:"driver"`
+			URL                string `toml:"url"`
+			MaxConnections     uint   `toml:"maxConnections"`
+			MaxIdleConnections uint   `toml:"maxIdleConnections"`
 		} `toml:"backend"`
 		GraphQL struct {
 			PrettyOutput bool `toml:"prettyOutput" flag:"pretty" env:"PRETTY"`

@@ -196,6 +196,9 @@ func createPGPersister(conf config.Config, logger logrus.FieldLogger, hitList *h
 		return nil, nil, err
 	}
 
+	sqlConn.SetMaxOpenConns(int(conf.Server.Backend.MaxConnections))
+	sqlConn.SetMaxIdleConns(int(conf.Server.Backend.MaxIdleConnections))
+
 	err = sqlConn.Ping()
 	if err != nil {
 		return nil, nil, err

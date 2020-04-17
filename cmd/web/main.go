@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/Dynom/ERI/cmd/web/pubsub/gcp"
 	"github.com/Dynom/ERI/runtimer"
 	"github.com/rs/cors"
-	"golang.org/x/net/netutil"
 
 	"github.com/Pimmr/rig"
 
@@ -148,7 +146,7 @@ func main() {
 		AllowedHeaders: conf.Server.CORS.AllowedHeaders,
 	})
 
-	s := erihttp.BuildHTTPServer(mux, conf, logWriter,
+	s := erihttp.BuildHTTPServer(mux, conf, logger, logWriter,
 		handlers.WithPathStrip(logger, conf.Server.PathStrip),
 		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),
@@ -161,19 +159,6 @@ func main() {
 		"listen_on": conf.Server.ListenOn,
 	}).Info("Done, serving requests")
 
-	listener, err := net.Listen("tcp", conf.Server.ListenOn)
-	if err != nil {
-		logger.WithFields(logrus.Fields{
-			"error":     err,
-			"listen_on": conf.Server.ListenOn,
-		}).Error("Unable to start listener")
-	}
-	defer listener.Close()
-
-	if conf.Server.ConnectionLimit > 0 {
-		listener = netutil.LimitListener(listener, int(conf.Server.ConnectionLimit))
-	}
-
-	err = s.Serve(listener)
+	err = s.ServeERI()
 	logger.Errorf("HTTP server stopped %s", err)
 }
