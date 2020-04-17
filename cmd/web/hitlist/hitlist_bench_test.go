@@ -1,6 +1,7 @@
 package hitlist
 
 import (
+	"bytes"
 	"math"
 	"math/rand"
 	"testing"
@@ -160,4 +161,50 @@ func BenchmarkHitlistHas(b *testing.B) {
 	})
 
 	_ = t1l && t1d && t2l && t2d
+}
+
+func BenchmarkLenOrEqual(b *testing.B) {
+	input := []byte("raboof")
+	var refs [][]byte
+	for _, v := range []string{
+		"foo", "foob", "fooba", "foobar", "foobarf", "foobarfo",
+	} {
+		refs = append(refs, []byte(v))
+	}
+
+	var t1, t2, t3 uint64
+	b.Run("just equal", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for _, v := range refs {
+				if bytes.Equal(v, input) {
+					t1++
+				}
+			}
+		}
+	})
+
+	b.Run("len before equal", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for _, v := range refs {
+				if len(v) == len(input) && bytes.Equal(v, input) {
+					t2++
+				}
+			}
+		}
+	})
+
+	b.Run("len, pos and equal", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			c := input[len(input)-1]
+			for _, v := range refs {
+				if len(v) == len(input) && v[len(v)-1] == c && bytes.Equal(v, input) {
+					t3++
+				}
+			}
+		}
+	})
+
+	_ = t1
+	_ = t2
+	_ = t3
 }

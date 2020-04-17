@@ -1,7 +1,6 @@
 package hitlist
 
 import (
-	"bytes"
 	"errors"
 	"hash"
 	"sort"
@@ -21,12 +20,13 @@ var (
 type Hits map[Domain]Hit
 type Domain string
 type Hit struct {
-	Recipients       []Recipient
+	Recipients       map[rcpt]struct{}
 	ValidUntil       time.Time
 	ValidationResult validator.Result
 }
 
 type Recipient []byte
+type rcpt string
 
 func New(h hash.Hash, ttl time.Duration) *HitList {
 	l := HitList{
@@ -50,17 +50,24 @@ type HitList struct {
 func (hl *HitList) Has(parts types.EmailParts) (domain, local bool) {
 	var hit Hit
 
+	if parts.Domain == "" {
+		return
+	}
+
+	inputDomain := Domain(strings.ToLower(parts.Domain))
+
 	hl.lock.RLock()
 	defer hl.lock.RUnlock()
 
-	if hit, domain = hl.hits[Domain(parts.Domain)]; domain {
-		recipient := Recipient(hl.h.Sum([]byte(parts.Local)))
-		for _, v := range hit.Recipients {
-			if bytes.Equal(recipient, v) {
-				local = true
-				return
-			}
+	if hit, domain = hl.hits[inputDomain]; domain {
+		if parts.Local == "" {
+			return
 		}
+
+		inputLocal := strings.ToLower(parts.Local)
+		recipient := rcpt(hl.h.Sum([]byte(inputLocal)))
+
+		_, local = hit.Recipients[recipient]
 	}
 
 	return
@@ -76,8 +83,8 @@ func (hl *HitList) CreateInternalTypes(p types.EmailParts) (domain Domain, recip
 		return
 	}
 
-	domain = Domain(p.Domain)
-	recipient = hl.h.Sum([]byte(p.Local))
+	domain = Domain(strings.ToLower(p.Domain))
+	recipient = hl.h.Sum([]byte(strings.ToLower(p.Local)))
 	return
 }
 
@@ -125,7 +132,7 @@ func (hl *HitList) AddInternalParts(domain Domain, recipient Recipient, vr valid
 	if !ok {
 
 		hl.hits[domain] = Hit{
-			Recipients:       []Recipient{recipient},
+			Recipients:       map[rcpt]struct{}{rcpt(recipient): {}},
 			ValidUntil:       now.Add(duration),
 			ValidationResult: vr,
 		}
@@ -136,7 +143,7 @@ func (hl *HitList) AddInternalParts(domain Domain, recipient Recipient, vr valid
 	dh.ValidationResult.Validations = dh.ValidationResult.Validations.MergeWithNext(vr.Validations)
 	dh.ValidationResult.Steps = dh.ValidationResult.Steps.MergeWithNext(vr.Steps)
 	dh.ValidUntil = now.Add(duration)
-	dh.Recipients = append(dh.Recipients, recipient)
+	dh.Recipients[rcpt(recipient)] = struct{}{}
 
 	hl.hits[domain] = dh
 
@@ -157,18 +164,16 @@ func (hl *HitList) AddEmailAddressDeadline(email string, vr validator.Result, du
 	var safeLocal Recipient
 
 	{
-		email = strings.ToLower(email)
 		parts, err := types.NewEmailParts(email) // @todo prevent multiple calls to types.NewEmailParts()
 		if err != nil {
 			return err
 		}
 
-		if len(parts.Domain) == 0 || len(parts.Local) == 0 {
-			return ErrInvalidDomainSyntax
-		}
+		domain, safeLocal, err = hl.CreateInternalTypes(parts)
 
-		safeLocal = hl.h.Sum([]byte(parts.Local))
-		domain = Domain(parts.Domain)
+		if err != nil {
+			return err
+		}
 	}
 
 	return hl.AddInternalParts(domain, safeLocal, vr, duration)
@@ -193,7 +198,7 @@ func (hl *HitList) AddDomain(d string, vr validator.Result) error {
 	hit, ok := hl.hits[domain]
 	if !ok {
 		hl.hits[domain] = Hit{
-			Recipients:       []Recipient{},
+			Recipients:       map[rcpt]struct{}{},
 			ValidUntil:       time.Now().Add(hl.ttl),
 			ValidationResult: vr,
 		}
