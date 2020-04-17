@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Dynom/ERI/cmd/web/config"
+	"github.com/sirupsen/logrus/hooks/test"
 )
 
 func TestBuildHTTPServer(t *testing.T) {
@@ -26,7 +27,9 @@ func TestBuildHTTPServer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logWriter := &bytes.Buffer{}
-			got := BuildHTTPServer(tt.args.mux, tt.args.config, logWriter, tt.args.handlers...)
+			l, _ := test.NewNullLogger()
+
+			got := BuildHTTPServer(tt.args.mux, tt.args.config, l, logWriter, tt.args.handlers...)
 			if gotLogWriter := logWriter.String(); gotLogWriter != tt.wantLogWriter {
 				t.Errorf("BuildHTTPServer() gotLogWriter = %v, want %v", gotLogWriter, tt.wantLogWriter)
 			}

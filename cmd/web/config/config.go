@@ -40,9 +40,10 @@ type Config struct {
 		InputLengthMax uint64 `toml:"inputLengthMax" usage:"The maximum amount of bytes allowed, for any argument"`
 	} `toml:"client"`
 	Server struct {
-		ListenOn   string `toml:"listenOn"`
-		InstanceID string `toml:"-"` // Extra identifier used in logs and for instance identification
-		CORS       struct {
+		ListenOn        string `toml:"listenOn"`
+		ConnectionLimit uint   `toml:"connectionLimit"`
+		InstanceID      string `toml:"-"` // Extra identifier used in logs and for instance identification
+		CORS            struct {
 			AllowedOrigins []string `toml:"allowedOrigins"`
 			AllowedHeaders []string `toml:"allowedHeaders"`
 		} `toml:"CORS"`
@@ -71,8 +72,10 @@ type Config struct {
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
 		Backend struct {
-			Driver string `toml:"driver"`
-			URL    string `toml:"url"`
+			Driver             string `toml:"driver"`
+			URL                string `toml:"url"`
+			MaxConnections     uint   `toml:"maxConnections"`
+			MaxIdleConnections uint   `toml:"maxIdleConnections"`
 		} `toml:"backend"`
 		GraphQL struct {
 			PrettyOutput bool `toml:"prettyOutput" flag:"pretty" env:"PRETTY"`
@@ -91,6 +94,20 @@ type Config struct {
 		} `toml:"GCP" flag:"gcp" env:"GOOGLE"`
 		PathStrip string `toml:"pathStrip"`
 	} `toml:"server" flag:",inline" env:",inline"`
+}
+
+// GetSensored returns a copy of Config with all sensitive values masked
+func (c Config) GetSensored() Config {
+	const mask = "**masked**"
+	c.Server.Backend.URL = mask
+	c.Server.Hash.Key = mask
+	c.Server.Profiler.Prefix = mask
+
+	return c
+}
+
+func (c *Config) String() string {
+	return fmt.Sprintf("%+v", c.GetSensored())
 }
 
 type Headers map[string]string

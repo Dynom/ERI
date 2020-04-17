@@ -22,46 +22,46 @@ func Test_getValidDomains(t *testing.T) {
 
 	allValidHits := Hits{
 		Domain("a"): Hit{
-			Recipients: []Recipient{
-				[]byte("john.doe"),
-				[]byte("jane.doe"),
-				[]byte("joan.doe"),
-				[]byte("jake.doe"),
+			Recipients: map[rcpt]struct{}{
+				rcpt("john.doe"): {},
+				rcpt("jane.doe"): {},
+				rcpt("joan.doe"): {},
+				rcpt("jake.doe"): {},
 			},
 			ValidUntil:       validDuration,
 			ValidationResult: validVR,
 		},
 		Domain("b"): Hit{
-			Recipients: []Recipient{
-				[]byte("john.doe"),
-				[]byte("jane.doe"),
+			Recipients: map[rcpt]struct{}{
+				rcpt("john.doe"): {},
+				rcpt("jane.doe"): {},
 			},
 			ValidUntil:       validDuration,
 			ValidationResult: validVR,
 		},
 		Domain("c"): Hit{
-			Recipients: []Recipient{
-				[]byte("john.doe"),
+			Recipients: map[rcpt]struct{}{
+				rcpt("john.doe"): {},
 			},
 			ValidUntil:       validDuration,
 			ValidationResult: validVR,
 		},
 		Domain("d"): Hit{
-			Recipients: []Recipient{
-				[]byte("john.doe"),
-				[]byte("jane.doe"),
-				[]byte("joan.doe"),
+			Recipients: map[rcpt]struct{}{
+				rcpt("john.doe"): {},
+				rcpt("jane.doe"): {},
+				rcpt("joan.doe"): {},
 			},
 			ValidUntil:       validDuration,
 			ValidationResult: validVR,
 		},
 		Domain("e"): Hit{
-			Recipients: []Recipient{
-				[]byte("john.doe"),
-				[]byte("jane.doe"),
-				[]byte("joan.doe"),
-				[]byte("jake.doe"),
-				[]byte("winston.doe"),
+			Recipients: map[rcpt]struct{}{
+				rcpt("john.doe"):    {},
+				rcpt("jane.doe"):    {},
+				rcpt("joan.doe"):    {},
+				rcpt("jake.doe"):    {},
+				rcpt("winston.doe"): {},
 			},
 			ValidUntil:       validDuration,
 			ValidationResult: validVR,

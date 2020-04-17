@@ -32,6 +32,7 @@ func validatorHitListProxy(hitList *hitlist.HitList, logger logrus.FieldLogger, 
 
 		if exists {
 			afn = append(afn, func(artifact *validator.Artifact) {
+				logger.Debug("Running validator with cache from previous run")
 
 				// The cache allows us to skip expensive steps that we might be doing. However basic syntax validation should
 				// always be done. We're discriminating on domain, so we can't vouch for the entire address without a basic test
