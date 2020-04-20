@@ -12,7 +12,7 @@ func TestSteps_HasBeenValidated(t *testing.T) {
 	}{
 		{
 			name: "Testing if steps have been taken",
-			s:    255,
+			s:    Steps(FSyntax),
 			want: true,
 		},
 		{
@@ -42,7 +42,7 @@ func TestSteps_HasFlag(t *testing.T) {
 	}{
 		{
 			name: "Testing if the type has a flag",
-			s:    255,
+			s:    Steps(FValid),
 			args: args{
 				f: 1,
 			},
@@ -78,7 +78,7 @@ func TestSteps_MergeWithNext(t *testing.T) {
 	}{
 		{
 			name: "Testing if new steps are merged",
-			s:    255,
+			s:    Steps(FSyntax),
 			args: args{
 				new: Steps(255),
 			},
@@ -139,7 +139,7 @@ func TestSteps_SetFlag(t *testing.T) {
 	}{
 		{
 			name: "Testing if new flag is set",
-			s:    255,
+			s:    Steps(FSyntax),
 			args: args{
 				new: Flag(255),
 			},
