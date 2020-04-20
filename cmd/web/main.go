@@ -63,7 +63,7 @@ func main() {
 	}
 
 	logger.WithFields(logrus.Fields{
-		"config": conf,
+		"config": conf.GetSensored(),
 	}).Info("Starting up...")
 
 	h, err := highwayhash.New128([]byte(conf.Server.Hash.Key))
@@ -146,7 +146,7 @@ func main() {
 		AllowedHeaders: conf.Server.CORS.AllowedHeaders,
 	})
 
-	s := erihttp.BuildHTTPServer(mux, conf, logWriter,
+	s := erihttp.BuildHTTPServer(mux, conf, logger, logWriter,
 		handlers.WithPathStrip(logger, conf.Server.PathStrip),
 		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),
@@ -158,7 +158,7 @@ func main() {
 	logger.WithFields(logrus.Fields{
 		"listen_on": conf.Server.ListenOn,
 	}).Info("Done, serving requests")
-	err = s.ListenAndServe()
 
+	err = s.ServeERI()
 	logger.Errorf("HTTP server stopped %s", err)
 }
