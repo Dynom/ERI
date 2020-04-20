@@ -102,6 +102,7 @@ func Test_validateSequence(t *testing.T) {
 		{
 			name: "Testing with email-error",
 			args: args{
+				ctx: context.Background(),
 				artifact: Artifact{
 					email: types.EmailParts{
 						Address: "johndoeexample.org",
