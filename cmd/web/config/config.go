@@ -56,7 +56,8 @@ type Config struct {
 			Key string `toml:"key"`
 		} `toml:"hash"`
 		Finder struct {
-			UseBuckets bool `toml:"useBuckets" usage:"Buckets speedup matching, but assumes no mistakes are made at the start"`
+			UseBuckets      bool    `toml:"useBuckets" usage:"Buckets speedup matching, but assumes no mistakes are made at the start"`
+			LengthTolerance float64 `toml:"lengthTolerance" usage:"percentage, number 0.0-1.0, of length difference to consider"`
 		} `toml:"finder"`
 		Validator struct {
 			Resolver         string        `toml:"resolver" usage:"The resolver to use for DNS lookups"`
@@ -64,7 +65,8 @@ type Config struct {
 		} `toml:"validator" flag:",inline" env:",inline"`
 		Services struct {
 			Autocomplete struct {
-				RecipientThreshold uint64 `usage:"Define the minimum amount of recipients a domain needs before allowed in the autocomplete"`
+				RecipientThreshold uint64 `toml:"recipientThreshold" usage:"Define the minimum amount of recipients a domain needs before allowed in the autocomplete"`
+				MaxSuggestions     uint64 `toml:"maxSuggestions" usage:"The maximum number of suggestions to return"`
 			} `toml:"autocomplete"`
 		} `toml:"services"`
 		Profiler struct {

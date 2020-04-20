@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Dynom/ERI/cmd/web/config"
 	"github.com/Dynom/ERI/cmd/web/erihttp"
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 	"github.com/Dynom/ERI/cmd/web/services"
@@ -129,7 +130,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hook.Reset()
-			handlerFunc := NewAutoCompleteHandler(logger, myFinder, hitList, 0)
+			handlerFunc := NewAutoCompleteHandler(logger, myFinder, hitList, config.Config{})
 
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/", tt.requestBody)

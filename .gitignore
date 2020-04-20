@@ -16,3 +16,5 @@
 !**/*.yml
 !**/*.toml
 !**/*.md
+!go.mod
+!go.sum

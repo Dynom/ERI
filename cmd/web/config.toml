@@ -57,6 +57,12 @@
     # @see https://github.com/Dynom/TySug/pull/14
     useBuckets = true
 
+    # The length tolerance finder will use to consider an alternative. 0.2 means up 20% difference in length is allowed.
+    # The length only applies to domain names, not the entire e-mail address. a value of 0, means this feature is
+    # disabled and all ref's are considered equally eligable to be passed into the comparing algorithm
+    # A value of greater than 1 can lead to odd behaviour
+    lengthTolerance = 0.3
+
   [server.validator]
 
     # Use this resolver, instead of the local DNS hostname configured for this system. Since speed matters, pick a fast
@@ -103,3 +109,6 @@
     # Domains need at least (inclusive) this amount of recipients to be considered for the autocomplete API
     # This is mostly to prevent leaking possibly private information
     recipientThreshold = 1000
+
+    # The maximum number of suggestions to return
+    maxSuggestions = 5

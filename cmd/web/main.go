@@ -87,7 +87,7 @@ func main() {
 
 	myFinder, err := finder.New(
 		hitList.GetValidAndUsageSortedDomains(),
-		finder.WithLengthTolerance(0.2),
+		finder.WithLengthTolerance(conf.Server.Finder.LengthTolerance),
 		finder.WithAlgorithm(finder.NewJaroWinklerDefaults()),
 		finder.WithPrefixBuckets(conf.Server.Finder.UseBuckets),
 	)
@@ -116,7 +116,7 @@ func main() {
 	registerHealthHandler(mux, logger)
 
 	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
-	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder, hitList, conf.Server.Services.Autocomplete.RecipientThreshold))
+	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder, hitList, conf))
 
 	schema, err := NewGraphQLSchema(&suggestSvc)
 	if err != nil {
