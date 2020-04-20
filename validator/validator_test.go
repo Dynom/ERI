@@ -97,7 +97,6 @@ func Test_validateSequence(t *testing.T) {
 					Domain:  "example.org",
 				},
 			},
-			wantErr: false,
 		},
 		{
 			name: "Testing with email-error",
@@ -153,7 +152,7 @@ func Test_validateSequence(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := validateSequence(tt.args.ctx, tt.args.artifact, tt.args.sequence)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateSequence() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("validateSequence() error = %v, wantErr %v", got, tt.want)
 				return
 			}
 			if !reflect.DeepEqual(got.Validations, tt.want.Validations) {
