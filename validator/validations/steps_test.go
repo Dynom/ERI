@@ -41,10 +41,18 @@ func TestSteps_HasFlag(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "Testing if the type has a flag",
+			name: "Testing if the type has the flag",
 			s:    Steps(FValid),
 			args: args{
-				f: 1,
+				f: FValid,
+			},
+			want: true,
+		},
+		{
+			name: "Testing if the type has all flags",
+			s:    Steps(FSyntax | FMXLookup | FValid),
+			args: args{
+				f: FMXLookup,
 			},
 			want: true,
 		},
@@ -80,9 +88,17 @@ func TestSteps_MergeWithNext(t *testing.T) {
 			name: "Testing if new steps are merged",
 			s:    Steps(FSyntax),
 			args: args{
-				new: Steps(255),
+				new: Steps(FValid),
 			},
-			want: 255,
+			want: Steps(FValid),
+		},
+		{
+			name: "Testing if all new steps are merged",
+			s:    Steps(FSyntax),
+			args: args{
+				new: Steps(FSyntax | FMXLookup | FValid),
+			},
+			want: Steps(FSyntax | FMXLookup | FValid),
 		},
 		{
 			name: "Testing with no steps",
@@ -141,9 +157,17 @@ func TestSteps_SetFlag(t *testing.T) {
 			name: "Testing if new flag is set",
 			s:    Steps(FSyntax),
 			args: args{
-				new: Flag(255),
+				new: Flag(FValid),
 			},
-			want: 255,
+			want: Steps(FSyntax | FValid),
+		},
+		{
+			name: "Testing if flag is still set",
+			s:    Steps(FSyntax | FValid | FMXLookup),
+			args: args{
+				new: Flag(FMXLookup),
+			},
+			want: Steps(FSyntax | FValid | FMXLookup),
 		},
 		{
 			name: "Testing with no flag",
