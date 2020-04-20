@@ -60,7 +60,7 @@ func TestEmailValidator_CheckWithLookup(t *testing.T) {
 }
 
 func Test_validateSequence(t *testing.T) {
-	ctxDeadline, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+	ctxDeadline, cancel := context.WithTimeout(context.Background(), time.Millisecond*50)
 	defer cancel()
 	type args struct {
 		ctx      context.Context
@@ -152,7 +152,7 @@ func Test_validateSequence(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := validateSequence(tt.args.ctx, tt.args.artifact, tt.args.sequence)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateSequence() error = %v, wantErr %v", got, tt.want)
+				t.Errorf("validateSequence() error = %v, wantErr %v", got.ctx, ctxDeadline)
 				return
 			}
 			if !reflect.DeepEqual(got.Validations, tt.want.Validations) {
