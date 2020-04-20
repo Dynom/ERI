@@ -97,19 +97,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	rt := runtimer.New(os.Interrupt, os.Kill)
+	rtPubSub := runtimer.New(os.Interrupt, os.Kill)
+	rtWeb := runtimer.New(os.Interrupt, os.Kill)
 
 	var pubSubSvc *gcp.PubSubSvc
-	pubSubSvc, err = createPubSubSvc(conf, logger, rt, hitList, myFinder)
+	pubSubSvc, err = createPubSubSvc(conf, logger, rtPubSub, hitList, myFinder)
 
 	if err != nil {
 		logger.WithError(err).Error("Unable to create the pub/sub client")
 		os.Exit(1)
 	}
-
-	rt.RegisterCallback(func(_ os.Signal) {
-		os.Exit(0)
-	})
 
 	validatorFn := createProxiedValidator(conf, logger, hitList, myFinder, pubSubSvc, pgPersist)
 	suggestSvc := services.NewSuggestService(myFinder, validatorFn, logger)
@@ -146,7 +143,7 @@ func main() {
 		AllowedHeaders: conf.Server.CORS.AllowedHeaders,
 	})
 
-	s := erihttp.BuildHTTPServer(mux, conf, logger, logWriter,
+	s := erihttp.BuildHTTPServer(mux, conf, logger, logWriter, rtWeb,
 		handlers.WithPathStrip(logger, conf.Server.PathStrip),
 		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),
@@ -161,4 +158,7 @@ func main() {
 
 	err = s.ServeERI()
 	logger.Errorf("HTTP server stopped %s", err)
+
+	rtPubSub.Wait()
+	rtWeb.Wait()
 }
