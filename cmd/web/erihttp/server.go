@@ -1,18 +1,21 @@
 package erihttp
 
 import (
+	"context"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/Dynom/ERI/cmd/web/config"
+	"github.com/Dynom/ERI/runtimer"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/netutil"
 )
 
-func BuildHTTPServer(mux http.Handler, config config.Config, logger logrus.FieldLogger, logWriter io.Writer, handlers ...func(h http.Handler) http.Handler) *Server {
+func BuildHTTPServer(mux http.Handler, config config.Config, logger logrus.FieldLogger, logWriter io.Writer, rt *runtimer.SignalHandler, handlers ...func(h http.Handler) http.Handler) *Server {
 	for _, h := range handlers {
 		mux = h(mux)
 	}
@@ -45,15 +48,22 @@ func BuildHTTPServer(mux http.Handler, config config.Config, logger logrus.Field
 		listener = netutil.LimitListener(listener, int(config.Server.ConnectionLimit))
 	}
 
-	server.RegisterOnShutdown(func() {
-		err := listener.Close()
-		logger.WithError(err).Debug("Closing listener")
-	})
-
-	return &Server{
+	eriServer := &Server{
 		server:   server,
 		listener: listener,
 	}
+
+	if rt != nil {
+		rt.RegisterCallback(func(_ os.Signal) {
+			logger.Info("Shutting down web server")
+			err := eriServer.Close()
+			if err != nil {
+				logger.WithError(err).Error("Shutdown error")
+			}
+		})
+	}
+
+	return eriServer
 }
 
 type Server struct {
@@ -63,4 +73,11 @@ type Server struct {
 
 func (s *Server) ServeERI() error {
 	return s.server.Serve(s.listener)
+}
+
+func (s *Server) Close() error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
+	defer cancel()
+
+	return s.server.Shutdown(ctx)
 }

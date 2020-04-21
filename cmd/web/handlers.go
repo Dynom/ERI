@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Dynom/ERI/cmd/web/config"
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 	"github.com/Dynom/ERI/validator"
 
@@ -20,11 +21,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder, hitList *hitlist.HitList, recipientThreshold uint64) http.HandlerFunc {
+func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder, hitList *hitlist.HitList, conf config.Config) http.HandlerFunc {
+
+	var (
+		recipientThreshold = conf.Server.Services.Autocomplete.RecipientThreshold
+		maxSuggestions     = int(conf.Server.Services.Autocomplete.MaxSuggestions)
+	)
 
 	const (
-		maxSuggestions = 5
-
 		FailedRequestError      = "Request failed, unable to parse request body. Expected JSON."
 		DomainLookupFailedError = "Request failed, unable to lookup by domain."
 		FailedResponseError     = "Generating response failed."
@@ -72,7 +76,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder, 
 			return
 		}
 
-		list, err := myFinder.GetMatchingPrefix(ctx, req.Domain, maxSuggestions*2)
+		list, err := myFinder.GetMatchingPrefix(ctx, req.Domain, uint(maxSuggestions*2))
 		if err != nil {
 			log.WithError(err).Warn("Error during lookup")
 			w.WriteHeader(http.StatusBadRequest)
@@ -116,9 +120,10 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, myFinder *finder.Finder, 
 		}
 
 		log.WithFields(logrus.Fields{
-			"suggestion_amount": len(list),
-			"input":             req.Domain,
-		}).Debugf("Done performing check")
+			"unfiltered_suggestions": len(list),
+			"filtered_suggestions":   len(filteredList),
+			"input":                  req.Domain,
+		}).Debugf("Autocomplete result")
 
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

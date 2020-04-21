@@ -12,7 +12,8 @@ func New(signals ...os.Signal) *SignalHandler {
 	signal.Notify(c, signals...)
 
 	sh := &SignalHandler{
-		c: c,
+		c:    c,
+		done: make(chan struct{}),
 	}
 
 	go sh.handle()
@@ -21,11 +22,16 @@ func New(signals ...os.Signal) *SignalHandler {
 }
 
 type SignalHandler struct {
-	c   chan os.Signal
-	fns []Callback
+	c    chan os.Signal
+	done chan struct{}
+	fns  []Callback
 }
 
 func (sh *SignalHandler) handle() {
+	defer func() {
+		sh.done <- struct{}{}
+	}()
+
 	s := <-sh.c
 	signal.Stop(sh.c)
 	close(sh.c)
@@ -37,4 +43,10 @@ func (sh *SignalHandler) handle() {
 
 func (sh *SignalHandler) RegisterCallback(fn Callback) {
 	sh.fns = append(sh.fns, fn)
+}
+
+// Wait block until all callback's have been called
+func (sh *SignalHandler) Wait() {
+	<-sh.done
+	close(sh.done)
 }

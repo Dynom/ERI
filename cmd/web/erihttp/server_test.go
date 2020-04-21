@@ -29,7 +29,7 @@ func TestBuildHTTPServer(t *testing.T) {
 			logWriter := &bytes.Buffer{}
 			l, _ := test.NewNullLogger()
 
-			got := BuildHTTPServer(tt.args.mux, tt.args.config, l, logWriter, tt.args.handlers...)
+			got := BuildHTTPServer(tt.args.mux, tt.args.config, l, logWriter, nil, tt.args.handlers...)
 			if gotLogWriter := logWriter.String(); gotLogWriter != tt.wantLogWriter {
 				t.Errorf("BuildHTTPServer() gotLogWriter = %v, want %v", gotLogWriter, tt.wantLogWriter)
 			}

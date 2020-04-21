@@ -27,9 +27,13 @@ COPY --from=base ["/usr/share/zoneinfo", "/usr/share/zoneinfo"]
 COPY --from=build ["/ERI/web", "/eri"]
 COPY --from=build ["/ERI/cmd/web/config.toml", "/"]
 
-# Takes presedence over the configuration.
+# Takes precedence over the configuration.
 ENV LISTEN_URL="0.0.0.0:1338"
 EXPOSE 1338
+
+# By default k8s kills with TERM, we can't reliably capture that in a cross-platform service. Changing it to
+# Interrupt, which we can safely capture.
+STOPSIGNAL SIGINT
 
 
 ENTRYPOINT ["/eri"]

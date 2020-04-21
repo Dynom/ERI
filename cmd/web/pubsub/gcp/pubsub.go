@@ -60,7 +60,11 @@ func (svc PubSubSvc) Close() error {
 	if err != nil {
 		svc.logger.WithError(err).Warn("Failed to end and cleanup subscription")
 	}
-	_ = svc.client.Close()
+	err = svc.client.Close()
+	if err != nil {
+		svc.logger.WithError(err).Warn("Failed to close pub/sub client")
+	}
+
 	return err
 }
 
