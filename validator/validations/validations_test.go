@@ -269,11 +269,11 @@ func TestValidations_RemoveFlag(t *testing.T) {
 	}{
 		{
 			name: "Testing if flag removed",
-			v:    Validations(3),
+			v:    Validations(FSyntax | FValid),
 			args: args{
-				f: 1,
+				f: FValid,
 			},
-			want: Validations(2),
+			want: Validations(FSyntax),
 		},
 		{
 			name: "Testing with no flag",

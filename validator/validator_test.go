@@ -2,6 +2,7 @@ package validator
 
 import (
 	"context"
+	"errors"
 	"net"
 	"reflect"
 	"testing"
@@ -60,8 +61,10 @@ func TestEmailValidator_CheckWithLookup(t *testing.T) {
 }
 
 func Test_validateSequence(t *testing.T) {
-	ctxDeadline, cancel := context.WithTimeout(context.Background(), time.Nanosecond*1)
+
+	ctxExpiredDeadline, cancel := context.WithTimeout(context.Background(), -1*time.Hour)
 	defer cancel()
+
 	type args struct {
 		ctx      context.Context
 		artifact Artifact
@@ -74,52 +77,76 @@ func Test_validateSequence(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Testing if sequence is valid",
+			name: "A sequence without errors should return with FValid",
 			args: args{
 				ctx: context.Background(),
 				sequence: []stateFn{
 					func(a *Artifact) error {
-						a.Validations.SetFlag(validations.FValid | validations.FSyntax)
-						a.Steps.SetFlag(validations.FSyntax)
+						// Making sure we don't have the FValid flag
+						a.Validations.RemoveFlag(validations.FValid)
 						return nil
 					},
 				},
 			},
 			want: Artifact{
-				Validations: validations.Validations(validations.FValid | validations.FSyntax),
-				Steps:       validations.Steps(validations.FSyntax),
+				Validations: validations.Validations(validations.FValid),
+				Steps:       0,
 			},
 		},
 		{
-			name: "Testing with email-error",
+			name: "A sequence with errors shouldn't contain FValid",
 			args: args{
 				ctx: context.Background(),
-				artifact: Artifact{
-					email: types.EmailParts{
-						Address: "johndoeexample.org",
-					},
-				},
 				sequence: []stateFn{
-					checkEmailAddressSyntax,
+					func(a *Artifact) error {
+						a.Validations.SetFlag(validations.FSyntax)
+						return errors.New("b0rk")
+					},
 				},
 			},
 			want: Artifact{
-				Validations: 0,
-				Steps:       validations.Steps(validations.FSyntax),
-				email: types.EmailParts{
-					Address: "johndoeexample.org",
-				},
+				Validations: validations.Validations(validations.FSyntax),
+				Steps:       0,
 			},
 			wantErr: true,
 		},
 		{
-			name: "Testing with context deadline",
+			name: "A sequence with errors should exit early",
 			args: args{
-				ctx: ctxDeadline,
+				ctx: context.Background(),
+				sequence: []stateFn{
+					func(a *Artifact) error {
+						a.Validations.SetFlag(validations.FSyntax)
+						return errors.New("b0rk")
+					},
+					func(a *Artifact) error {
+						// This fn shouldn't run
+						a.Validations.SetFlag(validations.FDisposable)
+						a.Steps.SetFlag(validations.FDomainHasIP)
+						return nil
+					},
+				},
+			},
+			want: Artifact{
+				Validations: validations.Validations(validations.FSyntax),
+				Steps:       0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Testing with expired deadline",
+			args: args{
+				ctx: ctxExpiredDeadline,
 				sequence: []stateFn{
 					func(a *Artifact) error {
 						a.Validations.SetFlag(validations.FSyntax)
 						a.Steps.SetFlag(validations.FSyntax)
+						return nil
+					},
+					func(a *Artifact) error {
+						// This fn shouldn't run
+						a.Validations.SetFlag(validations.FDisposable)
+						a.Steps.SetFlag(validations.FDomainHasIP)
 						return nil
 					},
 				},
@@ -137,43 +164,64 @@ func Test_validateSequence(t *testing.T) {
 			got, err := validateSequence(tt.args.ctx, tt.args.artifact, tt.args.sequence)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateSequence() error = %v, wantErr %v", err, tt.wantErr)
-				return
+				t.FailNow()
 			}
+
 			if !reflect.DeepEqual(got.Validations, tt.want.Validations) {
-				t.Errorf("Validations got = %v, want %v", got, tt.want)
+				t.Errorf("Validations got = %+v, want %+v", got, tt.want)
 			}
 			if !reflect.DeepEqual(got.Steps, tt.want.Steps) {
-				t.Errorf("Steps got = %v, want %v", got, tt.want)
+				t.Errorf("Steps got = %+v, want %+v", got, tt.want)
 			}
 			if !reflect.DeepEqual(got.email, tt.want.email) {
-				t.Errorf("Email got = %v, want %v", got, tt.want)
+				t.Errorf("Email got = %+v, want %+v", got, tt.want)
 			}
 			if !reflect.DeepEqual(got.ctx, tt.want.ctx) {
-				t.Errorf("Context got = %v, want %v", got, tt.want)
+				t.Errorf("Context got = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
 }
 
 func Test_prependOptions(t *testing.T) {
-	type args struct {
-		options []ArtifactFn
-		o       []ArtifactFn
-	}
-	tests := []struct {
-		name string
-		args args
-		want []ArtifactFn
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := prependOptions(tt.args.options, tt.args.o...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("prependOptions() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	t.Run("testing order", func(t *testing.T) {
+		// prepend options should add the last argument before the first
+		fns := prependOptions([]ArtifactFn{func(artifact *Artifact) {
+			artifact.Steps.SetFlag(validations.FValid)
+		}}, []ArtifactFn{func(artifact *Artifact) {
+			artifact.Validations.SetFlag(validations.FValid)
+		}}...)
+
+		a := Artifact{}
+		fns[0](&a)
+		if a.Validations == 0 {
+			t.Errorf("Expected the first fn to set the validations")
+		}
+		if a.Steps != 0 {
+			t.Errorf("Expected the first fn to NOT set the steps")
+		}
+
+		fns[1](&a)
+		if !a.Validations.HasFlag(validations.FValid) || !a.Steps.HasFlag(validations.FValid) {
+			t.Errorf("Expected flag to be set after both runs, instead I got: %+v", a)
+		}
+	})
+	t.Run("nil parent", func(t *testing.T) {
+		fns := prependOptions(nil, []ArtifactFn{func(artifact *Artifact) {
+			artifact.Validations.SetFlag(validations.FValid)
+		}}...)
+
+		a := Artifact{}
+		fns[0](&a)
+		if !a.Validations.HasFlag(validations.FValid) {
+			t.Errorf("Expected the validations flag to have been set, instead I got: %+v", a)
+		}
+	})
+	t.Run("nil args", func(t *testing.T) {
+		fns := prependOptions(nil, nil)
+
+		t.Logf("len: %d, cap: %d", len(fns), cap(fns))
+	})
 }
 
 func TestNewEmailAddressValidator(t *testing.T) {

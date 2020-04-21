@@ -49,12 +49,20 @@ func TestSteps_HasFlag(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "Testing if the type has all flags",
+			name: "Testing if the type has the flags",
 			s:    Steps(FSyntax | FMXLookup | FValid),
 			args: args{
 				f: FMXLookup,
 			},
 			want: true,
+		},
+		{
+			name: "Testing if the type doesn't have the flags",
+			s:    Steps(FSyntax | FValid),
+			args: args{
+				f: FMXLookup,
+			},
+			want: false,
 		},
 		{
 			name: "Testing with no flag",
@@ -85,7 +93,8 @@ func TestSteps_MergeWithNext(t *testing.T) {
 		want Steps
 	}{
 		{
-			name: "Testing if new steps are merged",
+			// @todo test passes, but is the behaviour correct?
+			name: "Testing if only next flags are added",
 			s:    Steps(FSyntax),
 			args: args{
 				new: Steps(FValid),
@@ -101,7 +110,7 @@ func TestSteps_MergeWithNext(t *testing.T) {
 			want: Steps(FSyntax | FMXLookup | FValid),
 		},
 		{
-			name: "Testing with no steps",
+			name: "Testing without steps",
 			s:    0,
 			args: args{
 				new: Steps(0),
@@ -157,7 +166,7 @@ func TestSteps_SetFlag(t *testing.T) {
 			name: "Testing if new flag is set",
 			s:    Steps(FSyntax),
 			args: args{
-				new: Flag(FValid),
+				new: FValid,
 			},
 			want: Steps(FSyntax | FValid),
 		},
@@ -165,7 +174,7 @@ func TestSteps_SetFlag(t *testing.T) {
 			name: "Testing if flag is still set",
 			s:    Steps(FSyntax | FValid | FMXLookup),
 			args: args{
-				new: Flag(FMXLookup),
+				new: FMXLookup,
 			},
 			want: Steps(FSyntax | FValid | FMXLookup),
 		},
@@ -173,7 +182,7 @@ func TestSteps_SetFlag(t *testing.T) {
 			name: "Testing with no flag",
 			s:    0,
 			args: args{
-				new: Flag(0),
+				new: 0,
 			},
 			want: 0,
 		},

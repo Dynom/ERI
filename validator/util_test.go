@@ -172,27 +172,39 @@ func Test_MightBeAHostOrIP(t *testing.T) {
 }
 
 func Test_wrapError(t *testing.T) {
+	errA := errors.New("a")
+	errB := errors.New("b")
+
 	type args struct {
 		parent error
 		new    error
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
+		name        string
+		args        args
+		wantWrapped error
+		wantErr     bool
 	}{
 		{
-			name: "Testing if error has been wrapped",
+			name: "is wrapped",
 			args: args{
-				parent: errors.New("test"),
-				new:    errors.New("wrap"),
+				parent: errA,
+				new:    errB,
 			},
-			want:    "test wrap",
-			wantErr: true,
+			wantWrapped: errB,
+			wantErr:     true,
 		},
 		{
-			name: "Testing with zero-value",
+			name: "nil parent",
+			args: args{
+				parent: nil,
+				new:    errB,
+			},
+			wantWrapped: errB,
+			wantErr:     true,
+		},
+		{
+			name: "zero-value",
 			args: args{
 				parent: nil,
 				new:    nil,
@@ -202,12 +214,15 @@ func Test_wrapError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := wrapError(tt.args.parent, tt.args.new); (err != nil) != tt.wantErr {
+			err := wrapError(tt.args.parent, tt.args.new)
+
+			if !errors.Is(err, tt.wantWrapped) {
+				t.Errorf("errors.Is() error %q isn't wrapping %q (err: %v)", tt.args.parent, tt.wantWrapped, err)
+			}
+
+			if (err != nil) != tt.wantErr {
 				t.Errorf("wrapError() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			// if err := wrapError(tt.args.parent, tt.args.new); tt.want != err.Error() {
-			// 	t.Errorf("wrapError() error = %v, want %v", err.Error(), tt.want)
-			//}
 		})
 	}
 }

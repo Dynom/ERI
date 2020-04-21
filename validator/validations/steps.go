@@ -9,7 +9,7 @@ func (s Steps) String() string {
 	return fmt.Sprintf("%08b", s)
 }
 
-// MergeWithNext appends to Steps are returns the result.
+// MergeWithNext appends to Steps and returns the result.
 func (s Steps) MergeWithNext(new Steps) Steps {
 	if new < s {
 		return new
