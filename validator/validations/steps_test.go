@@ -1,6 +1,8 @@
 package validations
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestSteps_HasBeenValidated(t *testing.T) {
 	tests := []struct {
@@ -8,7 +10,16 @@ func TestSteps_HasBeenValidated(t *testing.T) {
 		s    Steps
 		want bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Testing if steps have been taken",
+			s:    Steps(FSyntax),
+			want: true,
+		},
+		{
+			name: "Testing with no steps",
+			s:    0,
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -29,7 +40,30 @@ func TestSteps_HasFlag(t *testing.T) {
 		args args
 		want bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Testing if the type has the flag",
+			s:    Steps(FValid),
+			args: args{
+				f: FValid,
+			},
+			want: true,
+		},
+		{
+			name: "Testing if the type has all flags",
+			s:    Steps(FSyntax | FMXLookup | FValid),
+			args: args{
+				f: FMXLookup,
+			},
+			want: true,
+		},
+		{
+			name: "Testing with no flag",
+			s:    0,
+			args: args{
+				f: 0,
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -50,7 +84,30 @@ func TestSteps_MergeWithNext(t *testing.T) {
 		args args
 		want Steps
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Testing if new steps are merged",
+			s:    Steps(FSyntax),
+			args: args{
+				new: Steps(FValid),
+			},
+			want: Steps(FValid),
+		},
+		{
+			name: "Testing if all new steps are merged",
+			s:    Steps(FSyntax),
+			args: args{
+				new: Steps(FSyntax | FMXLookup | FValid),
+			},
+			want: Steps(FSyntax | FMXLookup | FValid),
+		},
+		{
+			name: "Testing with no steps",
+			s:    0,
+			args: args{
+				new: Steps(0),
+			},
+			want: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -68,7 +125,12 @@ func TestSteps_RemoveFlag(t *testing.T) {
 		f    Flag
 		want Steps
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Testing with zero-values",
+			s:    0,
+			f:    0,
+			want: 0,
+		},
 		{name: "Clears Single flag", s: Steps(FSyntax | FMXLookup), f: FSyntax, want: Steps(FMXLookup)},
 		{name: "Doesn't clear non existing flag", s: Steps(FSyntax | FMXLookup | FValid), f: FValidRCPT, want: Steps(FSyntax | FMXLookup | FValid)},
 	}
@@ -91,7 +153,30 @@ func TestSteps_SetFlag(t *testing.T) {
 		args args
 		want Steps
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Testing if new flag is set",
+			s:    Steps(FSyntax),
+			args: args{
+				new: Flag(FValid),
+			},
+			want: Steps(FSyntax | FValid),
+		},
+		{
+			name: "Testing if flag is still set",
+			s:    Steps(FSyntax | FValid | FMXLookup),
+			args: args{
+				new: Flag(FMXLookup),
+			},
+			want: Steps(FSyntax | FValid | FMXLookup),
+		},
+		{
+			name: "Testing with no flag",
+			s:    0,
+			args: args{
+				new: Flag(0),
+			},
+			want: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -108,7 +193,16 @@ func TestSteps_String(t *testing.T) {
 		s    Steps
 		want string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Converting steps to string",
+			s:    255,
+			want: "11111111",
+		},
+		{
+			name: "Testing with zero-value",
+			s:    0,
+			want: "00000000",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

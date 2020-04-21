@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Dynom/ERI/types"
+	"github.com/Dynom/ERI/validator/validations"
 )
 
 var (
@@ -59,6 +60,8 @@ func TestEmailValidator_CheckWithLookup(t *testing.T) {
 }
 
 func Test_validateSequence(t *testing.T) {
+	ctxDeadline, cancel := context.WithTimeout(context.Background(), time.Nanosecond*1)
+	defer cancel()
 	type args struct {
 		ctx      context.Context
 		artifact Artifact
@@ -70,8 +73,65 @@ func Test_validateSequence(t *testing.T) {
 		want    Artifact
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Testing if sequence is valid",
+			args: args{
+				ctx: context.Background(),
+				sequence: []stateFn{
+					func(a *Artifact) error {
+						a.Validations.SetFlag(validations.FValid | validations.FSyntax)
+						a.Steps.SetFlag(validations.FSyntax)
+						return nil
+					},
+				},
+			},
+			want: Artifact{
+				Validations: validations.Validations(validations.FValid | validations.FSyntax),
+				Steps:       validations.Steps(validations.FSyntax),
+			},
+		},
+		{
+			name: "Testing with email-error",
+			args: args{
+				ctx: context.Background(),
+				artifact: Artifact{
+					email: types.EmailParts{
+						Address: "johndoeexample.org",
+					},
+				},
+				sequence: []stateFn{
+					checkEmailAddressSyntax,
+				},
+			},
+			want: Artifact{
+				Validations: 0,
+				Steps:       validations.Steps(validations.FSyntax),
+				email: types.EmailParts{
+					Address: "johndoeexample.org",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Testing with context deadline",
+			args: args{
+				ctx: ctxDeadline,
+				sequence: []stateFn{
+					func(a *Artifact) error {
+						a.Validations.SetFlag(validations.FSyntax)
+						a.Steps.SetFlag(validations.FSyntax)
+						return nil
+					},
+				},
+			},
+			want: Artifact{
+				Validations: validations.Validations(validations.FSyntax),
+				Steps:       validations.Steps(validations.FSyntax),
+			},
+			wantErr: true,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := validateSequence(tt.args.ctx, tt.args.artifact, tt.args.sequence)
@@ -79,8 +139,17 @@ func Test_validateSequence(t *testing.T) {
 				t.Errorf("validateSequence() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("validateSequence() got = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(got.Validations, tt.want.Validations) {
+				t.Errorf("Validations got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got.Steps, tt.want.Steps) {
+				t.Errorf("Steps got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got.email, tt.want.email) {
+				t.Errorf("Email got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got.ctx, tt.want.ctx) {
+				t.Errorf("Context got = %v, want %v", got, tt.want)
 			}
 		})
 	}
