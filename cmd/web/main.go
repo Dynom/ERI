@@ -29,6 +29,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	gqlHandler "github.com/graphql-go/handler"
+
+	_ "github.com/lib/pq"
 )
 
 // Version contains the app version, the value is changed during compile time to the appropriate Git tag

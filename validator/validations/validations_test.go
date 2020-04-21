@@ -267,7 +267,22 @@ func TestValidations_RemoveFlag(t *testing.T) {
 		args args
 		want Validations
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Testing if flag removed",
+			v:    Validations(FSyntax | FValid),
+			args: args{
+				f: FValid,
+			},
+			want: Validations(FSyntax),
+		},
+		{
+			name: "Testing with no flag",
+			v:    Validations(0),
+			args: args{
+				f: 0,
+			},
+			want: Validations(0),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

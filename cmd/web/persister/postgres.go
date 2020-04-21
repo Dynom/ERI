@@ -10,8 +10,6 @@ import (
 	"github.com/Dynom/ERI/validator"
 	"github.com/Dynom/ERI/validator/validations"
 	"github.com/sirupsen/logrus"
-
-	_ "github.com/lib/pq"
 )
 
 func New(conn *sql.DB, logger logrus.FieldLogger) Persist {

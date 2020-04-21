@@ -1,62 +1,99 @@
+[![CircleCI](https://circleci.com/gh/Dynom/ERI.svg?style=svg)](https://circleci.com/gh/Dynom/ERI)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Dynom/ERI)](https://goreportcard.com/report/github.com/Dynom/ERI)
+[![GoDoc](https://godoc.org/github.com/Dynom/ERI?status.svg)](https://pkg.go.dev/github.com/Dynom/ERI)
+[![codecov](https://codecov.io/gh/Dynom/ERI/branch/master/graph/badge.svg)](https://codecov.io/gh/Dynom/ERI)
+
+
 # ERI
-Email Recipient Inspector, checks e-mail addresses and offers suggestions when there is suspicion of a typo. It uses an incremental validation approach and support learning. The main goal of ERI is to reduce mistakes when dealing with e-mail addresses.
+Email Recipient Inspector is a project for preventing e-mail typos. It's a self-learning service, which you can employ to help users prevent mistakes when entering their e-mail address.
 
-ERI design goals:
-- Fast
-    - Incremental expensiveness on checks syntax -> MX -> RCPT
-- Robust / Secure
-    - Fuzzer tested
-    - Rate limited
-    - Limited dependencies
-- Privacy conscious
-    - Tries to hash the in-memory result to leak as little as possible on bugs / compromise
-- Reliable
-    - Support temporary errors
-    - Learnings should be persisted
-    - Services should be stateless
-    - Services should coordinate learnings / cache
-    - Should support Unicode domains
-- Learn from validations
-    - Skip MX lookups when a domain is known to be good
-    - Skip expensive validation when an e-mail address has been "recently" validated
-    - Reject early when a recent validation resulted in an error
+## Endpoints
+Each request must be accompanied by a `Content-Type: application/json` header. Besides plain JSON, ERI also supports [GraphQL](https://graphql.org/). 
 
-# Features
-## Implemented
-## Planned
-- Play nice with Mail providers webhooks (e.g.: AWS SES/SNS, Send in Blue, Mailgun) for learning of failure(s)
-- Auto-complete endpoint, helps completing the correct domain names
+### /suggest
+The Suggestion endpoint returns a list of 1 or more equally good, or better alternatives. If no better match is found, the input is returned. The `malformed_syntax` field is a boolean indicating whether the input is never valid, or _might_ be.
+
+```bash
+curl -s 'http://localhost:1338/suggest' \
+  -H 'Content-Type: application/json' \
+  -d '{"email": "john.doe@example.rg"}'
+```
+#### Request
+```json
+{
+  "email": "john.doe@example.rg"
+}
+```
+
+#### Response
+```json
+{
+  "alternatives": [
+    "john.doe@example.org"
+  ],
+  "malformed_syntax": false
+}
+```
+
+### /autocomplete
+The autocomplete endpoint returns a list of domains matching the prefix.
+```bash
+curl -s 'http://localhost:1338/autocomplete' \
+  -H 'Content-Type: application/json' \
+  -d '{"domain": "g"}'
+```
+#### Request
+```json
+{
+  "domain": "g"
+}
+```
+#### Response
+```json
+{
+  "suggestions": [
+    "gmail.com"
+  ]
+}
+```
 
 
-# Considerations and Design Choices
-## Validation
-ERI performs an incremental validation approach. It starts with "cheap" checks and can continue until issuing MAIL 
-commands. Please continue reading on learning why the latter isn't recommended in all situations.
+# ERI design goals
+## Fast
+It uses an incremental approach to determining correctness: Syntax, DNS and optionally more
 
-ERI supports including MAIL commands, but for typical real world usage this is a bad idea. Large mail providers (e.g.: gmail or hotmail) ignore/block these commands for security reasons. Secondly there is a semantical argument to not chose this option, in that you have to consider what you're trying to accomplish. No e-mail validation service can guarantee that an e-mail is received, doesn't end up in spam and is actually read by the recipient.
+## Privacy by design
+It employs several configuration options to limit exposure, and it only keeps an obfuscated local part in memory.
 
-For specific situations, however, you can use ERI to perform these lookups. E.g. for internal services where you want to validate (old) addresses.
+## Scales pretty well
+Depending on the setup, each instance can handle hundreds of requests per second, and it coordinates its state with multiple instances.
 
-## Data storage
-//todo
+# ERIs Learning
+Certain typos lead to unintended but "correct" domains. One example is: `hotmai.com` versus `hotmail.com`. An easy typo to make, but harder to distinguish what the user intended (since `hotmai.com` is a valid domain).
 
-## Control
-- web service
-- CLI to manage the service
-- Database to persist state
-- Pub/Sub to coordinate between multiple services
+To solve this ERI learns from both good and bad results, to form a bias for the more likely domain that is intended. This bias is specific to a workload.
 
+# Suggestions
+ERI uses [TySug](https://github.com/Dynom/TySug) to help with finding alternatives and supports various algorithms for fuzzy matching
 
-## Existing but unintended domain
-Certain typos lead to unintended but "correct" domains. One example is: hotmai.com versus hotmail.com. An easy typo to 
-make, but harder to distinguish what the user intended.
+# ERI versus E-mail validation
+ERI is a service which is designed to help in legitimate use-cases to prevent mistakes. It doesn't claim correctness, but it will offer useful hints to a user that something might be wrong, even when the syntax is actually correct.
 
-For this and other situations ERI learns about e-mail addresses. See the section Learning
+It's also not designed as a Marketing tool to help in optimising a contact list
 
-# ERI's Learning
-ERI does some additional bookkeeping when a check is performed or when an explicit learn call is made. This process of 
-learning is useful to form a bias in favor of more "likely to be correct" addresses.
+# ERIs design
+## Multiple instances
+ERI communicates by a broadcasting setup. Currently, GCP's pub/sub and Postgres listen/notify is on the wishlist. This is chatty with many instances, however for a small setup, handling up to 10.000 req/s, this works quite well.
 
-## Addresses versus domains
-ERI learn's about domains (the part after the @) and the corresponding local parts (the part before the @). The local part
-is used to help determine the usage frequency, which helps create a favorability towards more common domains.
+## Persistence
+ERI uses Postgres as persistence backend.
+
+## Releases
+ERI currently follows the semver notation, this will probably change in the future.
+
+ERI tries to stay current with Go's version releases, it might not build on older versions. But it will very likely build on a recent version.
+
+The `master` branch is fairly stable. Most work is done in feature-branches. 
+
+# Security Disclosure
+Please contact me at mark@dynom.nl before disclosing publicly.
