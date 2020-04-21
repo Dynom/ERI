@@ -217,11 +217,6 @@ func Test_prependOptions(t *testing.T) {
 			t.Errorf("Expected the validations flag to have been set, instead I got: %+v", a)
 		}
 	})
-	t.Run("nil args", func(t *testing.T) {
-		fns := prependOptions(nil, nil)
-
-		t.Logf("len: %d, cap: %d", len(fns), cap(fns))
-	})
 }
 
 func TestNewEmailAddressValidator(t *testing.T) {
