@@ -77,25 +77,17 @@ func Test_validateSequence(t *testing.T) {
 			name: "Testing if sequence is valid",
 			args: args{
 				ctx: context.Background(),
-				artifact: Artifact{
-					email: types.EmailParts{
-						Address: "johndoe@example.org",
-						Local:   "test",
-						Domain:  "example.org",
-					},
-				},
 				sequence: []stateFn{
-					checkEmailAddressSyntax,
+					func(a *Artifact) error {
+						a.Validations.SetFlag(validations.FValid | validations.FSyntax)
+						a.Steps.SetFlag(validations.FSyntax)
+						return nil
+					},
 				},
 			},
 			want: Artifact{
 				Validations: validations.Validations(validations.FValid | validations.FSyntax),
 				Steps:       validations.Steps(validations.FSyntax),
-				email: types.EmailParts{
-					Address: "johndoe@example.org",
-					Local:   "test",
-					Domain:  "example.org",
-				},
 			},
 		},
 		{
@@ -124,25 +116,17 @@ func Test_validateSequence(t *testing.T) {
 			name: "Testing with context deadline",
 			args: args{
 				ctx: ctxDeadline,
-				artifact: Artifact{
-					email: types.EmailParts{
-						Address: "johndoe@example.org",
-						Local:   "test",
-						Domain:  "example.org",
-					},
-				},
 				sequence: []stateFn{
-					checkEmailAddressSyntax,
+					func(a *Artifact) error {
+						a.Validations.SetFlag(validations.FSyntax)
+						a.Steps.SetFlag(validations.FSyntax)
+						return nil
+					},
 				},
 			},
 			want: Artifact{
 				Validations: validations.Validations(validations.FSyntax),
 				Steps:       validations.Steps(validations.FSyntax),
-				email: types.EmailParts{
-					Address: "johndoe@example.org",
-					Local:   "test",
-					Domain:  "example.org",
-				},
 			},
 			wantErr: true,
 		},
