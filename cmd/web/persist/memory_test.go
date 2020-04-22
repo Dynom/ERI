@@ -1,4 +1,4 @@
-package persister
+package persist
 
 import (
 	"bytes"
@@ -44,7 +44,7 @@ func TestNewMemory(t *testing.T) {
 
 	tests := []struct {
 		name string
-		want Persist
+		want Persister
 	}{
 		// TODO: Add test cases.
 	}

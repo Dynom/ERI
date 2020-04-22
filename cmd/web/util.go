@@ -16,7 +16,7 @@ import (
 	gcppubsub "cloud.google.com/go/pubsub"
 	"github.com/Dynom/ERI/cmd/web/erihttp"
 	"github.com/Dynom/ERI/cmd/web/hitlist"
-	"github.com/Dynom/ERI/cmd/web/persister"
+	"github.com/Dynom/ERI/cmd/web/persist"
 	"github.com/Dynom/ERI/cmd/web/pubsub"
 	"github.com/Dynom/ERI/cmd/web/pubsub/gcp"
 	"github.com/Dynom/ERI/runtimer"
@@ -119,7 +119,7 @@ func mapValidatorTypeToValidatorFn(vt config.ValidatorType, v validator.EmailVal
 	panic(fmt.Sprintf("Incorrect validator %q configured.", vt))
 }
 
-func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList, myFinder *finder.Finder, pubSubSvc *gcp.PubSubSvc, pgPersist persister.Persist) validator.CheckFn {
+func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList, myFinder *finder.Finder, pubSubSvc *gcp.PubSubSvc, persister persist.Persister) validator.CheckFn {
 	var dialer = &net.Dialer{}
 	if conf.Server.Validator.Resolver != "" {
 		setCustomResolver(dialer, conf.Server.Validator.Resolver)
@@ -130,9 +130,9 @@ func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitLi
 	// Pick the validator we want to use
 	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.SuggestValidator, val)
 
-	if pgPersist != nil {
+	if persister != nil {
 		logger.Info("Adding persisting validator proxy")
-		checkValidator = validatorPersistProxy(pgPersist, hitList, logger, checkValidator)
+		checkValidator = validatorPersistProxy(persister, hitList, logger, checkValidator)
 	}
 
 	if pubSubSvc != nil {
@@ -185,7 +185,7 @@ func pubSubNotificationHandler(hitList *hitlist.HitList, logger logrus.FieldLogg
 	}
 }
 
-func createPGPersister(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList) (persister.Persist, io.Closer, error) {
+func createPGPersister(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList) (persist.Persister, io.Closer, error) {
 	if conf.Server.Backend.Driver == "" {
 		logger.Info("Not setting up persistency, driver is not defined")
 		return nil, nil, nil
@@ -204,7 +204,7 @@ func createPGPersister(conf config.Config, logger logrus.FieldLogger, hitList *h
 		return nil, nil, err
 	}
 
-	p := persister.New(sqlConn, logger)
+	p := persist.New(sqlConn, logger)
 	var added uint64
 	err = p.Range(context.Background(), func(d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
 		err := hitList.AddInternalParts(d, r, vr, time.Hour*60)

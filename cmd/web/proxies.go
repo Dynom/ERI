@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/Dynom/ERI/cmd/web/persister"
+	"github.com/Dynom/ERI/cmd/web/persist"
 	"github.com/Dynom/ERI/cmd/web/pubsub"
 	"github.com/Dynom/ERI/cmd/web/pubsub/gcp"
 	"github.com/Dynom/ERI/validator/validations"
@@ -56,7 +56,7 @@ func validatorHitListProxy(hitList *hitlist.HitList, logger logrus.FieldLogger, 
 }
 
 // validatorPersistProxy persist the result of the validator.
-func validatorPersistProxy(storage persister.Persist, hitList *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
+func validatorPersistProxy(persister persist.Persister, hitList *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
 	logger = logger.WithField("middleware", "persist_proxy")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 
@@ -80,7 +80,7 @@ func validatorPersistProxy(storage persister.Persist, hitList *hitlist.HitList, 
 				return vr
 			}
 
-			err = storage.Store(ctx, d, r, vr)
+			err = persister.Store(ctx, d, r, vr)
 			if err != nil {
 				log.WithError(err).Error("Failed to persist value")
 				return vr

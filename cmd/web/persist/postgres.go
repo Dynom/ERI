@@ -1,4 +1,4 @@
-package persister
+package persist
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func New(conn *sql.DB, logger logrus.FieldLogger) Persist {
+func New(conn *sql.DB, logger logrus.FieldLogger) Persister {
 	return &Postgres{
 		conn:   conn,
 		logger: logger,

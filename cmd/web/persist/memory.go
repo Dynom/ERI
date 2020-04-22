@@ -1,4 +1,4 @@
-package persister
+package persist
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/Dynom/ERI/validator"
 )
 
-func NewMemory(list *hitlist.HitList) Persist {
+func NewMemory(list *hitlist.HitList) Persister {
 	return &Memory{
 		m:    &sync.Map{},
 		list: list,
