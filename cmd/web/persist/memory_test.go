@@ -4,61 +4,18 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
+	hlTest "github.com/Dynom/ERI/cmd/web/hitlist/test"
 	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/ERI/validator"
 	"github.com/Dynom/ERI/validator/validations"
 )
 
-type MockHasher struct {
-	v []byte
-}
-
-func (s MockHasher) Write(p []byte) (int, error) {
-	s.v = p
-	return len(p), nil
-}
-
-func (s MockHasher) Sum(p []byte) []byte {
-	return p
-}
-
-func (s MockHasher) Reset() {
-
-}
-
-func (s MockHasher) Size() int {
-	return len(s.v)
-}
-
-func (s MockHasher) BlockSize() int {
-	return 128
-}
-
-func TestNewMemory(t *testing.T) {
-	list := hitlist.New(MockHasher{}, time.Second*1)
-
-	tests := []struct {
-		name string
-		want Persister
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewMemory(list); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewMemory() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestStorage_Range(t *testing.T) {
-	list := hitlist.New(MockHasher{}, time.Second*1)
+	list := hitlist.New(hlTest.MockHasher{}, time.Second*1)
 
 	type testDataS struct {
 		parts types.EmailParts
@@ -83,7 +40,9 @@ func TestStorage_Range(t *testing.T) {
 
 	t.Run("Range/All", func(t *testing.T) {
 		ctx := context.Background()
-		s := NewMemory(list)
+		s := NewMemory()
+		defer s.Close()
+
 		for _, td := range testData {
 
 			domain, recipient, err := list.CreateInternalTypes(td.parts)
@@ -119,7 +78,9 @@ func TestStorage_Range(t *testing.T) {
 
 	t.Run("Range/Abort", func(t *testing.T) {
 		ctx := context.Background()
-		s := NewMemory(list)
+		s := NewMemory()
+		defer s.Close()
+
 		for _, td := range testData {
 
 			domain, recipient, err := list.CreateInternalTypes(td.parts)
@@ -149,7 +110,8 @@ func TestStorage_Range(t *testing.T) {
 
 	t.Run("Range/Bad Key", func(t *testing.T) {
 		ctx := context.Background()
-		s := NewMemory(list).(*Memory)
+		s := NewMemory().(*Memory)
+		defer s.Close()
 
 		// Preparing data with a bad key (and value)
 		s.m.Store("foo", "bar")
@@ -169,7 +131,8 @@ func TestStorage_Range(t *testing.T) {
 	t.Run("Range/Bad Value", func(t *testing.T) {
 		ctx := context.Background()
 
-		s := NewMemory(list).(*Memory)
+		s := NewMemory().(*Memory)
+		defer s.Close()
 
 		// Preparing data with a good key, and with a bad vr type.
 		s.m.Store("john@example.org", "bar")
@@ -188,7 +151,7 @@ func TestStorage_Range(t *testing.T) {
 }
 
 func TestStorage_Store(t *testing.T) {
-	list := hitlist.New(MockHasher{}, time.Second*1)
+	list := hitlist.New(hlTest.MockHasher{}, time.Second*1)
 
 	type args struct {
 		ctx   context.Context
@@ -227,7 +190,8 @@ func TestStorage_Store(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewMemory(list)
+			s := NewMemory()
+			defer s.Close()
 
 			vr := validator.Result{
 				Validations: validations.Validations(validations.FSyntax | validations.FMXLookup),
@@ -255,4 +219,30 @@ func TestStorage_Store(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStoreAndRetrieve(t *testing.T) {
+	ctx := context.Background()
+
+	var domain hitlist.Domain = "example.org"
+	var recipient = hitlist.Recipient("jane")
+
+	s := NewMemory()
+	err := s.Store(ctx, domain, recipient, validator.Result{})
+	if err != nil {
+		t.Errorf("Test setup failed %s", err)
+		t.FailNow()
+	}
+
+	_ = s.Range(ctx, func(d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
+		if d != domain {
+			t.Errorf("s.Range() Expected %s, got %s", domain, d)
+		}
+
+		if !bytes.Equal(r, recipient) {
+			t.Errorf("s.Range() Expected %s, got %s", recipient, r)
+		}
+
+		return nil
+	})
 }

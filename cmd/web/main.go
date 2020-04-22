@@ -112,13 +112,14 @@ func main() {
 
 	validatorFn := createProxiedValidator(conf, logger, hitList, myFinder, pubSubSvc, persister)
 	suggestSvc := services.NewSuggestService(myFinder, validatorFn, logger)
+	autocompleteSvc := services.NewAutocompleteService(myFinder, hitList, conf.Server.Services.Autocomplete.RecipientThreshold, logger)
 
 	mux := http.NewServeMux()
 	registerProfileHandler(mux, conf)
 	registerHealthHandler(mux, logger)
 
 	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
-	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder, hitList, conf))
+	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, autocompleteSvc, conf.Server.Services.Autocomplete.MaxSuggestions))
 
 	schema, err := NewGraphQLSchema(&suggestSvc)
 	if err != nil {

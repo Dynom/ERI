@@ -9,16 +9,14 @@ import (
 	"github.com/Dynom/ERI/validator"
 )
 
-func NewMemory(list *hitlist.HitList) Persister {
+func NewMemory() Persister {
 	return &Memory{
-		m:    &sync.Map{},
-		list: list,
+		m: &sync.Map{},
 	}
 }
 
 type Memory struct {
-	m    *sync.Map
-	list *hitlist.HitList
+	m *sync.Map
 }
 
 func (s *Memory) Close() error {

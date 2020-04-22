@@ -199,7 +199,7 @@ func createPersister(conf config.Config, logger logrus.FieldLogger, hitList *hit
 		backend = persist.New(sqlDB, logger)
 
 	case "memory":
-		backend = persist.NewMemory(hitList)
+		backend = persist.NewMemory()
 
 	case "":
 		logger.Info("Not setting up persistency, driver is not defined")

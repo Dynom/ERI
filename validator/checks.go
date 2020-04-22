@@ -89,7 +89,8 @@ func checkIfDomainHasMX(a *Artifact) error {
 
 	a.Steps.SetFlag(validations.FMXLookup)
 
-	const ttl = 100 * time.Millisecond
+	// @todo make ttl configurable
+	const ttl = 500 * time.Millisecond
 	ctx, cancel := getEarliestDeadlineCTX(a.ctx, ttl)
 	defer cancel()
 
