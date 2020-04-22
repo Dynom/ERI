@@ -129,6 +129,7 @@ func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitLi
 
 	// Pick the validator we want to use
 	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.SuggestValidator, val)
+	checkValidator = validatorHitListProxy(hitList, logger, checkValidator)
 
 	if persister != nil {
 		logger.Info("Adding persisting validator proxy")
@@ -140,7 +141,6 @@ func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitLi
 	}
 
 	checkValidator = validatorUpdateFinderProxy(myFinder, hitList, logger, checkValidator)
-	checkValidator = validatorHitListProxy(hitList, logger, checkValidator)
 
 	return checkValidator
 
