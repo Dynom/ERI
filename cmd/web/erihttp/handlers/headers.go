@@ -2,7 +2,7 @@ package handlers
 
 import "net/http"
 
-func WithHeaders(headers http.Header) HandlerWrapper {
+func WithHeaders(headers http.Header) Middleware {
 	return func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			addHeaders(w.Header(), headers)

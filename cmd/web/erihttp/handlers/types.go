@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-type HandlerWrapper func(handler http.Handler) http.Handler
+type Middleware func(handler http.Handler) http.Handler
 
 type CustomResponseWriter struct {
 	http.ResponseWriter

@@ -17,7 +17,7 @@ func TestNewRateLimitHandler(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want HandlerWrapper
+		want Middleware
 	}{
 		// TODO: Add test cases.
 	}

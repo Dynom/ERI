@@ -20,7 +20,7 @@ func (cv contextValue) String() string {
 	return string(cv)
 }
 
-func WithRequestLogger(logger logrus.FieldLogger) HandlerWrapper {
+func WithRequestLogger(logger logrus.FieldLogger) Middleware {
 
 	logger = logger.WithField("middleware", "request_logger")
 	return func(handler http.Handler) http.Handler {
