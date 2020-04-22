@@ -74,7 +74,7 @@ type Config struct {
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
 		Backend struct {
-			Driver             string `toml:"driver"`
+			Driver             string `toml:"driver" usage:"List a driver to use, currently supporting: 'memory' or 'postgres'"`
 			URL                string `toml:"url"`
 			MaxConnections     uint   `toml:"maxConnections"`
 			MaxIdleConnections uint   `toml:"maxIdleConnections"`

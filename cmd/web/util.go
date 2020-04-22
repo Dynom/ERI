@@ -130,6 +130,7 @@ func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitLi
 	// Pick the validator we want to use
 	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.SuggestValidator, val)
 	checkValidator = validatorHitListProxy(hitList, logger, checkValidator)
+	checkValidator = validatorUpdateFinderProxy(myFinder, hitList, logger, checkValidator)
 
 	if persister != nil {
 		logger.Info("Adding persisting validator proxy")
@@ -139,8 +140,6 @@ func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitLi
 	if pubSubSvc != nil {
 		checkValidator = validatorNotifyProxy(pubSubSvc, hitList, logger, checkValidator)
 	}
-
-	checkValidator = validatorUpdateFinderProxy(myFinder, hitList, logger, checkValidator)
 
 	return checkValidator
 
@@ -185,28 +184,33 @@ func pubSubNotificationHandler(hitList *hitlist.HitList, logger logrus.FieldLogg
 	}
 }
 
-func createPGPersister(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList) (persist.Persister, io.Closer, error) {
-	if conf.Server.Backend.Driver == "" {
+func createPersister(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList) (persist.Persister, error) {
+	var driver = conf.Server.Backend.Driver
+	var backend persist.Persister
+
+	logger = logger.WithField("backend_driver", driver)
+
+	switch driver {
+	case "postgres":
+		sqlDB, err := configurePGBackend(conf)
+		if err != nil {
+			return nil, err
+		}
+		backend = persist.New(sqlDB, logger)
+
+	case "memory":
+		backend = persist.NewMemory(hitList)
+
+	case "":
 		logger.Info("Not setting up persistency, driver is not defined")
-		return nil, nil, nil
+		return nil, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported backend driver %q", driver)
 	}
 
-	sqlConn, err := sql.Open(conf.Server.Backend.Driver, conf.Server.Backend.URL)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sqlConn.SetMaxOpenConns(int(conf.Server.Backend.MaxConnections))
-	sqlConn.SetMaxIdleConns(int(conf.Server.Backend.MaxIdleConnections))
-
-	err = sqlConn.Ping()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	p := persist.New(sqlConn, logger)
 	var added uint64
-	err = p.Range(context.Background(), func(d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
+	err := backend.Range(context.Background(), func(d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
 		err := hitList.AddInternalParts(d, r, vr, time.Hour*60)
 		if err != nil {
 			logger.WithError(err).Warn("Unable hydrate hitList")
@@ -218,12 +222,28 @@ func createPGPersister(conf config.Config, logger logrus.FieldLogger, hitList *h
 
 	if err != nil {
 		logger.WithError(err).Warn("Unable Range the database")
-		return nil, nil, err
+		return nil, err
 	}
 
 	logger.WithField("added", added).Info("Hydrated hitList")
-	return p, sqlConn, nil
+	return backend, nil
+}
 
+func configurePGBackend(conf config.Config) (*sql.DB, error) {
+	db, err := sql.Open(conf.Server.Backend.Driver, conf.Server.Backend.URL)
+	if err != nil {
+		return nil, err
+	}
+
+	db.SetMaxOpenConns(int(conf.Server.Backend.MaxConnections))
+	db.SetMaxIdleConns(int(conf.Server.Backend.MaxIdleConnections))
+
+	err = db.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
 
 func createPubSubSvc(conf config.Config, logger logrus.FieldLogger, rt *runtimer.SignalHandler, hitList *hitlist.HitList, myFinder *finder.Finder) (*gcp.PubSubSvc, error) {
