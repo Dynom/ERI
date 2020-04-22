@@ -60,7 +60,7 @@ func validatorPersistProxy(persister persist.Persister, hitList *hitlist.HitList
 	logger = logger.WithField("middleware", "persist_proxy")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 
-		log := logger.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
+		logger := logger.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
 
 		_, existed := hitList.Has(parts)
 
@@ -68,7 +68,7 @@ func validatorPersistProxy(persister persist.Persister, hitList *hitlist.HitList
 
 		if !existed && vr.HasValidStructure() {
 
-			log = log.WithFields(logrus.Fields{
+			logger = logger.WithFields(logrus.Fields{
 				"email":       parts.Address,
 				"steps":       vr.Steps.String(),
 				"validations": vr.Validations.String(),
@@ -76,17 +76,17 @@ func validatorPersistProxy(persister persist.Persister, hitList *hitlist.HitList
 
 			d, r, err := hitList.CreateInternalTypes(parts)
 			if err != nil {
-				log.WithError(err).Warn("Unable to create internal structure from parts")
+				logger.WithError(err).Warn("Unable to create internal structure from parts")
 				return vr
 			}
 
 			err = persister.Store(ctx, d, r, vr)
 			if err != nil {
-				log.WithError(err).Error("Failed to persist value")
+				logger.WithError(err).Error("Failed to persist value")
 				return vr
 			}
 
-			log.Debug("Persisted result")
+			logger.Debug("Persisted result")
 		}
 
 		return vr
@@ -97,7 +97,7 @@ func validatorNotifyProxy(svc *gcp.PubSubSvc, _ *hitlist.HitList, logger logrus.
 
 	logger = logger.WithField("middleware", "notification_publisher")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
-		log := logger.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
+		logger := logger.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
 
 		vr := fn(ctx, parts, options...)
 
@@ -111,7 +111,7 @@ func validatorNotifyProxy(svc *gcp.PubSubSvc, _ *hitlist.HitList, logger logrus.
 		err := svc.Publish(ctx, data)
 
 		if err != nil {
-			log.WithFields(logrus.Fields{
+			logger.WithFields(logrus.Fields{
 				"error": err,
 				"data":  data,
 			}).Error("Publishing failed")
@@ -123,17 +123,17 @@ func validatorNotifyProxy(svc *gcp.PubSubSvc, _ *hitlist.HitList, logger logrus.
 
 // validatorUpdateFinderProxy updates Finder whenever a new and good domain has been discovered
 func validatorUpdateFinderProxy(finder *finder.Finder, hitList *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
-	log := logger.WithField("middleware", "finder_updater")
+	logger = logger.WithField("middleware", "finder_updater")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 
-		log := log.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
+		logger := logger.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
 
 		vr := fn(ctx, parts, options...)
 
 		if vr.Validations.IsValidationsForValidDomain() && !finder.Exact(parts.Domain) {
 			finder.Refresh(hitList.GetValidAndUsageSortedDomains())
 
-			log.WithFields(logrus.Fields{
+			logger.WithFields(logrus.Fields{
 				"email":       parts.Address,
 				"steps":       vr.Steps.String(),
 				"validations": vr.Validations.String(),
