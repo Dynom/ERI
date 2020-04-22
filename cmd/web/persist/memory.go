@@ -21,7 +21,11 @@ type Memory struct {
 	list *hitlist.HitList
 }
 
-func (s Memory) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
+func (s *Memory) Close() error {
+	return nil
+}
+
+func (s *Memory) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -30,7 +34,7 @@ func (s Memory) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipient
 	return nil
 }
 
-func (s Memory) Range(_ context.Context, cb PersistCallbackFn) error {
+func (s *Memory) Range(_ context.Context, cb PersistCallbackFn) error {
 	s.m.Range(func(key, value interface{}) bool {
 		internalParts, err := types.NewEmailParts(key.(string))
 

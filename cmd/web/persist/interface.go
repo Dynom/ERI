@@ -2,6 +2,7 @@ package persist
 
 import (
 	"context"
+	"io"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 	"github.com/Dynom/ERI/validator"
@@ -18,4 +19,6 @@ type Persister interface {
 	// Range reads all data back and invokes the callback, until all data is read back, or until the callback returns
 	// a non-nil error. The implementation decides on the most optimal strategy.
 	Range(ctx context.Context, cb PersistCallbackFn) error
+
+	io.Closer
 }

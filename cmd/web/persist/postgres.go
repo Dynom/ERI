@@ -12,20 +12,24 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func New(conn *sql.DB, logger logrus.FieldLogger) Persister {
+func New(db *sql.DB, logger logrus.FieldLogger) Persister {
 	return &Postgres{
-		conn:   conn,
+		db:     db,
 		logger: logger,
 	}
 }
 
 type Postgres struct {
-	conn   *sql.DB
+	db     *sql.DB
 	logger logrus.FieldLogger
 }
 
+func (p *Postgres) Close() error {
+	return p.db.Close()
+}
+
 func (p *Postgres) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
-	stmt, err := p.conn.Prepare(`
+	stmt, err := p.db.Prepare(`
 			INSERT INTO
 				hitlist (domain, recipient, validations, steps)
 			VALUES
@@ -47,11 +51,11 @@ func (p *Postgres) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipi
 
 func (p *Postgres) Range(ctx context.Context, cb PersistCallbackFn) error {
 
-	if err := p.conn.Ping(); err != nil {
+	if err := p.db.Ping(); err != nil {
 		return err
 	}
 
-	stmt, err := p.conn.Prepare(`
+	stmt, err := p.db.Prepare(`
 		SELECT
       domain,
       recipient::bytea,
