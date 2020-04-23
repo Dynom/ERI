@@ -13,8 +13,8 @@ import (
 	"github.com/Dynom/TySug/finder"
 )
 
-func NewSuggestService(f *finder.Finder, val validator.CheckFn, logger logrus.FieldLogger) SuggestSvc {
-	return SuggestSvc{
+func NewSuggestService(f *finder.Finder, val validator.CheckFn, logger logrus.FieldLogger) *SuggestSvc {
+	return &SuggestSvc{
 		finder:    f,
 		validator: val,
 		logger:    logger.WithField("svc", "suggest"),

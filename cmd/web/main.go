@@ -121,7 +121,7 @@ func main() {
 	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
 	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, autocompleteSvc, conf.Server.Services.Autocomplete.MaxSuggestions))
 
-	schema, err := NewGraphQLSchema(&suggestSvc)
+	schema, err := NewGraphQLSchema(conf, suggestSvc, autocompleteSvc)
 	if err != nil {
 		logger.WithError(err).Error("Unable to build schema")
 		os.Exit(1)

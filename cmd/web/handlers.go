@@ -104,7 +104,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.Autocomplet
 }
 
 // NewSuggestHandler constructs a HTTP handler that deals with suggestion requests
-func NewSuggestHandler(logger logrus.FieldLogger, svc services.SuggestSvc) http.HandlerFunc {
+func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc) http.HandlerFunc {
 	log := logger.WithField("handler", "suggest")
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error

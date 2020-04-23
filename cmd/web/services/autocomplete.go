@@ -2,10 +2,15 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
 	"github.com/Dynom/TySug/finder"
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	ErrEmptyInput = errors.New("input is empty")
 )
 
 func NewAutocompleteService(f *finder.Finder, hitList *hitlist.HitList, recipientThreshold uint64, logger logrus.FieldLogger) *AutocompleteSvc {
@@ -29,6 +34,10 @@ type AutocompleteResult struct {
 }
 
 func (a *AutocompleteSvc) Autocomplete(ctx context.Context, domain string, limit uint64) (AutocompleteResult, error) {
+
+	if domain == "" {
+		return AutocompleteResult{}, ErrEmptyInput
+	}
 
 	list, err := a.finder.GetMatchingPrefix(ctx, domain, uint(limit*2))
 	if err != nil {
