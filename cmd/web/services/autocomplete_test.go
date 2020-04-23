@@ -135,7 +135,17 @@ func TestAutocompleteSvc_filter(t *testing.T) {
 		Steps:       validations.Steps(validations.FSyntax),
 	})
 
-	_ = hl.AddDomain("gmail.0", validator.Result{
+	_ = hl.AddEmailAddress("john.doe@gmail.3", validator.Result{
+		Validations: validations.Validations(validations.FSyntax | validations.FMXLookup | validations.FValid),
+		Steps:       validations.Steps(validations.FSyntax),
+	})
+
+	_ = hl.AddEmailAddress("jane.doe@gmail.3", validator.Result{
+		Validations: validations.Validations(validations.FSyntax | validations.FMXLookup | validations.FValid),
+		Steps:       validations.Steps(validations.FSyntax),
+	})
+
+	_ = hl.AddEmailAddress("elvis@gmail.3", validator.Result{
 		Validations: validations.Validations(validations.FSyntax | validations.FMXLookup | validations.FValid),
 		Steps:       validations.Steps(validations.FSyntax),
 	})
@@ -178,7 +188,7 @@ func TestAutocompleteSvc_filter(t *testing.T) {
 				list:  hl.GetValidAndUsageSortedDomains(),
 				limit: 2,
 			},
-			want:    hl.GetValidAndUsageSortedDomains()[0:2],
+			want:    []string{"gmail.3", "gmail.2"},
 			wantErr: false,
 		},
 		{
