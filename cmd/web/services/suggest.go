@@ -32,7 +32,7 @@ type SuggestResult struct {
 }
 
 func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, error) {
-	// @todo make this configurable and Algorithm dependant
+	// @todo make this configurable and Algorithm dependent
 	const finderThreshold = 0.8
 
 	var sr = SuggestResult{
