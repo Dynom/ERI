@@ -50,6 +50,10 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 		return sr, validator.ErrEmailAddressSyntax
 	}
 
+	if ctx.Err() != nil {
+		return sr, ctx.Err()
+	}
+
 	var err error
 	vr := c.validator(ctx, parts)
 	if !vr.HasValidStructure() {

@@ -17,13 +17,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.AutocompleteSvc, maxSuggestions uint64) http.HandlerFunc {
+const (
+	failedRequestError      = "Request failed, unable to parse request body. Expected JSON."
+	domainLookupFailedError = "Request failed, unable to lookup by domain."
+	failedResponseError     = "Generating response failed."
+)
 
-	const (
-		FailedRequestError      = "Request failed, unable to parse request body. Expected JSON."
-		DomainLookupFailedError = "Request failed, unable to lookup by domain."
-		FailedResponseError     = "Generating response failed."
-	)
+func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.AutocompleteSvc, maxSuggestions uint64) http.HandlerFunc {
 
 	logger = logger.WithField("handler", "auto complete")
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +53,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.Autocomplet
 			logger.WithError(err).Errorf("Error handling request body %s", err)
 
 			w.WriteHeader(http.StatusBadRequest)
-			writeErrorJSONResponse(logger, w, &erihttp.AutoCompleteResponse{Error: FailedRequestError})
+			writeErrorJSONResponse(logger, w, &erihttp.AutoCompleteResponse{Error: failedRequestError})
 			return
 		}
 
@@ -63,17 +63,21 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.Autocomplet
 		if req.Domain == "" {
 			logger.Debug("Empty argument")
 			w.WriteHeader(http.StatusBadRequest)
-			writeErrorJSONResponse(logger, w, &erihttp.AutoCompleteResponse{Error: DomainLookupFailedError})
+			writeErrorJSONResponse(logger, w, &erihttp.AutoCompleteResponse{Error: domainLookupFailedError})
 			return
 		}
 
 		result, err := svc.Autocomplete(ctx, req.Domain, maxSuggestions)
 		if err != nil {
 			logger.WithError(err).Warn("Error during lookup")
-			w.WriteHeader(http.StatusBadRequest)
 
-			// @todo Is this always a safe error to "leak" ?
-			writeErrorJSONResponse(logger, w, &erihttp.AutoCompleteResponse{Error: DomainLookupFailedError})
+			if err != ctx.Err() {
+				// When the context is canceled, we're not going to consider it a bad request
+				w.WriteHeader(http.StatusBadRequest)
+			}
+
+			// @todo is this a safe error to leak?
+			writeErrorJSONResponse(logger, w, &erihttp.AutoCompleteResponse{Error: err.Error()})
 			return
 		}
 
@@ -88,7 +92,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.Autocomplet
 			}).Error("Failed to marshal the response")
 
 			w.WriteHeader(http.StatusInternalServerError)
-			writeErrorJSONResponse(logger, w, &erihttp.AutoCompleteResponse{Error: FailedResponseError})
+			writeErrorJSONResponse(logger, w, &erihttp.AutoCompleteResponse{Error: failedResponseError})
 			return
 		}
 
@@ -118,7 +122,8 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc) http
 		if err != nil {
 			log.WithError(err).Error("Error handling request")
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("Request failed"))
+
+			writeErrorJSONResponse(logger, w, &erihttp.SuggestResponse{Error: err.Error()})
 			return
 		}
 
@@ -126,36 +131,43 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc) http
 		if err != nil {
 			log.WithError(err).Error("Error handling request body")
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("Request failed, unable to parse request body. Did you send JSON?"))
+			writeErrorJSONResponse(logger, w, &erihttp.SuggestResponse{Error: failedRequestError})
 			return
 		}
-
-		ctx, cancel := context.WithCancel(r.Context())
-		defer cancel()
 
 		var alts = []string{req.Email}
 		var sugErr error
 		{
 			var result services.SuggestResult
-			result, sugErr = svc.Suggest(ctx, req.Email)
+			result, sugErr = svc.Suggest(r.Context(), req.Email)
 			if sugErr == nil && len(result.Alternatives) > 0 {
 				alts = append(alts[0:0], result.Alternatives...)
 			}
 		}
 
-		response, err := json.Marshal(erihttp.SuggestResponse{
+		sr := erihttp.SuggestResponse{
 			Alternatives:    alts,
 			MalformedSyntax: errors.Is(sugErr, validator.ErrEmailAddressSyntax),
-		})
+		}
+
+		if sugErr != nil {
+			log.WithFields(logrus.Fields{
+				"suggest_response": sr,
+				"error":            sugErr,
+			}).Warn("Suggest error")
+			sr.Error = sugErr.Error()
+		}
+
+		response, err := json.Marshal(sr)
 
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"response": response,
-				"error":    sugErr,
+				"error":    err,
 			}).Error("Failed to marshal the response")
 
 			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte("Unable to produce a response"))
+			writeErrorJSONResponse(logger, w, &erihttp.SuggestResponse{Error: failedResponseError})
 			return
 		}
 
@@ -172,17 +184,17 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc) http
 
 func NewHealthHandler(logger logrus.FieldLogger) http.HandlerFunc {
 
-	log := logger.WithField("handler", "health")
+	logger = logger.WithField("handler", "health")
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		log := log.WithField(handlers.RequestID.String(), r.Context().Value(handlers.RequestID))
+		logger := logger.WithField(handlers.RequestID.String(), r.Context().Value(handlers.RequestID))
 
 		w.Header().Set("content-type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 
 		_, err := w.Write([]byte("OK"))
 		if err != nil {
-			log.WithError(err).Error("failed to write in health handler")
+			logger.WithError(err).Error("failed to write in health handler")
 		}
 	}
 }

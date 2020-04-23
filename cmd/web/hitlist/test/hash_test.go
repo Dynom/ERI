@@ -14,13 +14,13 @@ func TestMockHasherReverse_Sum(t *testing.T) {
 		args args
 		want []byte
 	}{
-		// TODO: Add test cases.
+		{name: "simple reverse", args: args{p: []byte("foo")}, want: []byte("oof")},
+		{name: "empty", args: args{p: []byte{}}, want: []byte{}},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := MockHasherReverse{
-				MockHasher: tt.fields.MockHasher,
-			}
+			s := MockHasherReverse{}
 			if got := s.Sum(tt.args.p); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Sum() = %v, want %v", got, tt.want)
 			}

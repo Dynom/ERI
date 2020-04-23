@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	ErrEmptyInput = errors.New("input is empty")
+	ErrEmptyInput   = errors.New("input is empty")
+	ErrInputTooLong = errors.New("input is too long")
 )
 
 func NewAutocompleteService(f *finder.Finder, hitList *hitlist.HitList, recipientThreshold uint64, logger logrus.FieldLogger) *AutocompleteSvc {
@@ -37,6 +38,10 @@ func (a *AutocompleteSvc) Autocomplete(ctx context.Context, domain string, limit
 
 	if domain == "" {
 		return AutocompleteResult{}, ErrEmptyInput
+	}
+
+	if len(domain) > 253 {
+		return AutocompleteResult{}, ErrInputTooLong
 	}
 
 	list, err := a.finder.GetMatchingPrefix(ctx, domain, uint(limit*2))

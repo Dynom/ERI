@@ -7,7 +7,7 @@ type MockHasherReverse struct {
 func (s MockHasherReverse) Sum(p []byte) []byte {
 	r := make([]byte, len(p))
 	for i := range p {
-		r[len(r)-i], r[i] = p[i], p[len(p)-1]
+		r[len(r)-1-i], r[i] = p[i], p[len(p)-1-i]
 	}
 
 	return r
