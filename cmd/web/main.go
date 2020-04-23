@@ -79,13 +79,13 @@ func main() {
 		time.Hour*60, // @todo figure out what todo with TTLs
 	)
 
-	pgPersist, toClose, err := createPGPersister(conf, logger, hitList)
+	persister, err := createPersister(conf, logger, hitList)
 	if err != nil {
 		logger.WithError(err).Error("Unable to setup PG persister")
 		os.Exit(1)
 	}
 
-	defer deferClose(toClose, logger)
+	defer deferClose(persister, logger)
 
 	myFinder, err := finder.New(
 		hitList.GetValidAndUsageSortedDomains(),
@@ -110,17 +110,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	validatorFn := createProxiedValidator(conf, logger, hitList, myFinder, pubSubSvc, pgPersist)
+	validatorFn := createProxiedValidator(conf, logger, hitList, myFinder, pubSubSvc, persister)
 	suggestSvc := services.NewSuggestService(myFinder, validatorFn, logger)
+	autocompleteSvc := services.NewAutocompleteService(myFinder, hitList, conf.Server.Services.Autocomplete.RecipientThreshold, logger)
 
 	mux := http.NewServeMux()
 	registerProfileHandler(mux, conf)
 	registerHealthHandler(mux, logger)
 
 	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
-	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, myFinder, hitList, conf))
+	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, autocompleteSvc, conf.Server.Services.Autocomplete.MaxSuggestions))
 
-	schema, err := NewGraphQLSchema(&suggestSvc)
+	schema, err := NewGraphQLSchema(conf, suggestSvc, autocompleteSvc)
 	if err != nil {
 		logger.WithError(err).Error("Unable to build schema")
 		os.Exit(1)

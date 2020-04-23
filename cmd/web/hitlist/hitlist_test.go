@@ -513,6 +513,20 @@ func TestHitList_AddDomain(t *testing.T) {
 				Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FDomainHasIP),
 			},
 		},
+		{
+			name: "Empty input",
+			fields: fields{
+				hits: populatedFullyValidHitList.hits,
+				ttl:  populatedFullyValidHitList.ttl,
+				h:    populatedFullyValidHitList.h,
+			},
+			args: args{
+				d:  "",
+				vr: validVR,
+			},
+			wantErr: true,
+			wantVR:  validator.Result{},
+		},
 	}
 
 	for _, tt := range tests {
@@ -652,6 +666,26 @@ func TestHitList_Has(t *testing.T) {
 				parts: types.NewEmailFromParts("jane", "example.org"),
 			},
 			wantDomain: false,
+			wantLocal:  false,
+		},
+		{
+			name:  "empty domain",
+			toAdd: []types.EmailParts{},
+			args: args{
+				parts: types.NewEmailFromParts("jane", ""),
+			},
+			wantDomain: false,
+			wantLocal:  false,
+		},
+		{
+			name: "empty local",
+			toAdd: []types.EmailParts{
+				types.NewEmailFromParts("john", "example.com"),
+			},
+			args: args{
+				parts: types.NewEmailFromParts("", "example.com"),
+			},
+			wantDomain: true,
 			wantLocal:  false,
 		},
 	}

@@ -1,4 +1,4 @@
-package persister
+package persist
 
 import (
 	"context"
@@ -9,19 +9,21 @@ import (
 	"github.com/Dynom/ERI/validator"
 )
 
-func NewMemory(list *hitlist.HitList) Persist {
+func NewMemory() Persister {
 	return &Memory{
-		m:    &sync.Map{},
-		list: list,
+		m: &sync.Map{},
 	}
 }
 
 type Memory struct {
-	m    *sync.Map
-	list *hitlist.HitList
+	m *sync.Map
 }
 
-func (s Memory) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
+func (s *Memory) Close() error {
+	return nil
+}
+
+func (s *Memory) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -30,9 +32,9 @@ func (s Memory) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipient
 	return nil
 }
 
-func (s Memory) Range(_ context.Context, cb PersistCallbackFn) error {
+func (s *Memory) Range(_ context.Context, cb PersistCallbackFn) error {
 	s.m.Range(func(key, value interface{}) bool {
-		parts, err := types.NewEmailParts(key.(string))
+		internalParts, err := types.NewEmailParts(key.(string))
 
 		if err != nil {
 			return true // Ignoring non-recoverable problem
@@ -44,13 +46,10 @@ func (s Memory) Range(_ context.Context, cb PersistCallbackFn) error {
 			return true // Ignoring non-recoverable problem
 		}
 
-		d, r, err := s.list.CreateInternalTypes(parts)
+		domain := hitlist.Domain(internalParts.Domain)
+		recipient := hitlist.Recipient(internalParts.Local)
 
-		if err != nil {
-			return true // Ignoring non-recoverable problem
-		}
-
-		err = cb(d, r, vr)
+		err = cb(domain, recipient, vr)
 		return err == nil
 	})
 

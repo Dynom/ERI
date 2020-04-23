@@ -75,7 +75,9 @@
     suggest = "lookup"
 
   [server.backend]
-    # Drivers: https://github.com/golang/go/wiki/SQLDrivers
+    # The backend to use, currently supporting: "memory" or "postgres"
+    # The memory driver is mostly for testing or development
+    # Other supported drivers: https://github.com/golang/go/wiki/SQLDrivers
     driver = "postgres"
 
     # Postgres: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING

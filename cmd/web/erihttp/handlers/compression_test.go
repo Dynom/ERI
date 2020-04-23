@@ -11,7 +11,7 @@ import (
 func TestWithGzipHandler(t *testing.T) {
 	tests := []struct {
 		name               string
-		use                HandlerWrapper
+		use                Middleware
 		wantVary           bool
 		wantCompressedBody bool
 		requestBody        string

@@ -12,7 +12,7 @@ type TakeMaxDuration interface {
 	TakeMaxDuration(count int64, maxWait time.Duration) (time.Duration, bool)
 }
 
-func NewRateLimitHandler(logger logrus.FieldLogger, b TakeMaxDuration, maxDelay time.Duration) HandlerWrapper {
+func NewRateLimitHandler(logger logrus.FieldLogger, b TakeMaxDuration, maxDelay time.Duration) Middleware {
 	if b == nil {
 		logger.Info("Rate Limiter disabled, no bucket defined.")
 		return func(h http.Handler) http.Handler {
