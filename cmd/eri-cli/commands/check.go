@@ -3,24 +3,27 @@ package commands
 import (
 	"bufio"
 	"context"
+	"encoding/csv"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/ERI/validator"
 	"github.com/Dynom/ERI/validator/validations"
-	scsv "github.com/smartystreets/scanners/csv"
 	"github.com/spf13/cobra"
 )
 
 type CheckResultFull struct {
-	Email  string   `json:"email"`
-	Passed bool     `json:"passed"`
-	Checks []string `json:"check_run"`
+	Email   string   `json:"email"`
+	Valid   bool     `json:"valid"`
+	Checks  []string `json:"checks_run"`
+	Passed  []string `json:"checks_passed"`
+	Version int      `json:"version"`
 }
 
 type CheckSettings struct {
@@ -50,6 +53,10 @@ var checkCmd = &cobra.Command{
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 1 {
 			return errors.New("too many arguments, expected 0 or 1")
+		}
+
+		if len(args) > 0 && isStdinPiped() {
+			return errors.New("can't read both from stdin and argument")
 		}
 
 		if len(args) == 0 && !isStdinPiped() {
@@ -88,6 +95,7 @@ var checkCmd = &cobra.Command{
 			return
 		}
 
+		jsonEncoder := json.NewEncoder(cmd.OutOrStdout())
 		for it.Next() {
 			email, err := it.Value()
 			if err != nil {
@@ -95,14 +103,23 @@ var checkCmd = &cobra.Command{
 				continue
 			}
 
-			cmd.Printf("Value to check %q\n", email)
-			r, err := check(cmd.Context(), v.CheckWithLookup, email)
+			if email == "" {
+				continue
+			}
+
+			ctx, cancel := context.WithTimeout(cmd.Context(), 10*time.Second)
+			r, err := check(ctx, v.CheckWithLookup, email)
+			cancel()
+
 			if err != nil {
 				cmd.PrintErr(err)
 				continue
 			}
 
-			cmd.Printf("Result: %+v\n", r)
+			err = jsonEncoder.Encode(r)
+			if err != nil {
+				cmd.PrintErr(err)
+			}
 		}
 	},
 }
@@ -119,6 +136,7 @@ func setCustomResolver(dialer *net.Dialer, ip net.IP) {
 	}
 
 	dialer.Resolver.Dial = func(ctx context.Context, network, address string) (conn net.Conn, e error) {
+
 		d := net.Dialer{}
 		return d.DialContext(ctx, network, net.JoinHostPort(ip.String(), `53`))
 	}
@@ -130,15 +148,16 @@ func check(ctx context.Context, fn validator.CheckFn, email string) (CheckResult
 		return CheckResultFull{}, err
 	}
 
-	var result = CheckResultFull{Email: email}
+	var result = CheckResultFull{
+		Email:   email,
+		Version: 1,
+	}
 
 	checkResult := fn(ctx, parts)
-	fmt.Printf("CR: %+v\n", checkResult)
 	{
-		copy := checkResult.Validations
-		flags := validations.Flag(copy.RemoveFlag(validations.FValid))
-		result.Checks = flags.AsStringSlice()
-		result.Passed = checkResult.Validations.IsValid()
+		result.Valid = checkResult.Validations.IsValid()
+		result.Passed = validations.Flag(checkResult.Validations.RemoveFlag(validations.FValid)).AsStringSlice()
+		result.Checks = validations.Flag(checkResult.Steps).AsStringSlice()
 	}
 
 	return result, nil
@@ -159,23 +178,58 @@ func createTextIterator(r io.Reader) *ScanIterator {
 }
 
 func createCSVIterator(r io.Reader) *ScanIterator {
-	scanner := scsv.NewScanner(
-		r,
-		scsv.SkipRecords(int(checkSettings.CSV.skipRows)),
-		scsv.ReuseRecord(true),
-		scsv.FieldsPerRecord(int(checkSettings.CSV.column)),
-	)
+
+	reader := csv.NewReader(r)
+	reader.FieldsPerRecord = int(checkSettings.CSV.column)
+	reader.ReuseRecord = true
+
+	var lastError error
+	var eof bool
+
+	if checkSettings.CSV.skipRows > 0 {
+		var toSkip = checkSettings.CSV.skipRows
+		for ; toSkip > 0; toSkip-- {
+			_, err := reader.Read()
+			if err == io.EOF {
+				break
+			}
+
+			if err != nil {
+				lastError = err
+			}
+		}
+	}
 
 	return NewScanIterator(
-		scanner.Scan,
-		func() (string, error) {
-			record := scanner.Record()
-			if uint64(len(record)-1) < checkSettings.CSV.column {
-				return "", fmt.Errorf("column index %d exceeds columns in row, skipping row", checkSettings.CSV.column)
-			}
-			return record[checkSettings.CSV.column], nil
+		func() bool {
+			return !eof
 		},
-		scanner.Error,
+		func() (string, error) {
+			var value string
+
+			record, err := reader.Read()
+			if eof || err == io.EOF {
+				eof = true
+
+				if uint64(len(record)) > checkSettings.CSV.column {
+					value = record[checkSettings.CSV.column]
+				}
+
+				return value, nil
+			}
+
+			if err != nil {
+				return "", err
+			}
+
+			if uint64(len(record)) > checkSettings.CSV.column {
+				value = record[checkSettings.CSV.column]
+			}
+
+			return value, nil
+		}, func() error {
+			return lastError
+		},
 	)
 }
 
