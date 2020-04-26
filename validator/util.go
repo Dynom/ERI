@@ -66,8 +66,6 @@ func getConnection(ctx context.Context, dialer DialContext, mxHost string) (net.
 	var conn net.Conn
 	var err error
 
-	const dialTimeout = 100 * time.Millisecond
-
 	ports := []string{"25", "587", "2525", "465"}
 	for _, port := range ports {
 
@@ -75,10 +73,7 @@ func getConnection(ctx context.Context, dialer DialContext, mxHost string) (net.
 		// @todo Do we want to force ipv4/6?
 
 		var dialErr error
-
-		ctx, cancel := context.WithTimeout(ctx, dialTimeout)
 		conn, dialErr = dialer.DialContext(ctx, "tcp", mxHost+":"+port)
-		cancel()
 
 		if dialErr == nil {
 			break
@@ -90,20 +85,6 @@ func getConnection(ctx context.Context, dialer DialContext, mxHost string) (net.
 	}
 
 	return conn, err
-}
-
-// getEarliestDeadlineCTX returns a context with the deadline set to whatever is earliest
-func getEarliestDeadlineCTX(parentCTX context.Context, ttl time.Duration) (context.Context, context.CancelFunc) {
-
-	parentDeadline, ok := parentCTX.Deadline()
-	if ok {
-		ourDeadline := time.Now().Add(ttl)
-		if ourDeadline.Before(parentDeadline) {
-			return context.WithDeadline(parentCTX, ourDeadline)
-		}
-	}
-
-	return context.WithTimeout(parentCTX, ttl)
 }
 
 // fetchMXHosts collects up to N MX hosts for a given domain
