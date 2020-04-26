@@ -15,6 +15,7 @@ func Test_checkEmailAddressSyntax(t *testing.T) {
 		wantErr bool
 	}{
 		// All good
+		{name: "valid but short local", email: "e@wx.yz"},
 		{name: "valid but short", email: "me@wx.yz"},
 		{name: "with subdomain", email: "john@doe.example.org"},
 		{name: "wrong tld, but valid syntax", email: "js@example.mail"},

@@ -163,7 +163,7 @@ var (
 func looksLikeValidLocalPart(local string) bool {
 
 	var lastIndexPos = len(local)
-	if 1 >= lastIndexPos || lastIndexPos > 63 {
+	if 1 > lastIndexPos || lastIndexPos > 63 {
 		return false
 	}
 
