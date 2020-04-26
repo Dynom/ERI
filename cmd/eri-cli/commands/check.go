@@ -65,11 +65,11 @@ Some examples:
 			switch checkSettings.Format {
 			case "":
 				fallthrough
+			case "csv":
+				it = createCSVIterator(os.Stdin)
 			case "text":
 				// @todo this can probably go, since the liberal CSV parser handles the default text use-case as well
 				it = createTextIterator(os.Stdin)
-			case "csv":
-				it = createCSVIterator(os.Stdin)
 			default:
 				cmd.PrintErrf("bad format %q", checkSettings.Format)
 				return
