@@ -1,10 +1,20 @@
 package commands
 
 import (
-	"fmt"
+	"encoding/json"
+	"errors"
+	"io"
+	"time"
 
 	"github.com/spf13/cobra"
 )
+
+const (
+	RFFull  ReportFormat = "full"
+	RFStats ReportFormat = "stats"
+)
+
+type ReportFormat string
 
 type ReportSettings struct {
 	OnlyInvalid bool
@@ -16,18 +26,79 @@ var reportSettings = &ReportSettings{}
 // reportCmd represents the report command
 var reportCmd = &cobra.Command{
 	Use:   "report",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Reporting companion to check",
+	Long: `Some examples:
+  - bzcat list.bz2 | eri-cli check | eri-cli report --only-invalid > report.json`,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			return errors.New("report doesn't take any arguments")
+		}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+		if !isStdinPiped() {
+			return errors.New("report only reads from stdin")
+		}
+
+		return nil
+	},
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("report called, args: %#v\n", args)
-		fmt.Printf("cmd: %+v\n", cmd)
+		encoder := json.NewEncoder(cmd.OutOrStdout())
 
-		cmd.InOrStdin()
+		decoder := json.NewDecoder(cmd.InOrStdin())
+		decoder.DisallowUnknownFields()
+
+		if reportSettings.Details == string(RFStats) {
+			now := time.Now()
+			var report = ReportStats{}
+			for {
+				var cr CheckResultFull
+				err := decoder.Decode(&cr)
+				if err == io.EOF {
+					break
+				}
+
+				if err != nil {
+					cmd.PrintErrf("Error trying to read report %s\n", err)
+					continue
+				}
+
+				if cr.Valid {
+					report.Passed++
+				} else {
+					report.Rejected++
+				}
+			}
+
+			report.Duration = time.Since(now).Milliseconds()
+			err := encoder.Encode(report)
+			if err != nil {
+				cmd.PrintErrf("Error trying to write report %s\n", err)
+			}
+
+			return
+		}
+
+		for {
+			var cr CheckResultFull
+			err := decoder.Decode(&cr)
+			if err == io.EOF {
+				break
+			}
+
+			if err != nil {
+				cmd.PrintErrf("Error trying to read report %s\n", err)
+				continue
+			}
+
+			if reportSettings.OnlyInvalid && cr.Valid {
+				continue
+			}
+
+			err = encoder.Encode(cr)
+			if err != nil {
+				cmd.PrintErrf("Error trying to write report %s\n", err)
+				break
+			}
+		}
 	},
 }
 
@@ -42,6 +113,6 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	reportCmd.Flags().BoolVar(&reportSettings.OnlyInvalid, "only-invalid", false, "Only report rejected checks")
-	reportCmd.Flags().StringVar(&reportSettings.Details, "details", "full", "Type of report")
+	reportCmd.Flags().BoolVar(&reportSettings.OnlyInvalid, "only-invalid", false, "Only report rejected checks (ignored when report is stats)")
+	reportCmd.Flags().StringVar(&reportSettings.Details, "details", "full", "Type of report, supported is: 'stats' or 'full'")
 }
