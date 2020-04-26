@@ -1,5 +1,7 @@
 package validations
 
+import "strings"
+
 const (
 	// Validation Flags, these flags represent successful validation steps. Depending on how far you want to go, you can
 	// classify a validation as valid enough, for your use-case.
@@ -18,14 +20,14 @@ func (f Flag) AsStringSlice() []string {
 	var flags = []Flag{FValid, FSyntax, FMXLookup, FDomainHasIP, FHostConnect, FValidRCPT, FDomainHasIP}
 	var r = make([]string, 0, len(flags))
 
-	for _, flag := range []Flag{FValid, FSyntax, FMXLookup, FDomainHasIP, FHostConnect, FValidRCPT, FDomainHasIP} {
+	for _, flag := range flags {
 		if f&flag == 0 {
 			continue
 		}
 
 		// Remove the flag
 		f &^= flag
-		r = append(r, flag.String())
+		r = append(r, toString(flag))
 	}
 
 	if f > 0 {
@@ -37,7 +39,7 @@ func (f Flag) AsStringSlice() []string {
 }
 
 func (f *Flag) String() string {
-	return toString(*f) //strings.Join(f.AsStringSlice(), ",")
+	return strings.Join(f.AsStringSlice(), ",")
 }
 
 func toString(f Flag) string {
