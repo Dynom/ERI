@@ -16,16 +16,6 @@ func isStdinPiped() bool {
 	return isPiped(fi)
 }
 
-// isStdinPiped returns true if the output is a pipe
-func isStdoutPiped() bool {
-	fi, err := os.Stdout.Stat()
-	if err != nil {
-		return false
-	}
-
-	return isPiped(fi)
-}
-
 func isPiped(fi os.FileInfo) bool {
 	if fi == nil {
 		return false
