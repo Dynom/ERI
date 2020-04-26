@@ -129,6 +129,10 @@ func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitLi
 
 	// Pick the validator we want to use
 	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.SuggestValidator, val)
+
+	// Last in the chain, so that the duration only applies to the actual validation call
+	checkValidator = validatorContextTTLProxy(conf.Server.NetTTL.AsDuration(), checkValidator)
+
 	checkValidator = validatorHitListProxy(hitList, logger, checkValidator)
 	checkValidator = validatorUpdateFinderProxy(myFinder, hitList, logger, checkValidator)
 

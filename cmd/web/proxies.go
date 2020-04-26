@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/Dynom/ERI/cmd/web/persist"
 	"github.com/Dynom/ERI/cmd/web/pubsub"
@@ -15,6 +16,17 @@ import (
 	"github.com/Dynom/TySug/finder"
 	"github.com/sirupsen/logrus"
 )
+
+func validatorContextTTLProxy(duration time.Duration, fn validator.CheckFn) validator.CheckFn {
+	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
+		var afn = options
+
+		ctx, cancel := context.WithTimeout(ctx, duration)
+		defer cancel()
+
+		return fn(ctx, parts, afn...)
+	}
+}
 
 // validatorHitListProxy Keeps HitList up-to-date and acts as a partial cache for the validator
 func validatorHitListProxy(hitList *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
