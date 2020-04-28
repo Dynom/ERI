@@ -40,9 +40,10 @@ type Config struct {
 		InputLengthMax uint64 `toml:"inputLengthMax" usage:"The maximum amount of bytes allowed, for any argument"`
 	} `toml:"client"`
 	Server struct {
-		ListenOn        string `toml:"listenOn"`
-		ConnectionLimit uint   `toml:"connectionLimit"`
-		InstanceID      string `toml:"-"` // Extra identifier used in logs and for instance identification
+		ListenOn        string   `toml:"listenOn"`
+		ConnectionLimit uint     `toml:"connectionLimit"`
+		InstanceID      string   `toml:"-"` // Extra identifier used in logs and for instance identification
+		NetTTL          Duration `toml:"netTTL" usage:"Max time to spend on external communication"`
 		CORS            struct {
 			AllowedOrigins []string `toml:"allowedOrigins"`
 			AllowedHeaders []string `toml:"allowedHeaders"`
