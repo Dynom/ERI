@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
-	hlTest "github.com/Dynom/ERI/cmd/web/hitlist/test"
 	"github.com/Dynom/ERI/testutil"
 	"github.com/Dynom/ERI/validator"
 	"github.com/Dynom/ERI/validator/validations"
@@ -116,7 +115,7 @@ func TestAutocompleteSvc_Autocomplete(t *testing.T) {
 		},
 	}
 
-	hl := hitlist.New(hlTest.MockHasher{}, 1*time.Hour)
+	hl := hitlist.New(testutil.MockHasher{}, 1*time.Hour)
 	_ = hl.AddDomain("example", validator.Result{
 		Validations: validations.Validations(validations.FSyntax | validations.FMXLookup | validations.FValid),
 		Steps:       validations.Steps(validations.FSyntax),
@@ -170,7 +169,7 @@ func TestAutocompleteSvc_filter(t *testing.T) {
 	ctxExpired, cancel := context.WithTimeout(context.Background(), -1*time.Hour)
 	cancel()
 
-	hl := hitlist.New(hlTest.MockHasher{}, 1*time.Hour)
+	hl := hitlist.New(testutil.MockHasher{}, 1*time.Hour)
 	_ = hl.AddDomain("example", validator.Result{
 		Validations: validations.Validations(validations.FSyntax | validations.FMXLookup | validations.FValid),
 		Steps:       validations.Steps(validations.FSyntax),

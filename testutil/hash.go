@@ -1,4 +1,4 @@
-package test
+package testutil
 
 type MockHasherReverse struct {
 	MockHasher
