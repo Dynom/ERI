@@ -11,7 +11,7 @@ const (
 	mtuSize = 1500
 )
 
-func WithGzipHandler() HandlerWrapper {
+func WithGzipHandler() Middleware {
 	return func(handler http.Handler) http.Handler {
 		wrapper, _ := gziphandler.GzipHandlerWithOpts(
 			gziphandler.CompressionLevel(gzip.BestCompression),

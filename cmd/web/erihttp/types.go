@@ -17,7 +17,7 @@ type ERIResponse interface {
 
 type AutoCompleteResponse struct {
 	Suggestions []string `json:"suggestions"`
-	Error       string   `json:",omitempty"`
+	Error       string   `json:"error,omitempty"`
 }
 
 func (r *AutoCompleteResponse) PrepareResponse() {
@@ -29,7 +29,7 @@ func (r *AutoCompleteResponse) PrepareResponse() {
 type SuggestResponse struct {
 	Alternatives    []string `json:"alternatives"`
 	MalformedSyntax bool     `json:"malformed_syntax"`
-	Error           string   `json:",omitempty"`
+	Error           string   `json:"error,omitempty"`
 }
 
 func (r *SuggestResponse) PrepareResponse() {

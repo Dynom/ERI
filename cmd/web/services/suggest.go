@@ -13,8 +13,8 @@ import (
 	"github.com/Dynom/TySug/finder"
 )
 
-func NewSuggestService(f *finder.Finder, val validator.CheckFn, logger logrus.FieldLogger) SuggestSvc {
-	return SuggestSvc{
+func NewSuggestService(f *finder.Finder, val validator.CheckFn, logger logrus.FieldLogger) *SuggestSvc {
+	return &SuggestSvc{
 		finder:    f,
 		validator: val,
 		logger:    logger.WithField("svc", "suggest"),
@@ -32,6 +32,9 @@ type SuggestResult struct {
 }
 
 func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, error) {
+	// @todo make this configurable and Algorithm dependent
+	const finderThreshold = 0.8
+
 	var sr = SuggestResult{
 		Alternatives: []string{email},
 	}
@@ -41,22 +44,27 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 		"email":                     email,
 	})
 
-	parts, err := types.NewEmailParts(email)
-	if err != nil {
-		log.WithError(err).Debug("Unable to split input")
+	parts, partsErr := types.NewEmailParts(email)
+	if partsErr != nil {
+		log.WithError(partsErr).Debug("Unable to split input")
 		return sr, validator.ErrEmailAddressSyntax
 	}
 
+	if ctx.Err() != nil {
+		return sr, ctx.Err()
+	}
+
+	var err error
 	vr := c.validator(ctx, parts)
 	if !vr.HasValidStructure() {
 		log.WithFields(logrus.Fields{
 			"steps":       vr.Steps.String(),
 			"validations": vr.Validations.String(),
 		}).Debug("Input doesn't have a valid structure")
-		return sr, validator.ErrEmailAddressSyntax
+		err = validator.ErrEmailAddressSyntax
 	}
 
-	if vr.Validations.IsValid() {
+	if err == nil && vr.Validations.IsValid() {
 		return sr, nil
 	}
 
@@ -70,14 +78,14 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 		"ctx_expired": didDeadlineExpire(ctx),
 	}).Debug("Used Finder")
 
-	if score > finder.WorstScoreValue {
+	if score > finderThreshold {
 		parts := types.NewEmailFromParts(parts.Local, alt)
 		return SuggestResult{
 			Alternatives: []string{parts.Address},
 		}, nil
 	}
 
-	return sr, nil
+	return sr, err
 }
 
 func didDeadlineExpire(ctx context.Context) bool {
