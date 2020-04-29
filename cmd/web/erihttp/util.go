@@ -27,9 +27,6 @@ func GetBodyFromHTTPRequest(r *http.Request) ([]byte, error) {
 
 	b, err := ioutil.ReadAll(io.LimitReader(r.Body, MaxBodySize+1))
 	if err != nil {
-		if err == io.EOF {
-			return empty, ErrMissingBody
-		}
 		return empty, ErrInvalidRequest
 	}
 
