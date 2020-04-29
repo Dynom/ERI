@@ -101,4 +101,24 @@ func TestWithPathStrip(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("Empty args", func(t *testing.T) {
+		mux := http.NewServeMux()
+
+		logger, hook := testLog.NewNullLogger()
+		h := WithPathStrip(logger, "")
+		mockResponse := httptest.NewRecorder()
+		mockRequest := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
+		h(mux).ServeHTTP(mockResponse, mockRequest)
+
+		entry := hook.LastEntry()
+		if entry == nil {
+			t.Errorf("Expected a log being generated, for noop wrapping")
+			return
+		}
+
+		if got := entry.Message; got != logEmptyPath {
+			t.Errorf("Expected the message %q, but instead I got %q", logEmptyPath, got)
+		}
+	})
 }
