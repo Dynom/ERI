@@ -15,7 +15,7 @@ import (
 	"golang.org/x/net/netutil"
 )
 
-func BuildHTTPServer(mux http.Handler, config config.Config, logger logrus.FieldLogger, logWriter io.Writer, rt *runtimer.SignalHandler, handlers ...func(h http.Handler) http.Handler) *Server {
+func NewServer(mux http.Handler, config config.Config, logger logrus.FieldLogger, logWriter io.Writer, rt *runtimer.SignalHandler, handlers ...func(h http.Handler) http.Handler) *Server {
 	for _, h := range handlers {
 		mux = h(mux)
 	}

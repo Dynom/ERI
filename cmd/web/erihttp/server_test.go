@@ -29,12 +29,12 @@ func TestBuildHTTPServer(t *testing.T) {
 			logWriter := &bytes.Buffer{}
 			l, _ := test.NewNullLogger()
 
-			got := BuildHTTPServer(tt.args.mux, tt.args.config, l, logWriter, nil, tt.args.handlers...)
+			got := NewServer(tt.args.mux, tt.args.config, l, logWriter, nil, tt.args.handlers...)
 			if gotLogWriter := logWriter.String(); gotLogWriter != tt.wantLogWriter {
-				t.Errorf("BuildHTTPServer() gotLogWriter = %v, want %v", gotLogWriter, tt.wantLogWriter)
+				t.Errorf("NewServer() gotLogWriter = %v, want %v", gotLogWriter, tt.wantLogWriter)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BuildHTTPServer() = %v, want %v", got, tt.want)
+				t.Errorf("NewServer() = %v, want %v", got, tt.want)
 			}
 		})
 	}

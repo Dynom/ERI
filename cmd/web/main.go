@@ -146,7 +146,7 @@ func main() {
 		AllowedHeaders: conf.Server.CORS.AllowedHeaders,
 	})
 
-	s := erihttp.BuildHTTPServer(mux, conf, logger, logWriter, rtWeb,
+	s := erihttp.NewServer(mux, conf, logger, logWriter, rtWeb,
 		handlers.WithPathStrip(logger, conf.Server.PathStrip),
 		handlers.WithRateLimiter(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),
