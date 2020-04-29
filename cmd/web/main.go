@@ -148,7 +148,7 @@ func main() {
 
 	s := erihttp.BuildHTTPServer(mux, conf, logger, logWriter, rtWeb,
 		handlers.WithPathStrip(logger, conf.Server.PathStrip),
-		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
+		handlers.WithRateLimiter(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),
 		handlers.WithGzipHandler(),
 		handlers.WithHeaders(confHeadersToHTTPHeaders(conf.Server.Headers)),
