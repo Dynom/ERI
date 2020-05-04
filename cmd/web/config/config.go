@@ -36,74 +36,72 @@ func NewConfig(fileName string) (Config, error) {
 
 // Config holds central config parameters
 type Config struct {
-	Client struct {
-		InputLengthMax uint64 `toml:"inputLengthMax" usage:"The maximum amount of bytes allowed, for any argument"`
-	} `toml:"client"`
 	Server struct {
 		ListenOn        string   `toml:"listenOn"`
 		ConnectionLimit uint     `toml:"connectionLimit"`
 		InstanceID      string   `toml:"-"` // Extra identifier used in logs and for instance identification
+		MaxRequestSize  uint64   `toml:"maxRequestSize" usage:"Maximum amount of bytes until a HTTP request is accepted"`
 		NetTTL          Duration `toml:"netTTL" usage:"Max time to spend on external communication"`
+		PathStrip       string   `toml:"pathStrip"`
+		Headers         Headers  `toml:"headers" env:"-" usage:"Only (repeatable) flag or config file supported"`
 		CORS            struct {
 			AllowedOrigins []string `toml:"allowedOrigins"`
 			AllowedHeaders []string `toml:"allowedHeaders"`
 		} `toml:"CORS"`
-		Headers Headers `toml:"headers" env:"-" usage:"Only (repeatable) flag or config file supported"`
-		Log     struct {
-			Level  string    `toml:"level"`
-			Format LogFormat `toml:"format" usage:"The log output format \"json\" or \"text\""`
-		} `toml:"log"`
-		Hash struct {
-			Key string `toml:"key"`
-		} `toml:"hash"`
-		Finder struct {
-			UseBuckets      bool    `toml:"useBuckets" usage:"Buckets speedup matching, but assumes no mistakes are made at the start"`
-			LengthTolerance float64 `toml:"lengthTolerance" usage:"percentage, number 0.0-1.0, of length difference to consider"`
-		} `toml:"finder"`
-		Validator struct {
-			Resolver         string        `toml:"resolver" usage:"The resolver to use for DNS lookups"`
-			SuggestValidator ValidatorType `toml:"suggest"`
-		} `toml:"validator" flag:",inline" env:",inline"`
-		Services struct {
-			Autocomplete struct {
-				RecipientThreshold uint64 `toml:"recipientThreshold" usage:"Define the minimum amount of recipients a domain needs before allowed in the autocomplete"`
-				MaxSuggestions     uint64 `toml:"maxSuggestions" usage:"The maximum number of suggestions to return"`
-			} `toml:"autocomplete"`
-		} `toml:"services"`
 		Profiler struct {
 			Enable bool   `toml:"enable" default:"false"`
 			Prefix string `toml:"prefix"`
 		} `toml:"profiler"`
-		Backend struct {
-			Driver             string `toml:"driver" usage:"List a driver to use, currently supporting: 'memory' or 'postgres'"`
-			URL                string `toml:"url"`
-			MaxConnections     uint   `toml:"maxConnections"`
-			MaxIdleConnections uint   `toml:"maxIdleConnections"`
-		} `toml:"backend"`
-		GraphQL struct {
-			PrettyOutput bool `toml:"prettyOutput" flag:"pretty" env:"PRETTY"`
-			GraphiQL     bool `toml:"graphiQL" flag:"graphiql" env:"GRAPHIQL"`
-			Playground   bool `toml:"playground"`
-		} `toml:"graphql" flag:"graphql" env:"GRAPHQL"`
-		RateLimiter struct {
-			Rate      int64    `toml:"rate"`
-			Capacity  int64    `toml:"capacity"`
-			ParkedTTL Duration `toml:"parkedTTL" flag:"parked-ttl"`
-		} `toml:"rateLimiter"`
-		GCP struct {
-			ProjectID       string `toml:"projectId"`
-			PubSubTopic     string `toml:"pubSubTopic"`
-			CredentialsFile string `toml:"credentialsFile" env:"APPLICATION_CREDENTIALS"`
-		} `toml:"GCP" flag:"gcp" env:"GOOGLE"`
-		PathStrip string `toml:"pathStrip"`
 	} `toml:"server" flag:",inline" env:",inline"`
+	Log struct {
+		Level  string    `toml:"level"`
+		Format LogFormat `toml:"format" usage:"The log output format \"json\" or \"text\""`
+	} `toml:"log"`
+	Hash struct {
+		Key string `toml:"key"`
+	} `toml:"hash"`
+	Finder struct {
+		UseBuckets      bool    `toml:"useBuckets" usage:"Buckets speedup matching, but assumes no mistakes are made at the start"`
+		LengthTolerance float64 `toml:"lengthTolerance" usage:"percentage, number 0.0-1.0, of length difference to consider"`
+	} `toml:"finder"`
+	Validator struct {
+		Resolver         string        `toml:"resolver" usage:"The resolver to use for DNS lookups"`
+		SuggestValidator ValidatorType `toml:"suggest"`
+	} `toml:"validator" flag:",inline" env:",inline"`
+	Services struct {
+		Autocomplete struct {
+			RecipientThreshold uint64 `toml:"recipientThreshold" usage:"Define the minimum amount of recipients a domain needs before allowed in the autocomplete"`
+			MaxSuggestions     uint64 `toml:"maxSuggestions" usage:"The maximum number of suggestions to return"`
+		} `toml:"autocomplete"`
+	} `toml:"services"`
+	Backend struct {
+		Driver             string `toml:"driver" usage:"List a driver to use, currently supporting: 'memory' or 'postgres'"`
+		URL                string `toml:"url"`
+		MaxConnections     uint   `toml:"maxConnections"`
+		MaxIdleConnections uint   `toml:"maxIdleConnections"`
+	} `toml:"backend"`
+	GraphQL struct {
+		PrettyOutput bool `toml:"prettyOutput" flag:"pretty" env:"PRETTY"`
+		GraphiQL     bool `toml:"graphiQL" flag:"graphiql" env:"GRAPHIQL"`
+		Playground   bool `toml:"playground"`
+	} `toml:"graphql" flag:"graphql" env:"GRAPHQL"`
+	RateLimiter struct {
+		Rate      int64    `toml:"rate"`
+		Capacity  int64    `toml:"capacity"`
+		ParkedTTL Duration `toml:"parkedTTL" flag:"parked-ttl"`
+	} `toml:"rateLimiter"`
+	GCP struct {
+		ProjectID       string `toml:"projectId"`
+		PubSubTopic     string `toml:"pubSubTopic"`
+		CredentialsFile string `toml:"credentialsFile" env:"APPLICATION_CREDENTIALS"`
+	} `toml:"GCP" flag:"gcp" env:"GOOGLE"`
 }
 
 // GetSensored returns a copy of Config with all sensitive values masked
 func (c Config) GetSensored() Config {
 	const mask = "**masked**"
-	c.Server.Backend.URL = mask
-	c.Server.Hash.Key = mask
+	c.Backend.URL = mask
+	c.Hash.Key = mask
 	c.Server.Profiler.Prefix = mask
 
 	return c
