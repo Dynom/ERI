@@ -11,6 +11,7 @@ import (
 )
 
 func TestGetBodyFromHTTPRequest(t *testing.T) {
+	const MaxBodySize = 1 << 19
 	tests := []struct {
 		name    string
 		req     func(body []byte) *http.Request
@@ -54,7 +55,7 @@ func TestGetBodyFromHTTPRequest(t *testing.T) {
 			wantErr: ErrBodyTooLarge,
 			name:    "Too lengthy/Body",
 			req: func(_ []byte) *http.Request {
-				body := strings.Repeat("a", int(MaxBodySize+1))
+				body := strings.Repeat("a", MaxBodySize+1)
 				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 				req.Header.Set("Content-Type", "application/json")
 				req.ContentLength = int64(len(body) - 1)
@@ -88,7 +89,7 @@ func TestGetBodyFromHTTPRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := tt.req(tt.want)
-			got, err := GetBodyFromHTTPRequest(req)
+			got, err := GetBodyFromHTTPRequest(req, MaxBodySize)
 
 			if err != tt.wantErr {
 				t.Errorf("GetBodyFromHTTPRequest() error = %v, wantErr %q", err, tt.wantErr)

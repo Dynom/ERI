@@ -6,18 +6,15 @@ import (
 	"net/http"
 )
 
-const (
-	MaxBodySize int64 = 1 << 20
-)
-
-func GetBodyFromHTTPRequest(r *http.Request) ([]byte, error) {
+// GetBodyFromHTTPRequest performs basic request validation and returns the body if all conditions are met
+func GetBodyFromHTTPRequest(r *http.Request, maxBodySize int64) ([]byte, error) {
 	var empty []byte
 
 	if r.Body == nil {
 		return empty, ErrMissingBody
 	}
 
-	if r.ContentLength > MaxBodySize {
+	if r.ContentLength > maxBodySize {
 		return empty, ErrBodyTooLarge
 	}
 
@@ -25,12 +22,12 @@ func GetBodyFromHTTPRequest(r *http.Request) ([]byte, error) {
 		return empty, ErrUnsupportedContentType
 	}
 
-	b, err := ioutil.ReadAll(io.LimitReader(r.Body, MaxBodySize+1))
+	b, err := ioutil.ReadAll(io.LimitReader(r.Body, maxBodySize+1))
 	if err != nil {
 		return empty, ErrInvalidRequest
 	}
 
-	if int64(len(b)) > MaxBodySize {
+	if int64(len(b)) > maxBodySize {
 		return empty, ErrBodyTooLarge
 	}
 

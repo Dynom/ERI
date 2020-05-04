@@ -23,7 +23,7 @@ const (
 	failedResponseError     = "Generating response failed."
 )
 
-func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.AutocompleteSvc, maxSuggestions uint64) http.HandlerFunc {
+func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.AutocompleteSvc, maxSuggestions uint64, maxBodySize uint64) http.HandlerFunc {
 
 	logger = logger.WithField("handler", "auto complete")
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +34,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.Autocomplet
 
 		defer deferClose(r.Body, logger)
 
-		body, err := erihttp.GetBodyFromHTTPRequest(r)
+		body, err := erihttp.GetBodyFromHTTPRequest(r, int64(maxBodySize))
 		if err != nil {
 			logger.WithFields(logrus.Fields{
 				"error":          err,
@@ -108,7 +108,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.Autocomplet
 }
 
 // NewSuggestHandler constructs a HTTP handler that deals with suggestion requests
-func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc) http.HandlerFunc {
+func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxBodySize uint64) http.HandlerFunc {
 	log := logger.WithField("handler", "suggest")
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -118,7 +118,7 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc) http
 
 		defer deferClose(r.Body, log)
 
-		body, err := erihttp.GetBodyFromHTTPRequest(r)
+		body, err := erihttp.GetBodyFromHTTPRequest(r, int64(maxBodySize))
 		if err != nil {
 			log.WithError(err).Error("Error handling request")
 			w.WriteHeader(http.StatusBadRequest)

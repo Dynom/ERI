@@ -10,12 +10,15 @@
   # The maximum amount of concurrent (TCP) connections to handle. A value of 0 means a fallback on net.Listener's defaults
   connectionLimit = 4096
 
-  # The path to strip from the request, this allows for path prefixing in ingresses (e.g. in k8s). Paths should
-  # start with, but not end with, a `/`. The result is that both /eri/suggest and /suggest will work.
-  pathStrip = "/eri"
+  # The maximum amount of bytes of any HTTP request, anything above this is considered a bad request and is aborted early
+  maxRequestSize = 524288
 
   # The amount of time that is allowed to be spent on external communication
   netTTL = "1s"
+
+  # The path to strip from the request, this allows for path prefixing in ingresses (e.g. in k8s). Paths should
+  # start with, but not end with, a `/`. The result is that both /eri/suggest and /suggest will work.
+  pathStrip = "/eri"
 
   [server.CORS]
     # @see https://github.com/rs/cors#parameters
