@@ -184,7 +184,7 @@ func TestHeaders_Set(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Test",
+			name: "Testing if header set",
 			h: map[string]string{
 				"a":            "b",
 				"Content-Type": "application/json",
@@ -196,13 +196,22 @@ func TestHeaders_Set(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Testing zero value",
-			h:    map[string]string{},
+			name: "Testing with empty header",
+			h:    nil,
 			want: []string{},
 			args: args{
 				v: "Content-Type:application/json",
 			},
 			wantErr: false,
+		},
+		{
+			name: "Testing with invalid header",
+			h:    map[string]string{},
+			want: []string{},
+			args: args{
+				v: "test",
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -331,8 +340,8 @@ func TestLogFormat_UnmarshalText(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test",
-			vt:   "test",
+			name: "Testing with LogFormat json",
+			vt:   "json",
 			want: "json",
 			args: args{
 				value: []byte("json"),
@@ -340,13 +349,22 @@ func TestLogFormat_UnmarshalText(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "",
-			vt:   "",
-			want: "json",
+			name: "Testing with LogFormat text",
+			vt:   "text",
+			want: "text",
 			args: args{
-				value: []byte("json"),
+				value: []byte("text"),
 			},
 			wantErr: false,
+		},
+		{
+			name: "Testing with unsupported value",
+			vt:   "test",
+			want: "test",
+			args: args{
+				value: []byte("test"),
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
