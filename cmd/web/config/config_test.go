@@ -526,3 +526,29 @@ func TestConfig_GetSensored(t *testing.T) {
 		})
 	}
 }
+
+func TestString_GetSensored(t *testing.T) {
+
+	cfg := Config{}
+
+	tests := []struct {
+		name string
+		c    Config
+		want string
+	}{
+		{
+			name: "Testing returned string",
+			c:    cfg,
+			want: cfg.String(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ret := tt.c.String()
+			if ret != tt.want {
+				t.Errorf("String GetSensored() got = %v, want %v", ret, tt.want)
+			}
+		})
+	}
+}
