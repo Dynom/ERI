@@ -489,3 +489,40 @@ func TestValidatorTypes_AsStringSlice(t *testing.T) {
 		}
 	})
 }
+
+func TestConfig_GetSensored(t *testing.T) {
+
+	const mask = "**masked**"
+
+	cfg := Config{}
+	cfg.Backend.URL = mask
+	cfg.Hash.Key = mask
+	cfg.Server.Profiler.Prefix = mask
+
+	tests := []struct {
+		name string
+		c    Config
+		want Config
+	}{
+		{
+			name: "Testing with valid input",
+			c:    cfg,
+			want: cfg,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ret := tt.c.GetSensored()
+			if ret.Backend != tt.want.Backend {
+				t.Errorf("GetSensored() got = %v, want %v", ret.Backend, tt.want.Backend)
+			}
+			if ret.Hash != tt.want.Hash {
+				t.Errorf("GetSensored() got = %v, want %v", ret.Hash, tt.want.Hash)
+			}
+			if ret.Server.Profiler != tt.want.Server.Profiler {
+				t.Errorf("GetSensored() got = %v, want %v", ret.Server.Profiler, tt.want.Server.Profiler)
+			}
+		})
+	}
+}
