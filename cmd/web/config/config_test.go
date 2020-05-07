@@ -18,14 +18,14 @@ func TestDuration_AsDuration(t *testing.T) {
 		want   time.Duration
 	}{
 		{
-			name: "test",
+			name: "Testing if duration set",
 			fields: fields{
 				duration: time.Hour,
 			},
 			want: time.Hour,
 		},
 		{
-			name: "",
+			name: "Testing with no duration",
 			fields: fields{
 				duration: time.Duration(0),
 			},
@@ -58,7 +58,7 @@ func TestDuration_Set(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test",
+			name: "Testing if durations set",
 			fields: fields{
 				duration: time.Hour,
 			},
@@ -68,7 +68,7 @@ func TestDuration_Set(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "",
+			name: "Testing with no duration",
 			fields: fields{
 				duration: time.Duration(0),
 			},
@@ -100,14 +100,14 @@ func TestDuration_String(t *testing.T) {
 		want   string
 	}{
 		{
-			name: "test",
+			name: "Testing if duration set",
 			fields: fields{
 				duration: time.Hour,
 			},
 			want: "1h0m0s",
 		},
 		{
-			name: "",
+			name: "Testing with no duration",
 			fields: fields{
 				duration: time.Duration(0),
 			},
@@ -140,7 +140,7 @@ func TestDuration_UnmarshalText(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test",
+			name: "Testing if duration set",
 			fields: fields{
 				duration: time.Hour,
 			},
@@ -150,7 +150,7 @@ func TestDuration_UnmarshalText(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "",
+			name: "Testing with no duration",
 			fields: fields{
 				duration: time.Duration(0),
 			},
@@ -272,7 +272,7 @@ func TestLogFormat_Set(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test",
+			name: "Testing if LogFormat set",
 			vt:   "test",
 			want: "test",
 			args: args{
@@ -281,7 +281,7 @@ func TestLogFormat_Set(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "",
+			name: "Testing with empty input",
 			vt:   "",
 			want: "",
 			args: args{
@@ -309,12 +309,12 @@ func TestLogFormat_String(t *testing.T) {
 		want string
 	}{
 		{
-			name: "test",
+			name: "Testing if LogFormat set",
 			vt:   "test",
 			want: "test",
 		},
 		{
-			name: "",
+			name: "Testing with empty input",
 			vt:   "",
 			want: "",
 		},
@@ -391,7 +391,7 @@ func TestValidatorType_Set(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test",
+			name: "Testing if ValidatorType set",
 			vt:   "test",
 			want: "test",
 			args: args{
@@ -400,7 +400,7 @@ func TestValidatorType_Set(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "",
+			name: "Testing with empty input",
 			vt:   "",
 			want: "",
 			args: args{
@@ -428,7 +428,7 @@ func TestValidatorType_String(t *testing.T) {
 		want string
 	}{
 		{
-			name: "test",
+			name: "Testing if ValidatorType set",
 			vt:   "test",
 			want: "test",
 		},
