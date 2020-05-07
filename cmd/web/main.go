@@ -136,7 +136,7 @@ func main() {
 
 	// @todo status endpoint (or tick logger)
 
-	var bucket *ratelimit.Bucket
+	var bucket handlers.TakeMaxDuration
 	if conf.RateLimiter.Rate > 0 && conf.RateLimiter.Capacity > 0 {
 		bucket = ratelimit.NewBucketWithRate(float64(conf.RateLimiter.Rate), conf.RateLimiter.Capacity)
 	}

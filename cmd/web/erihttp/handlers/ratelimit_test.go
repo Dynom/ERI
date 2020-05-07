@@ -13,7 +13,7 @@ import (
 
 func TestNewRateLimitHandler(t *testing.T) {
 	type args struct {
-		b takeMaxDurationStub
+		b TakeMaxDuration
 	}
 	tests := []struct {
 		name               string
@@ -24,7 +24,7 @@ func TestNewRateLimitHandler(t *testing.T) {
 		{
 			name: "All good",
 			args: args{
-				b: takeMaxDurationStub{
+				b: &takeMaxDurationStub{
 					withinThreshold: true,
 				},
 			},
@@ -33,7 +33,7 @@ func TestNewRateLimitHandler(t *testing.T) {
 		{
 			name: "Rate limited, within threshold",
 			args: args{
-				b: takeMaxDurationStub{
+				b: &takeMaxDurationStub{
 					delay:           time.Nanosecond,
 					withinThreshold: true,
 				},
@@ -44,12 +44,20 @@ func TestNewRateLimitHandler(t *testing.T) {
 		{
 			name: "Rate limited, outside threshold",
 			args: args{
-				b: takeMaxDurationStub{
+				b: &takeMaxDurationStub{
 					withinThreshold: false,
 				},
 			},
 			wantHTTPStatusCode: http.StatusTooManyRequests,
 			wantLogMessage:     logRateLimitAboveMaxDelay,
+		},
+		{
+			name: "nil rate limiter",
+			args: args{
+				b: nil,
+			},
+			wantLogMessage:     logRateLimiterDisabled,
+			wantHTTPStatusCode: http.StatusOK,
 		},
 	}
 
@@ -65,7 +73,7 @@ func TestNewRateLimitHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			hook.Reset()
 
-			rlh := WithRateLimiter(logger, &tt.args.b, time.Nanosecond)
+			rlh := WithRateLimiter(logger, tt.args.b, time.Nanosecond)
 			mockResponse := httptest.NewRecorder()
 			mockRequest := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
 
@@ -89,7 +97,7 @@ func TestNewRateLimitHandler(t *testing.T) {
 		})
 	}
 
-	t.Run("Empty args", func(t *testing.T) {
+	t.Run("Untyped nil arg", func(t *testing.T) {
 		mux := http.NewServeMux()
 
 		logger, hook := testLog.NewNullLogger()
