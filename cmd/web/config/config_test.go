@@ -433,7 +433,7 @@ func TestValidatorType_String(t *testing.T) {
 			want: "test",
 		},
 		{
-			name: "",
+			name: "Testing with empty input",
 			vt:   "",
 			want: "",
 		},
