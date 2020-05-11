@@ -530,29 +530,35 @@ func TestConfig_GetSensored(t *testing.T) {
 	}
 }
 
-func TestString_GetSensored(t *testing.T) {
+func TestConfig_String(t *testing.T) {
 
 	cfg := Config{}
 
+	cfg2 := Config{}
+	cfg2.Server.ListenOn = "localhost:12345"
+
 	tests := []struct {
-		name    string
-		c       Config
-		want    string
-		wantRet bool
+		name          string
+		c             Config
+		shouldContain string
 	}{
 		{
-			name:    "Testing if string returned",
-			c:       cfg,
-			want:    cfg.String(),
-			wantRet: true,
+			name:          "Testing if string returned",
+			c:             cfg,
+			shouldContain: valueMask,
+		},
+		{
+			name:          "Testing if string returned",
+			c:             cfg2,
+			shouldContain: "localhost:12345",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.c.String()
-			if ret := strings.Contains(got, tt.want); ret != tt.wantRet {
-				t.Errorf("String GetSensored() got = %v, want %v", got, tt.want)
+			if !strings.Contains(got, tt.shouldContain) {
+				t.Errorf("String GetSensored() got = %v, want %v", got, tt.shouldContain)
 			}
 		})
 	}
