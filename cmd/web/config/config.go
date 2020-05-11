@@ -97,12 +97,15 @@ type Config struct {
 	} `toml:"GCP" flag:"gcp" env:"GOOGLE"`
 }
 
+const (
+	valueMask = "**masked**"
+)
+
 // GetSensored returns a copy of Config with all sensitive values masked
 func (c Config) GetSensored() Config {
-	const mask = "**masked**"
-	c.Backend.URL = mask
-	c.Hash.Key = mask
-	c.Server.Profiler.Prefix = mask
+	c.Backend.URL = valueMask
+	c.Hash.Key = valueMask
+	c.Server.Profiler.Prefix = valueMask
 
 	return c
 }

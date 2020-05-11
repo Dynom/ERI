@@ -492,12 +492,15 @@ func TestValidatorTypes_AsStringSlice(t *testing.T) {
 
 func TestConfig_GetSensored(t *testing.T) {
 
+	cfg := Config{}
+	cfg.Backend.URL = "test"
+
 	const mask = "**masked**"
 
-	cfg := Config{}
-	cfg.Backend.URL = mask
-	cfg.Hash.Key = mask
-	cfg.Server.Profiler.Prefix = mask
+	exp := Config{}
+	exp.Backend.URL = valueMask
+	exp.Hash.Key = valueMask
+	exp.Server.Profiler.Prefix = valueMask
 
 	tests := []struct {
 		name string
@@ -507,20 +510,20 @@ func TestConfig_GetSensored(t *testing.T) {
 		{
 			name: "Testing with valid input",
 			c:    cfg,
-			want: cfg,
+			want: exp,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ret := tt.c.GetSensored()
-			if ret.Backend != tt.want.Backend {
+			if ret.Backend != tt.want.Backend && ret.Backend.URL != valueMask {
 				t.Errorf("GetSensored() got = %v, want %v", ret.Backend, tt.want.Backend)
 			}
-			if ret.Hash != tt.want.Hash {
+			if ret.Hash != tt.want.Hash && ret.Hash.Key != valueMask {
 				t.Errorf("GetSensored() got = %v, want %v", ret.Hash, tt.want.Hash)
 			}
-			if ret.Server.Profiler != tt.want.Server.Profiler {
+			if ret.Server.Profiler != tt.want.Server.Profiler && ret.Server.Profiler.Prefix != valueMask {
 				t.Errorf("GetSensored() got = %v, want %v", ret.Server.Profiler, tt.want.Server.Profiler)
 			}
 		})
@@ -532,22 +535,24 @@ func TestString_GetSensored(t *testing.T) {
 	cfg := Config{}
 
 	tests := []struct {
-		name string
-		c    Config
-		want string
+		name    string
+		c       Config
+		want    string
+		wantRet bool
 	}{
 		{
-			name: "Testing returned string",
-			c:    cfg,
-			want: cfg.String(),
+			name:    "Testing if string returned",
+			c:       cfg,
+			want:    cfg.String(),
+			wantRet: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ret := tt.c.String()
-			if ret != tt.want {
-				t.Errorf("String GetSensored() got = %v, want %v", ret, tt.want)
+			got := tt.c.String()
+			if ret := strings.Contains(got, tt.want); ret != tt.wantRet {
+				t.Errorf("String GetSensored() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
