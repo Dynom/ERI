@@ -7,12 +7,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	logEmptyPath = "Path strip is used with empty path argument, returning an empty handler"
+)
+
 // WithPathStrip strips the path from the request URL, paths always start with a /.
-func WithPathStrip(logger logrus.FieldLogger, path string) func(h http.Handler) http.Handler {
+func WithPathStrip(logger logrus.FieldLogger, path string) Middleware {
 	logger = logger.WithField("middleware", "path_strip")
 
 	if path == "" {
-		logger.Warn("Path strip is used with empty path argument, returning an empty handler")
+		logger.Warn(logEmptyPath)
 		return func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				h.ServeHTTP(w, r)

@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
-	hlTest "github.com/Dynom/ERI/cmd/web/hitlist/test"
+	"github.com/Dynom/ERI/testutil"
 	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/ERI/validator"
 	"github.com/Dynom/ERI/validator/validations"
 )
 
 func TestStorage_Range(t *testing.T) {
-	list := hitlist.New(hlTest.MockHasher{}, time.Second*1)
+	list := hitlist.New(testutil.MockHasher{}, time.Second*1)
 
 	type testDataS struct {
 		parts types.EmailParts
@@ -151,7 +151,7 @@ func TestStorage_Range(t *testing.T) {
 }
 
 func TestStorage_Store(t *testing.T) {
-	list := hitlist.New(hlTest.MockHasher{}, time.Second*1)
+	list := hitlist.New(testutil.MockHasher{}, time.Second*1)
 
 	type args struct {
 		ctx   context.Context

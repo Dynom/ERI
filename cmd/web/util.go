@@ -43,7 +43,7 @@ func newLogger(conf config.Config) (*logrus.Logger, *io.PipeWriter, error) {
 	var err error
 	logger := logrus.New()
 
-	if conf.Server.Log.Format == config.LFJSON {
+	if conf.Log.Format == config.LFJSON {
 		logger.SetFormatter(&logrus.JSONFormatter{})
 	} else {
 		logger.SetFormatter(&logrus.TextFormatter{
@@ -53,7 +53,7 @@ func newLogger(conf config.Config) (*logrus.Logger, *io.PipeWriter, error) {
 	}
 
 	logger.SetOutput(os.Stdout)
-	level, err := logrus.ParseLevel(conf.Server.Log.Level)
+	level, err := logrus.ParseLevel(conf.Log.Level)
 	if err == nil {
 		logger.SetLevel(level)
 	}
@@ -121,14 +121,14 @@ func mapValidatorTypeToValidatorFn(vt config.ValidatorType, v validator.EmailVal
 
 func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList, myFinder *finder.Finder, pubSubSvc *gcp.PubSubSvc, persister persist.Persister) validator.CheckFn {
 	var dialer = &net.Dialer{}
-	if conf.Server.Validator.Resolver != "" {
-		setCustomResolver(dialer, conf.Server.Validator.Resolver)
+	if conf.Validator.Resolver != "" {
+		setCustomResolver(dialer, conf.Validator.Resolver)
 	}
 
 	val := validator.NewEmailAddressValidator(dialer)
 
 	// Pick the validator we want to use
-	checkValidator := mapValidatorTypeToValidatorFn(conf.Server.Validator.SuggestValidator, val)
+	checkValidator := mapValidatorTypeToValidatorFn(conf.Validator.SuggestValidator, val)
 
 	// Last in the chain, so that the duration only applies to the actual validation call
 	checkValidator = validatorContextTTLProxy(conf.Server.NetTTL.AsDuration(), checkValidator)
@@ -189,7 +189,7 @@ func pubSubNotificationHandler(hitList *hitlist.HitList, logger logrus.FieldLogg
 }
 
 func createPersister(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList) (persist.Persister, error) {
-	var driver = conf.Server.Backend.Driver
+	var driver = conf.Backend.Driver
 	var backend persist.Persister
 
 	logger = logger.WithField("backend_driver", driver)
@@ -234,13 +234,13 @@ func createPersister(conf config.Config, logger logrus.FieldLogger, hitList *hit
 }
 
 func configurePGBackend(conf config.Config) (*sql.DB, error) {
-	db, err := sql.Open(conf.Server.Backend.Driver, conf.Server.Backend.URL)
+	db, err := sql.Open(conf.Backend.Driver, conf.Backend.URL)
 	if err != nil {
 		return nil, err
 	}
 
-	db.SetMaxOpenConns(int(conf.Server.Backend.MaxConnections))
-	db.SetMaxIdleConns(int(conf.Server.Backend.MaxIdleConnections))
+	db.SetMaxOpenConns(int(conf.Backend.MaxConnections))
+	db.SetMaxIdleConns(int(conf.Backend.MaxIdleConnections))
 
 	err = db.Ping()
 	if err != nil {
@@ -251,7 +251,7 @@ func configurePGBackend(conf config.Config) (*sql.DB, error) {
 }
 
 func createPubSubSvc(conf config.Config, logger logrus.FieldLogger, rt *runtimer.SignalHandler, hitList *hitlist.HitList, myFinder *finder.Finder) (*gcp.PubSubSvc, error) {
-	if conf.Server.GCP.PubSubTopic == "" {
+	if conf.GCP.PubSubTopic == "" {
 		logger.Info("Not setting up pub/sub connection, no Topic defined")
 		return nil, nil
 	}
@@ -259,9 +259,9 @@ func createPubSubSvc(conf config.Config, logger logrus.FieldLogger, rt *runtimer
 	psClientCtx, psClientCtxCancel := context.WithCancel(context.Background())
 	psClient, err := gcppubsub.NewClient(
 		psClientCtx,
-		conf.Server.GCP.ProjectID,
+		conf.GCP.ProjectID,
 		option.WithUserAgent("eri-"+Version),
-		option.WithCredentialsFile(conf.Server.GCP.CredentialsFile),
+		option.WithCredentialsFile(conf.GCP.CredentialsFile),
 	)
 
 	if err != nil {
@@ -272,7 +272,7 @@ func createPubSubSvc(conf config.Config, logger logrus.FieldLogger, rt *runtimer
 	pubSubSvc := gcp.NewPubSubSvc(
 		logger,
 		psClient,
-		conf.Server.GCP.PubSubTopic,
+		conf.GCP.PubSubTopic,
 		gcp.WithSubscriptionLabels([]string{conf.Server.InstanceID, Version, strconv.FormatInt(time.Now().Unix(), 10)}),
 		gcp.WithSubscriptionConcurrencyCount(5),
 	)

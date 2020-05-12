@@ -1,21 +1,20 @@
-[client]
-
-  # The maximum length (in bytes) of the "input" field, to accept to the finder.
-  inputLengthMax = 50
-
 [server]
+
   # The interface and port to listen on, "0.0.0.0" means all interfaces
   listenOn = "0.0.0.0:1338"
 
   # The maximum amount of concurrent (TCP) connections to handle. A value of 0 means a fallback on net.Listener's defaults
   connectionLimit = 4096
 
-  # The path to strip from the request, this allows for path prefixing in ingresses (e.g. in k8s). Paths should
-  # start with, but not end with, a `/`. The result is that both /eri/suggest and /suggest will work.
-  pathStrip = "/eri"
+  # The maximum amount of bytes of any HTTP request, anything above this is considered a bad request and is aborted early
+  maxRequestSize = 524288
 
   # The amount of time that is allowed to be spent on external communication
   netTTL = "1s"
+
+  # The path to strip from the request, this allows for path prefixing in ingresses (e.g. in k8s). Paths should
+  # start with, but not end with, a `/`. The result is that both /eri/suggest and /suggest will work.
+  pathStrip = "/eri"
 
   [server.CORS]
     # @see https://github.com/rs/cors#parameters
@@ -35,17 +34,6 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin"
 
-  [server.hash]
-    # The key for the 128bit highwayhash algorithm. Must be exactly 32 bytes.
-    key = "00000000000000000000000000000000"
-
-  [server.log]
-    # The minimum logging level to report, @see https://github.com/Sirupsen/logrus#level-logging
-    level = "debug"
-
-    # "json" or "text". JSON plays nice with structured loggers (like GCP's Stackdriver). Text is nice for Humans.
-    type = "json"
-
   [server.profiler]
 
     # Enable pprof @see https://blog.golang.org/pprof
@@ -54,7 +42,19 @@
     # The prefix to use in the request path /<prefix>/pprof/...
     prefix = "debug"
 
-  [server.finder]
+  [hash]
+    # The key for the 128bit highwayhash algorithm. Must be exactly 32 bytes.
+    key = "00000000000000000000000000000000"
+
+  [log]
+    # The minimum logging level to report, @see https://github.com/Sirupsen/logrus#level-logging
+    level = "debug"
+
+    # "json" or "text". JSON plays nice with structured loggers (like GCP's Stackdriver). Text is nice for Humans.
+    type = "json"
+
+
+  [finder]
 
     # Speeds up the process of finding similar strings, but assumes no mistakes made in the prefix as trade-off.
     # @see https://github.com/Dynom/TySug/pull/14
@@ -66,7 +66,7 @@
     # A value of greater than 1 can lead to odd behaviour
     lengthTolerance = 0.3
 
-  [server.validator]
+  [validator]
 
     # Use this resolver, instead of the local DNS hostname configured for this system. Since speed matters, pick a fast
     # public resolver (e.g.: 1.1.1.1, 8.8.4.4 or 8.8.8.8), or if you roll your own using (e.g. SkyDNS). An empty string
@@ -77,7 +77,7 @@
     # For initial setup and learning, structure is probably most suitable
     suggest = "lookup"
 
-  [server.backend]
+  [backend]
     # The backend to use, currently supporting: "memory" or "postgres"
     # The memory driver is mostly for testing or development
     # Other supported drivers: https://github.com/golang/go/wiki/SQLDrivers
@@ -92,13 +92,13 @@
     # Maximum idle connections (must be less than maxConnections). 0 Means no idle connections are retained.
     maxIdleConnections = 2
 
-  [server.graphql]
+  [graphql]
 
     prettyOutput = true
     graphiQL = false
     playground = false
 
-  [server.rateLimiter]
+  [rateLimiter]
 
     # Leaky bucket implementation. Rate is per second. This means ~100 req/s, with bursts / peaks. Set the capacity or
     # rate to <= 0 to disable rate limiting entirely
@@ -106,10 +106,10 @@
     capacity = 500
 
     # amount of time a rate-limited request is allowed to wait for. Anything above this is aborted, to help protect
-    # against connection draining. Requests are delayed
+    # against connection draining.
     parkedTTL = "100ms"
 
-  [server.services.autocomplete]
+  [services.autocomplete]
 
     # Domains need at least (inclusive) this amount of recipients to be considered for the autocomplete API
     # This is mostly to prevent leaking possibly private information

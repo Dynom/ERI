@@ -15,21 +15,27 @@ import (
 	"golang.org/x/net/netutil"
 )
 
-func BuildHTTPServer(mux http.Handler, config config.Config, logger logrus.FieldLogger, logWriter io.Writer, rt *runtimer.SignalHandler, handlers ...func(h http.Handler) http.Handler) *Server {
+var (
+	defaultReadWriteTTL  = 10 * time.Second
+	defaultHeaderReadTTL = 2 * time.Second
+	defaultIdleTimeout   = 60 * time.Second
+)
+
+func NewServer(mux http.Handler, config config.Config, logger logrus.FieldLogger, logWriter io.Writer, rt *runtimer.SignalHandler, handlers ...func(h http.Handler) http.Handler) *Server {
 	for _, h := range handlers {
 		mux = h(mux)
 	}
 
-	wTTL := 10 * time.Second
+	var wTTL = defaultReadWriteTTL
 	if config.Server.Profiler.Enable {
 		wTTL = 31 * time.Second
 	}
 
 	server := &http.Server{
-		ReadHeaderTimeout: 2 * time.Second,
+		ReadHeaderTimeout: defaultHeaderReadTTL,
 		ReadTimeout:       wTTL,
 		WriteTimeout:      wTTL, // Is overridden, when the profiler is enabled.
-		IdleTimeout:       60 * time.Second,
+		IdleTimeout:       defaultIdleTimeout,
 		MaxHeaderBytes:    1 << 19, // 512 kb
 		Handler:           mux,
 		Addr:              config.Server.ListenOn,

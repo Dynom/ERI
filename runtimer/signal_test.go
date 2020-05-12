@@ -2,7 +2,6 @@ package runtimer
 
 import (
 	"os"
-	"sync"
 	"testing"
 )
 
@@ -26,21 +25,17 @@ func TestSignalHandler_handle(t *testing.T) {
 
 	sh := New(os.Interrupt)
 
-	// The Wait Group allows us to wait until the callback is actually done
-	var wg = sync.WaitGroup{}
-	wg.Add(1)
-
 	const expect = 42
 	var got uint
 	sh.RegisterCallback(func(s os.Signal) {
 		got = expect
-		wg.Done()
 	})
 
 	// Faking an interrupt
 	sh.c <- os.Interrupt
 
-	wg.Wait()
+	sh.Wait()
+
 	if got != expect {
 		t.Errorf("handle() is expected to invoke all registered callbacks")
 	}

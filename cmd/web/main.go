@@ -68,7 +68,7 @@ func main() {
 		"config": conf.GetSensored(),
 	}).Info("Starting up...")
 
-	h, err := highwayhash.New128([]byte(conf.Server.Hash.Key))
+	h, err := highwayhash.New128([]byte(conf.Hash.Key))
 	if err != nil {
 		logger.WithError(err).Error("Unable to create our hash.Hash")
 		os.Exit(1)
@@ -89,9 +89,9 @@ func main() {
 
 	myFinder, err := finder.New(
 		hitList.GetValidAndUsageSortedDomains(),
-		finder.WithLengthTolerance(conf.Server.Finder.LengthTolerance),
+		finder.WithLengthTolerance(conf.Finder.LengthTolerance),
 		finder.WithAlgorithm(finder.NewJaroWinklerDefaults()),
-		finder.WithPrefixBuckets(conf.Server.Finder.UseBuckets),
+		finder.WithPrefixBuckets(conf.Finder.UseBuckets),
 	)
 
 	if err != nil {
@@ -112,14 +112,14 @@ func main() {
 
 	validatorFn := createProxiedValidator(conf, logger, hitList, myFinder, pubSubSvc, persister)
 	suggestSvc := services.NewSuggestService(myFinder, validatorFn, logger)
-	autocompleteSvc := services.NewAutocompleteService(myFinder, hitList, conf.Server.Services.Autocomplete.RecipientThreshold, logger)
+	autocompleteSvc := services.NewAutocompleteService(myFinder, hitList, conf.Services.Autocomplete.RecipientThreshold, logger)
 
 	mux := http.NewServeMux()
 	registerProfileHandler(mux, conf)
 	registerHealthHandler(mux, logger)
 
-	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc))
-	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, autocompleteSvc, conf.Server.Services.Autocomplete.MaxSuggestions))
+	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc, conf.Server.MaxRequestSize))
+	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, autocompleteSvc, conf.Services.Autocomplete.MaxSuggestions, conf.Server.MaxRequestSize))
 
 	schema, err := NewGraphQLSchema(conf, suggestSvc, autocompleteSvc)
 	if err != nil {
@@ -129,16 +129,16 @@ func main() {
 
 	mux.Handle("/graph", gqlHandler.New(&gqlHandler.Config{
 		Schema:     &schema,
-		Pretty:     conf.Server.GraphQL.PrettyOutput,
-		GraphiQL:   conf.Server.GraphQL.GraphiQL,
-		Playground: conf.Server.GraphQL.Playground,
+		Pretty:     conf.GraphQL.PrettyOutput,
+		GraphiQL:   conf.GraphQL.GraphiQL,
+		Playground: conf.GraphQL.Playground,
 	}))
 
 	// @todo status endpoint (or tick logger)
 
-	var bucket *ratelimit.Bucket
-	if conf.Server.RateLimiter.Rate > 0 && conf.Server.RateLimiter.Capacity > 0 {
-		bucket = ratelimit.NewBucketWithRate(float64(conf.Server.RateLimiter.Rate), conf.Server.RateLimiter.Capacity)
+	var bucket handlers.TakeMaxDuration
+	if conf.RateLimiter.Rate > 0 && conf.RateLimiter.Capacity > 0 {
+		bucket = ratelimit.NewBucketWithRate(float64(conf.RateLimiter.Rate), conf.RateLimiter.Capacity)
 	}
 
 	ct := cors.New(cors.Options{
@@ -146,9 +146,9 @@ func main() {
 		AllowedHeaders: conf.Server.CORS.AllowedHeaders,
 	})
 
-	s := erihttp.BuildHTTPServer(mux, conf, logger, logWriter, rtWeb,
+	s := erihttp.NewServer(mux, conf, logger, logWriter, rtWeb,
 		handlers.WithPathStrip(logger, conf.Server.PathStrip),
-		handlers.NewRateLimitHandler(logger, bucket, conf.Server.RateLimiter.ParkedTTL.AsDuration()),
+		handlers.WithRateLimiter(logger, bucket, conf.RateLimiter.ParkedTTL.AsDuration()),
 		handlers.WithRequestLogger(logger),
 		handlers.WithGzipHandler(),
 		handlers.WithHeaders(confHeadersToHTTPHeaders(conf.Server.Headers)),

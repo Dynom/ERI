@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Dynom/ERI/cmd/web/hitlist"
-	hlTest "github.com/Dynom/ERI/cmd/web/hitlist/test"
+	"github.com/Dynom/ERI/testutil"
 	"github.com/Dynom/ERI/validator"
 	"github.com/Dynom/ERI/validator/validations"
 	"github.com/Dynom/TySug/finder"
@@ -19,6 +19,24 @@ func TestAutocompleteSvc_Autocomplete(t *testing.T) {
 
 	ctxExpired, cancel := context.WithTimeout(context.Background(), -1*time.Hour)
 	cancel()
+
+	// Creating a context that errors on the n+1'th invocation
+	ctxTwiceBad := testutil.NewContext(context.Background())
+	ctxTwiceBad.SetErrEval(func(parent context.Context) error {
+		var incrementCounter int
+
+		if v, ok := parent.Value("ic").(int); ok {
+			incrementCounter = v + 1
+		}
+
+		ctxTwiceBad.SetParent(context.WithValue(parent, "ic", incrementCounter))
+
+		if incrementCounter > 0 {
+			return context.Canceled
+		}
+
+		return nil
+	})
 
 	type fields struct {
 		recipientThreshold uint64
@@ -73,9 +91,31 @@ func TestAutocompleteSvc_Autocomplete(t *testing.T) {
 			want:    AutocompleteResult{},
 			wantErr: true,
 		},
+		{
+			name:   "Empty input",
+			fields: fields{recipientThreshold: 1},
+			args: args{
+				ctx:    ctxExpired,
+				domain: "",
+				limit:  2,
+			},
+			want:    AutocompleteResult{},
+			wantErr: true,
+		},
+		{
+			name:   "Bad context after the first ctx.Err()",
+			fields: fields{recipientThreshold: 1},
+			args: args{
+				ctx:    ctxTwiceBad,
+				domain: "gm",
+				limit:  2,
+			},
+			want:    AutocompleteResult{},
+			wantErr: true,
+		},
 	}
 
-	hl := hitlist.New(hlTest.MockHasher{}, 1*time.Hour)
+	hl := hitlist.New(testutil.MockHasher{}, 1*time.Hour)
 	_ = hl.AddDomain("example", validator.Result{
 		Validations: validations.Validations(validations.FSyntax | validations.FMXLookup | validations.FValid),
 		Steps:       validations.Steps(validations.FSyntax),
@@ -129,7 +169,7 @@ func TestAutocompleteSvc_filter(t *testing.T) {
 	ctxExpired, cancel := context.WithTimeout(context.Background(), -1*time.Hour)
 	cancel()
 
-	hl := hitlist.New(hlTest.MockHasher{}, 1*time.Hour)
+	hl := hitlist.New(testutil.MockHasher{}, 1*time.Hour)
 	_ = hl.AddDomain("example", validator.Result{
 		Validations: validations.Validations(validations.FSyntax | validations.FMXLookup | validations.FValid),
 		Steps:       validations.Steps(validations.FSyntax),

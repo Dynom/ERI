@@ -8,13 +8,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	logRateLimiterDisabled    = "Rate Limiter disabled, no bucket defined."
+	logRateLimitThrottled     = "Rate limit: throttling request, will continue after delay"
+	logRateLimitAboveMaxDelay = "Rate limit: aborting request, above max allowed delay"
+)
+
 type TakeMaxDuration interface {
 	TakeMaxDuration(count int64, maxWait time.Duration) (time.Duration, bool)
 }
 
-func NewRateLimitHandler(logger logrus.FieldLogger, b TakeMaxDuration, maxDelay time.Duration) Middleware {
+func WithRateLimiter(logger logrus.FieldLogger, b TakeMaxDuration, maxDelay time.Duration) Middleware {
+	logger = logger.WithField("middleware", "rate_limiter")
+
 	if b == nil {
-		logger.Info("Rate Limiter disabled, no bucket defined.")
+		logger.Info(logRateLimiterDisabled)
 		return func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				h.ServeHTTP(w, r)
@@ -22,7 +30,6 @@ func NewRateLimitHandler(logger logrus.FieldLogger, b TakeMaxDuration, maxDelay 
 		}
 	}
 
-	logger = logger.WithField("middleware", "rate_limiter")
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			d, ok := b.TakeMaxDuration(1, maxDelay)
@@ -35,7 +42,7 @@ func NewRateLimitHandler(logger logrus.FieldLogger, b TakeMaxDuration, maxDelay 
 			})
 
 			if !ok {
-				logger.Warn("rate limit: aborting request, above max allowed delay")
+				logger.Warn(logRateLimitAboveMaxDelay)
 
 				w.WriteHeader(http.StatusTooManyRequests)
 				_, _ = fmt.Fprint(w, "Server busy, request aborted")
@@ -43,7 +50,7 @@ func NewRateLimitHandler(logger logrus.FieldLogger, b TakeMaxDuration, maxDelay 
 			}
 
 			if d > 0 {
-				logger.Warn("rate limit: throttling request, will continue after delay")
+				logger.Warn(logRateLimitThrottled)
 				time.Sleep(d)
 			}
 
