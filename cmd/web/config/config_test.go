@@ -18,14 +18,14 @@ func TestDuration_AsDuration(t *testing.T) {
 		want   time.Duration
 	}{
 		{
-			name: "test",
+			name: "Testing if duration set",
 			fields: fields{
 				duration: time.Hour,
 			},
 			want: time.Hour,
 		},
 		{
-			name: "",
+			name: "Testing with no duration",
 			fields: fields{
 				duration: time.Duration(0),
 			},
@@ -58,7 +58,7 @@ func TestDuration_Set(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test",
+			name: "Testing if durations set",
 			fields: fields{
 				duration: time.Hour,
 			},
@@ -68,7 +68,7 @@ func TestDuration_Set(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "",
+			name: "Testing with no duration",
 			fields: fields{
 				duration: time.Duration(0),
 			},
@@ -100,14 +100,14 @@ func TestDuration_String(t *testing.T) {
 		want   string
 	}{
 		{
-			name: "test",
+			name: "Testing if duration set",
 			fields: fields{
 				duration: time.Hour,
 			},
 			want: "1h0m0s",
 		},
 		{
-			name: "",
+			name: "Testing with no duration",
 			fields: fields{
 				duration: time.Duration(0),
 			},
@@ -140,7 +140,7 @@ func TestDuration_UnmarshalText(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test",
+			name: "Testing if duration set",
 			fields: fields{
 				duration: time.Hour,
 			},
@@ -150,7 +150,7 @@ func TestDuration_UnmarshalText(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "",
+			name: "Testing with no duration",
 			fields: fields{
 				duration: time.Duration(0),
 			},
@@ -184,7 +184,7 @@ func TestHeaders_Set(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Test",
+			name: "Testing if header set",
 			h: map[string]string{
 				"a":            "b",
 				"Content-Type": "application/json",
@@ -196,13 +196,22 @@ func TestHeaders_Set(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Testing zero value",
-			h:    map[string]string{},
+			name: "Testing with empty header",
+			h:    nil,
 			want: []string{},
 			args: args{
 				v: "Content-Type:application/json",
 			},
 			wantErr: false,
+		},
+		{
+			name: "Testing with invalid header",
+			h:    map[string]string{},
+			want: []string{},
+			args: args{
+				v: "test",
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -263,7 +272,7 @@ func TestLogFormat_Set(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test",
+			name: "Testing if LogFormat set",
 			vt:   "test",
 			want: "test",
 			args: args{
@@ -272,7 +281,7 @@ func TestLogFormat_Set(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "",
+			name: "Testing with empty input",
 			vt:   "",
 			want: "",
 			args: args{
@@ -300,12 +309,12 @@ func TestLogFormat_String(t *testing.T) {
 		want string
 	}{
 		{
-			name: "test",
+			name: "Testing if LogFormat set",
 			vt:   "test",
 			want: "test",
 		},
 		{
-			name: "",
+			name: "Testing with empty input",
 			vt:   "",
 			want: "",
 		},
@@ -331,8 +340,8 @@ func TestLogFormat_UnmarshalText(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test",
-			vt:   "test",
+			name: "Testing with LogFormat json",
+			vt:   "json",
 			want: "json",
 			args: args{
 				value: []byte("json"),
@@ -340,13 +349,22 @@ func TestLogFormat_UnmarshalText(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "",
-			vt:   "",
-			want: "json",
+			name: "Testing with LogFormat text",
+			vt:   "text",
+			want: "text",
 			args: args{
-				value: []byte("json"),
+				value: []byte("text"),
 			},
 			wantErr: false,
+		},
+		{
+			name: "Testing with unsupported value",
+			vt:   "test",
+			want: "test",
+			args: args{
+				value: []byte("test"),
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -373,7 +391,7 @@ func TestValidatorType_Set(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test",
+			name: "Testing if ValidatorType set",
 			vt:   "test",
 			want: "test",
 			args: args{
@@ -382,7 +400,7 @@ func TestValidatorType_Set(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "",
+			name: "Testing with empty input",
 			vt:   "",
 			want: "",
 			args: args{
@@ -410,12 +428,12 @@ func TestValidatorType_String(t *testing.T) {
 		want string
 	}{
 		{
-			name: "test",
+			name: "Testing if ValidatorType set",
 			vt:   "test",
 			want: "test",
 		},
 		{
-			name: "",
+			name: "Testing with empty input",
 			vt:   "",
 			want: "",
 		},
@@ -470,4 +488,78 @@ func TestValidatorTypes_AsStringSlice(t *testing.T) {
 			t.Errorf("Got %d, expected a length of %d", len(got), len(v))
 		}
 	})
+}
+
+func TestConfig_GetSensored(t *testing.T) {
+
+	cfg := Config{}
+	cfg.Backend.URL = "test"
+
+	const mask = "**masked**"
+
+	exp := Config{}
+	exp.Backend.URL = valueMask
+	exp.Hash.Key = valueMask
+	exp.Server.Profiler.Prefix = valueMask
+
+	tests := []struct {
+		name string
+		c    Config
+		want Config
+	}{
+		{
+			name: "Testing with valid input",
+			c:    cfg,
+			want: exp,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ret := tt.c.GetSensored()
+			if ret.Backend != tt.want.Backend && ret.Backend.URL != valueMask {
+				t.Errorf("GetSensored() got = %v, want %v", ret.Backend, tt.want.Backend)
+			}
+			if ret.Hash != tt.want.Hash && ret.Hash.Key != valueMask {
+				t.Errorf("GetSensored() got = %v, want %v", ret.Hash, tt.want.Hash)
+			}
+			if ret.Server.Profiler != tt.want.Server.Profiler && ret.Server.Profiler.Prefix != valueMask {
+				t.Errorf("GetSensored() got = %v, want %v", ret.Server.Profiler, tt.want.Server.Profiler)
+			}
+		})
+	}
+}
+
+func TestConfig_String(t *testing.T) {
+
+	cfg := Config{}
+
+	cfg2 := Config{}
+	cfg2.Server.ListenOn = "localhost:12345"
+
+	tests := []struct {
+		name          string
+		c             Config
+		shouldContain string
+	}{
+		{
+			name:          "Testing if string returned",
+			c:             cfg,
+			shouldContain: valueMask,
+		},
+		{
+			name:          "Testing if string returned",
+			c:             cfg2,
+			shouldContain: "localhost:12345",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.c.String()
+			if !strings.Contains(got, tt.shouldContain) {
+				t.Errorf("String GetSensored() got = %v, want %v", got, tt.shouldContain)
+			}
+		})
+	}
 }

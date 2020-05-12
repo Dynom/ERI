@@ -44,6 +44,7 @@ func (a *AutocompleteSvc) Autocomplete(ctx context.Context, domain string, limit
 		return AutocompleteResult{}, ErrInputTooLong
 	}
 
+	// Fetching a bit more, to create a greater change we're left with a proper limit when done filtering
 	list, err := a.finder.GetMatchingPrefix(ctx, domain, uint(limit*2))
 	if err != nil {
 		return AutocompleteResult{}, err
@@ -59,12 +60,12 @@ func (a *AutocompleteSvc) Autocomplete(ctx context.Context, domain string, limit
 	}, nil
 }
 
-func (a *AutocompleteSvc) filter(ctx context.Context, list []string, limit uint64) ([]string, error) {
-	var filteredList = make([]string, 0, limit)
+func (a *AutocompleteSvc) filter(ctx context.Context, list []string, limit uint64) (filteredList []string, err error) {
+	filteredList = make([]string, 0, limit)
 	for _, domain := range list {
 		if ctx.Err() != nil {
-			// @todo do we return a zero-value type, or whatever we currently have
-			return []string{}, ctx.Err()
+			err = ctx.Err()
+			break
 		}
 
 		if cnt := a.hitList.GetRecipientCount(hitlist.Domain(domain)); cnt >= a.recipientThreshold {
@@ -75,5 +76,5 @@ func (a *AutocompleteSvc) filter(ctx context.Context, list []string, limit uint6
 		}
 	}
 
-	return filteredList, nil
+	return
 }

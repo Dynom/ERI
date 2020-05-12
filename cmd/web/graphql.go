@@ -94,7 +94,7 @@ func NewGraphQLSchema(conf config.Config, suggestSvc *services.SuggestSvc, autoc
 				}
 
 				domain := value.(string)
-				result, err := autocompleteSvc.Autocomplete(p.Context, domain, conf.Server.Services.Autocomplete.MaxSuggestions)
+				result, err := autocompleteSvc.Autocomplete(p.Context, domain, conf.Services.Autocomplete.MaxSuggestions)
 				if err != nil {
 					return i, err
 				}

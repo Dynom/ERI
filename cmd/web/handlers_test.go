@@ -23,6 +23,7 @@ import (
 )
 
 func TestNewAutoCompleteHandler(t *testing.T) {
+	const maxBodySize = 1024
 	logger, hook := testLog.NewNullLogger()
 
 	refs := []string{
@@ -104,7 +105,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 		},
 		{
 			name:        "Too large POST body",
-			requestBody: strings.NewReader(strings.Repeat(".", int(erihttp.MaxBodySize)+1)),
+			requestBody: strings.NewReader(strings.Repeat(".", int(maxBodySize)+1)),
 			ctx:         context.Background(),
 			want: wants{
 				statusCode: 400,
@@ -150,7 +151,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			hook.Reset()
-			handlerFunc := NewAutoCompleteHandler(logger, svc, 10)
+			handlerFunc := NewAutoCompleteHandler(logger, svc, 10, maxBodySize)
 
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/", tt.requestBody)
@@ -194,6 +195,7 @@ func TestNewHealthHandler(t *testing.T) {
 }
 
 func TestNewSuggestHandler(t *testing.T) {
+	const maxBodySize = 1024
 	logger, hook := testLog.NewNullLogger()
 
 	refs := []string{
@@ -263,7 +265,7 @@ func TestNewSuggestHandler(t *testing.T) {
 		},
 		{
 			name:        "Too large POST body",
-			requestBody: strings.NewReader(strings.Repeat(".", int(erihttp.MaxBodySize)+1)),
+			requestBody: strings.NewReader(strings.Repeat(".", int(maxBodySize)+1)),
 			ctx:         context.Background(),
 			want: wants{
 				statusCode: 400,
@@ -308,7 +310,7 @@ func TestNewSuggestHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			hook.Reset()
-			handlerFunc := NewSuggestHandler(logger, svc)
+			handlerFunc := NewSuggestHandler(logger, svc, maxBodySize)
 
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/", tt.requestBody)
