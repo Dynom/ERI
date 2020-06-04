@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-// isStdinPiped returns true if our input is from a pipe
+// isStdinPiped returns true if stdin is from a pipe, or false when it's a tty/pts/etc.
 func isStdinPiped() bool {
 	fi, err := os.Stdin.Stat()
 	if err != nil {
@@ -16,6 +16,7 @@ func isStdinPiped() bool {
 	return isPiped(fi)
 }
 
+// isPiped returns true if the argument is a named pipe
 func isPiped(fi os.FileInfo) bool {
 	if fi == nil {
 		return false

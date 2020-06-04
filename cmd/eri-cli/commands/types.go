@@ -12,11 +12,11 @@ type ReportStats struct {
 }
 
 type CheckResultFull struct {
-	Email   string   `json:"email"`
+	Input   string   `json:"input"`
 	Valid   bool     `json:"valid"`
 	Checks  []string `json:"checks_run"`
 	Passed  []string `json:"checks_passed"`
-	Version int      `json:"version"`
+	Version uint     `json:"version"`
 }
 
 type CheckSettings struct {
@@ -26,8 +26,9 @@ type CheckSettings struct {
 }
 
 type checkOptions struct {
-	Resolver net.IP
-	TTL      time.Duration
+	Resolver      net.IP
+	TTL           time.Duration
+	InputIsDomain bool
 }
 
 type csvOptions struct {

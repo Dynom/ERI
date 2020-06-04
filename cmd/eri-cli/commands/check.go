@@ -31,7 +31,7 @@ Some examples:
   - cat list.csv | eri-cli check
   - echo "copy (select email from users) to STDOUT WITH CSV" | \
     psql <connection string> | \
-    eri-cli check | \
+    eri-cli check --resolver=8.8.8.8 | \
     tee result.json | \
     eri-cli report --only-invalid > report.json
 `,
@@ -93,8 +93,22 @@ Some examples:
 				continue
 			}
 
+			var parts types.EmailParts
+			if checkSettings.Check.InputIsDomain {
+				parts = types.EmailParts{
+					Address: email,
+					Domain:  email,
+				}
+			} else {
+				parts, err = types.NewEmailParts(email)
+				if err != nil {
+					cmd.PrintErr(err)
+					continue
+				}
+			}
+
 			ctx, cancel := context.WithTimeout(cmd.Context(), checkSettings.Check.TTL)
-			r, err := doCheck(ctx, v.CheckWithLookup, email)
+			r, err := doCheck(ctx, v.CheckWithLookup, parts)
 			cancel()
 
 			if err != nil {
@@ -110,19 +124,15 @@ Some examples:
 	},
 }
 
-func doCheck(ctx context.Context, fn validator.CheckFn, email string) (CheckResultFull, error) {
-	parts, err := types.NewEmailParts(email)
-	if err != nil {
-		return CheckResultFull{}, err
-	}
-
+func doCheck(ctx context.Context, fn validator.CheckFn, parts types.EmailParts) (CheckResultFull, error) {
 	var result = CheckResultFull{
-		Email:   email,
-		Version: 1,
+		Input:   parts.Address,
+		Version: 2,
 	}
 
-	checkResult := fn(ctx, parts)
 	{
+		checkResult := fn(ctx, parts)
+
 		result.Valid = checkResult.Validations.IsValid()
 		result.Passed = validations.Flag(checkResult.Validations.RemoveFlag(validations.FValid)).AsStringSlice()
 		result.Checks = validations.Flag(checkResult.Steps).AsStringSlice()
@@ -138,6 +148,7 @@ func init() {
 	//checkCmd.Flags().StringVar(&checkSettings.Format, "format", "csv", "Format to read. CSV works also for unquoted emails separated with a '\\n'")
 	checkCmd.Flags().Uint64Var(&checkSettings.CSV.skipRows, "csv-skip-rows", 0, "Rows to skip, useful when wanting to skip the header in CSV files")
 	checkCmd.Flags().Uint64Var(&checkSettings.CSV.column, "csv-column", 0, "The column to read email addresses from, 0-indexed")
-	checkCmd.Flags().IPVar(&checkSettings.Check.Resolver, "resolver", nil, "Custom resolver to use, otherwise system default is used")
-	checkCmd.Flags().DurationVar(&checkSettings.Check.TTL, "ttl", 1*time.Second, "Duration per check, e.g.: '2s' or '100ms'")
+	checkCmd.Flags().IPVar(&checkSettings.Check.Resolver, "resolver", nil, "Custom DNS resolver IP (e.g.: 1.1.1.1) to use, otherwise system default is used")
+	checkCmd.Flags().DurationVar(&checkSettings.Check.TTL, "ttl", 30*time.Second, "Max duration per check, e.g.: '2s' or '100ms'. When exceeded, a check is considered invalid")
+	checkCmd.Flags().BoolVar(&checkSettings.Check.InputIsDomain, "input-is-domain", false, "The input is a domain-name only. Checks if the domain could be valid to receive e-mail")
 }

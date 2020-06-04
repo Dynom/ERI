@@ -1,5 +1,6 @@
 package iterator
 
+// NewCallbackIterator provides an iterator interface based on closure callbacks
 func NewCallbackIterator(next func() bool, value func() (string, error), close func() error) *CallbackIterator {
 	return &CallbackIterator{
 		next:  next,

@@ -36,7 +36,7 @@ $ eri-cli check john.doe@example.org
 ```
 ```json
 {
-    "email": "john.doe@example.org",
+    "input": "john.doe@example.org",
     "passed": true,
     "checks_run": [
         "syntax",
