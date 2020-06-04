@@ -108,13 +108,8 @@ Some examples:
 			}
 
 			ctx, cancel := context.WithTimeout(cmd.Context(), checkSettings.Check.TTL)
-			r, err := doCheck(ctx, v.CheckWithLookup, parts)
+			r := doCheck(ctx, v.CheckWithLookup, parts)
 			cancel()
-
-			if err != nil {
-				cmd.PrintErrf("reading value %q, got: %s\n", email, err)
-				continue
-			}
 
 			err = jsonEncoder.Encode(r)
 			if err != nil {
@@ -124,7 +119,7 @@ Some examples:
 	},
 }
 
-func doCheck(ctx context.Context, fn validator.CheckFn, parts types.EmailParts) (CheckResultFull, error) {
+func doCheck(ctx context.Context, fn validator.CheckFn, parts types.EmailParts) CheckResultFull {
 	var result = CheckResultFull{
 		Input:   parts.Address,
 		Version: 2,
@@ -138,7 +133,7 @@ func doCheck(ctx context.Context, fn validator.CheckFn, parts types.EmailParts) 
 		result.Checks = validations.Flag(checkResult.Steps).AsStringSlice()
 	}
 
-	return result, nil
+	return result
 }
 
 func init() {
