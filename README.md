@@ -5,7 +5,7 @@
 
 
 # ERI
-Email Recipient Inspector is a project for preventing email typos. It's a self-learning service, or a command line utility, which you can employ to help users prevent mistakes when entering their email address.
+Email Recipient Inspector is a project for preventing email typos. It's a self-learning service, a library or a command line utility. The services can help your uses to prevent mistakes when entering their email address. The library allows you to incorporate the features in your own business layer and the cli can be used as a convenient way to test domains or e-mail addresses.
 
 # ERI as command line utility
 ## Installation
@@ -28,6 +28,8 @@ CLI Compagnion of ERI
   
   Use "eri-cli [command] --help" for more information about a command.
 ```
+## Download
+During every release, several binaries as created, you can find them on:  
 ## Basic usage
 Running
 ```bash
@@ -51,6 +53,9 @@ Produces
   "version": 2
 }
 ```
+
+_The version field, is for discriminating on future changes. Any change to the structure of the output will change the version number to a new unique value._
+
 ## With reporting
 ```bash
 $ bzcat domains.bz2 | \
@@ -171,7 +176,7 @@ A quick search will give you many hits for services that validate your list of e
 These services will give you a lot more functionality though.
 
 ### Mailcheck.js
-Mailcheck works completely in JavaScript, with options to white-list TLDs, domains etc. It differs from ERI in that ERI runs server-side, and it takes a self-learning approach, based on your existing users.
+Mailcheck works completely in JavaScript, with the option to use only known TLDs, domains etc. It differs from ERI in that ERI runs server-side, and it takes a self-learning approach, based on your existing users.
 
 
 # Email delivery nuances

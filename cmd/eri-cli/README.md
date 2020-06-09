@@ -36,17 +36,25 @@ $ eri-cli check john.doe@example.org
 ```
 ```json
 {
-    "input": "john.doe@example.org",
-    "passed": true,
-    "checks_run": [
-        "syntax",
-        "lookup",
-        "domainHasIP"
-    ]
+  "input": "john.doe@example.org",
+  "valid": true,
+  "checks_run": [
+    "syntax",
+    "lookup",
+    "domainHasIP"
+  ],
+  "checks_passed": [
+    "syntax",
+    "lookup",
+    "domainHasIP"
+  ],
+  "version": 2
 }
 ```
 
-_(This result is actually incorrect and only serves as an example)_
+Notes:
+- This result is actually incorrect and only serves as an example.
+- The version field, is for discriminating on future changes. Any change to the structure of the output will change the version number to a new unique value.
 
 #### Processing a list
 ```bash
