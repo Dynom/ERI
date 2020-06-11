@@ -131,10 +131,11 @@ Some examples:
 				}
 			} else {
 				parts, err = types.NewEmailParts(email)
-				if err != nil {
-					cmd.PrintErr(err)
-					continue
-				}
+			}
+
+			if err != nil {
+				cmd.PrintErr(err)
+				continue
 			}
 
 			wi.Process(werkit.CheckTask{
