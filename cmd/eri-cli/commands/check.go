@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Dynom/ERI/cmd/eri-cli/iterator"
+	"github.com/Dynom/ERI/cmd/eri-cli/werkit"
 	"github.com/Dynom/ERI/types"
 	"github.com/Dynom/ERI/validator"
 	"github.com/Dynom/ERI/validator/validations"
@@ -48,6 +49,14 @@ Some examples:
 			return errors.New("missing argument")
 		}
 
+		if checkSettings.Workers < 1 {
+			return errors.New("minimum number of workers is 1")
+		}
+
+		if checkSettings.Workers > 1024 {
+			return errors.New("maximum number of workers is 1024")
+		}
+
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -82,6 +91,27 @@ Some examples:
 		}
 
 		jsonEncoder := json.NewEncoder(cmd.OutOrStdout())
+
+		var workers = 1
+		if isStdinPiped() {
+			workers = int(checkSettings.Workers)
+		}
+
+		wi := werkit.WerkIt{}
+		wi.StartCheckWorkers(workers, func(tasks <-chan werkit.CheckTask) {
+			for task := range tasks {
+
+				ctx, cancel := context.WithTimeout(task.Ctx, checkSettings.Check.TTL)
+				r := doCheck(ctx, task.Fn, task.Parts)
+				cancel()
+
+				err := jsonEncoder.Encode(r)
+				if err != nil {
+					cmd.PrintErr(err)
+				}
+			}
+		})
+
 		for it.Next() {
 			email, err := it.Value()
 			if err != nil {
@@ -107,15 +137,14 @@ Some examples:
 				}
 			}
 
-			ctx, cancel := context.WithTimeout(cmd.Context(), checkSettings.Check.TTL)
-			r := doCheck(ctx, v.CheckWithLookup, parts)
-			cancel()
-
-			err = jsonEncoder.Encode(r)
-			if err != nil {
-				cmd.PrintErr(err)
-			}
+			wi.Process(werkit.CheckTask{
+				Ctx:   cmd.Context(),
+				Fn:    v.CheckWithLookup,
+				Parts: parts,
+			})
 		}
+
+		wi.Wait()
 	},
 }
 
@@ -146,4 +175,5 @@ func init() {
 	checkCmd.Flags().IPVar(&checkSettings.Check.Resolver, "resolver", nil, "Custom DNS resolver IP (e.g.: 1.1.1.1) to use, otherwise system default is used")
 	checkCmd.Flags().DurationVar(&checkSettings.Check.TTL, "ttl", 30*time.Second, "Max duration per check, e.g.: '2s' or '100ms'. When exceeded, a check is considered invalid")
 	checkCmd.Flags().BoolVar(&checkSettings.Check.InputIsDomain, "input-is-domain", false, "The input is a domain-name only. Checks if the domain could be valid to receive e-mail")
+	checkCmd.Flags().Uint64Var(&checkSettings.Workers, "workers", 50, "The number of concurrent workers to use when in piped mode (1-1024)")
 }

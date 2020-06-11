@@ -20,9 +20,10 @@ type CheckResultFull struct {
 }
 
 type CheckSettings struct {
-	Format string
-	CSV    csvOptions
-	Check  checkOptions
+	Format  string
+	CSV     csvOptions
+	Check   checkOptions
+	Workers uint64
 }
 
 type checkOptions struct {
