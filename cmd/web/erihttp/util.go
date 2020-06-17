@@ -1,6 +1,7 @@
 package erihttp
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,7 +20,12 @@ func GetBodyFromHTTPRequest(r *http.Request, maxBodySize int64) ([]byte, error) 
 	}
 
 	if ct := r.Header.Get("Content-Type"); ct != "application/json" {
-		return empty, ErrUnsupportedContentType
+		if len(ct) > 128 {
+			// An arbitrary number. If the header value exceeds this size, let's not bother logging it since it might be abuse
+			return empty, ErrUnsupportedContentType
+		}
+
+		return empty, fmt.Errorf("%w %q", ErrUnsupportedContentType, ct)
 	}
 
 	b, err := ioutil.ReadAll(io.LimitReader(r.Body, maxBodySize+1))
