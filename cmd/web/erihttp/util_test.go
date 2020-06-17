@@ -2,6 +2,7 @@ package erihttp
 
 import (
 	"bytes"
+	"errors"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -76,10 +77,20 @@ func TestGetBodyFromHTTPRequest(t *testing.T) {
 		},
 		{
 			wantErr: ErrUnsupportedContentType,
-			name:    "Content-Type/Wrong",
+			name:    "Content-Type/WrongShort",
 			req: func(_ []byte) *http.Request {
 				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
 				req.Header.Set("Content-Type", "plain/text")
+				return req
+			},
+			want: nil,
+		},
+		{
+			wantErr: ErrUnsupportedContentType,
+			name:    "Content-Type/WrongLong",
+			req: func(_ []byte) *http.Request {
+				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
+				req.Header.Set("Content-Type", strings.Repeat("foo", 128))
 				return req
 			},
 			want: nil,
@@ -91,10 +102,11 @@ func TestGetBodyFromHTTPRequest(t *testing.T) {
 			req := tt.req(tt.want)
 			got, err := GetBodyFromHTTPRequest(req, MaxBodySize)
 
-			if err != tt.wantErr {
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("GetBodyFromHTTPRequest() error = %v, wantErr %q", err, tt.wantErr)
 				return
 			}
+
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetBodyFromHTTPRequest() got = %v, want %v", got, tt.want)
 			}

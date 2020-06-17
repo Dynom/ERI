@@ -6,10 +6,12 @@ WORKDIR /ERI
 COPY . .
 
 RUN go test -test.short -test.v -test.race ./...
-RUN CGO_ENABLED=0 GO111MODULE=on go build -v -a -ldflags "-w -X main.Version=${VERSION}" ./cmd/web
-RUN CGO_ENABLED=0 GO111MODULE=on go build -v -a -ldflags "-w -X main.Version=${VERSION}" ./cmd/eri-cli
+RUN CGO_ENABLED=0 GO111MODULE=on go build -trimpath -v -a -ldflags "-w -X main.Version=${VERSION}" ./cmd/web
+RUN CGO_ENABLED=0 GO111MODULE=on go build -trimpath -v -a -ldflags "-w -X main.Version=${VERSION}" ./cmd/eri-cli
 
-FROM gcr.io/distroless/base:latest as base
+# @see https://github.com/GoogleContainerTools/distroless
+# This 🥑 base image provides Time Zone data and CA-certificates
+FROM gcr.io/distroless/static:latest as tzandca
 
 FROM scratch
 
@@ -23,8 +25,8 @@ LABEL org.label-schema.description="The Email Recipient Inspector Docker image."
       org.label-schema.vcs-ref="${GIT_REF}" \
       org.label-schema.version="${VERSION}"
 
-COPY --from=base ["/etc/ssl/certs/ca-certificates.crt", "/etc/ssl/certs/ca-certificates.crt"]
-COPY --from=base ["/usr/share/zoneinfo", "/usr/share/zoneinfo"]
+COPY --from=tzandca ["/etc/ssl/certs/ca-certificates.crt", "/etc/ssl/certs/ca-certificates.crt"]
+COPY --from=tzandca ["/usr/share/zoneinfo", "/usr/share/zoneinfo"]
 COPY --from=build ["/ERI/web", "/eri"]
 COPY --from=build ["/ERI/eri-cli", "/eri-cli"]
 COPY --from=build ["/ERI/cmd/web/config.toml", "/"]
