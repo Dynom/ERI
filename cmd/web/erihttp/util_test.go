@@ -30,10 +30,22 @@ func TestGetBodyFromHTTPRequest(t *testing.T) {
 			want: []byte("{}"),
 		},
 		{
+			wantErr: ErrInvalidRequest,
+			name:    "Not POST",
+			req: func(_ []byte) *http.Request {
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+				req.Body = nil
+
+				return req
+			},
+			want: nil,
+		},
+		{
 			wantErr: ErrMissingBody,
 			name:    "Nil body",
 			req: func(_ []byte) *http.Request {
-				req := httptest.NewRequest(http.MethodGet, "/", nil)
+				req := httptest.NewRequest(http.MethodPost, "/", nil)
 				req.Header.Set("Content-Type", "application/json")
 				req.Body = nil
 
