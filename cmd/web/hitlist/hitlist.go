@@ -88,16 +88,19 @@ func (hl *HitList) CreateInternalTypes(p types.EmailParts) (domain Domain, recip
 	return
 }
 
-func (hl *HitList) GetDomainValidationResult(d Domain) (validator.Result, bool) {
+func (hl *HitList) GetDomainValidationDetails(d Domain) (validator.Details, bool) {
 	hl.lock.RLock()
 	hit, ok := hl.hits[d]
 	hl.lock.RUnlock()
 
 	if ok {
-		return hit.ValidationResult, ok
+		return validator.Details{
+			Result:     hit.ValidationResult,
+			ValidUntil: hit.ValidUntil,
+		}, ok
 	}
 
-	return validator.Result{}, ok
+	return validator.Details{}, ok
 }
 
 // GetValidAndUsageSortedDomains returns the used domains, sorted by their associated recipients (high>low)
@@ -121,7 +124,12 @@ func (hl *HitList) GetRecipientCount(d Domain) (amount uint64) {
 }
 
 // AddInternalParts adds values considered "safe". Typically you would only use this on provisioning HitList from a storage layer
-func (hl *HitList) AddInternalParts(domain Domain, recipient Recipient, vr validator.Result, duration time.Duration) error {
+func (hl *HitList) AddInternalParts(domain Domain, recipient Recipient, vr validator.Result) error {
+	return hl.AddInternalPartsDuration(domain, recipient, vr, hl.ttl)
+}
+
+// AddInternalPartsDuration adds values considered "safe". Has an extra duration option which shouldn't be negative
+func (hl *HitList) AddInternalPartsDuration(domain Domain, recipient Recipient, vr validator.Result, duration time.Duration) error {
 
 	hl.lock.Lock()
 	defer hl.lock.Unlock()
@@ -151,37 +159,32 @@ func (hl *HitList) AddInternalParts(domain Domain, recipient Recipient, vr valid
 }
 
 func (hl *HitList) Add(parts types.EmailParts, vr validator.Result) error {
+	return hl.AddDeadline(parts, vr, hl.ttl)
+}
+
+// AddDeadline is similar to Add, but allows for custom TTL. Duration shouldn't be negative.
+func (hl *HitList) AddDeadline(parts types.EmailParts, vr validator.Result, duration time.Duration) error {
 	if parts.Local == "" {
 		return hl.AddDomain(parts.Domain, vr)
 	}
 
-	return hl.AddEmailAddress(parts.Address, vr)
-}
+	domain, safeLocal, err := hl.CreateInternalTypes(parts)
 
-// AddEmailAddressDeadline Same as AddEmailAddress, but allows for custom TTL. Duration shouldn't be negative.
-func (hl *HitList) AddEmailAddressDeadline(email string, vr validator.Result, duration time.Duration) error {
-	var domain Domain
-	var safeLocal Recipient
-
-	{
-		parts, err := types.NewEmailParts(email) // @todo prevent multiple calls to types.NewEmailParts()
-		if err != nil {
-			return err
-		}
-
-		domain, safeLocal, err = hl.CreateInternalTypes(parts)
-
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
 	}
 
-	return hl.AddInternalParts(domain, safeLocal, vr, duration)
+	return hl.AddInternalPartsDuration(domain, safeLocal, vr, duration)
 }
 
 // AddEmailAddress records validations for a particular e-mail address.
 func (hl *HitList) AddEmailAddress(email string, vr validator.Result) error {
-	return hl.AddEmailAddressDeadline(email, vr, hl.ttl)
+	parts, err := types.NewEmailParts(email)
+	if err != nil {
+		return err
+	}
+
+	return hl.AddDeadline(parts, vr, hl.ttl)
 }
 
 // AddDomain learns of a domain and it's validity.
@@ -221,15 +224,9 @@ func getValidDomains(hits Hits) []string {
 	}
 
 	var sortStats = make([]stats, 0, len(hits))
-
-	var now = time.Now()
 	for domain, details := range hits {
 
 		if !details.ValidationResult.Validations.IsValidationsForValidDomain() {
-			continue
-		}
-
-		if !details.ValidUntil.After(now) {
 			continue
 		}
 

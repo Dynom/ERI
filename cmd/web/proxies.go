@@ -35,22 +35,27 @@ func validatorHitListProxy(hitList *hitlist.HitList, logger logrus.FieldLogger, 
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 		var afn = options
 
-		cvr, exists := hitList.GetDomainValidationResult(hitlist.Domain(parts.Domain))
+		cvr, exists := hitList.GetDomainValidationDetails(hitlist.Domain(parts.Domain))
 
 		logger := logger.WithFields(logrus.Fields{
 			handlers.RequestID.String(): ctx.Value(handlers.RequestID),
 			"cache_hit":                 exists,
+			"valid_until":               cvr.ValidUntil.String(),
 		})
 
 		if exists {
-			afn = append(afn, func(artifact *validator.Artifact) {
-				logger.Debug("Running validator with cache from previous run")
+			if cvr.ValidUntil.After(time.Now()) {
+				afn = append(afn, func(artifact *validator.Artifact) {
+					logger.Debug("Running validator with cache from previous run")
 
-				// The cache allows us to skip expensive steps that we might be doing. However basic syntax validation should
-				// always be done. We're discriminating on domain, so we can't vouch for the entire address without a basic test
-				artifact.Steps = cvr.Steps.RemoveFlag(validations.FSyntax)
-				artifact.Validations = cvr.Validations.RemoveFlag(validations.FSyntax)
-			})
+					// The cache allows us to skip expensive steps that we might be doing. However basic syntax validation should
+					// always be done. We're discriminating on domain, so we can't vouch for the entire address without a basic test
+					artifact.Steps = cvr.Steps.RemoveFlag(validations.FSyntax)
+					artifact.Validations = cvr.Validations.RemoveFlag(validations.FSyntax)
+				})
+			} else {
+				logger.Debug("Not using stale cache entry from previous run")
+			}
 		}
 
 		vr := fn(ctx, parts, afn...)
