@@ -28,8 +28,10 @@ CLI Compagnion of ERI
   
   Use "eri-cli [command] --help" for more information about a command.
 ```
+
 ## Download
-During every release, several binaries as created, you can find them on:  
+During every release, several binaries as created, you can find them on: https://github.com/Dynom/ERI/releases.
+
 ## Basic usage
 Running
 ```bash

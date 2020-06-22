@@ -65,8 +65,8 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 		err = validator.ErrEmailAddressSyntax
 	}
 
-	if err == nil && vr.Validations.IsValid() {
-		return sr, nil
+	if vr.Validations.IsValid() {
+		return sr, err
 	}
 
 	// No result so far, proceeding with finding domains alternatives

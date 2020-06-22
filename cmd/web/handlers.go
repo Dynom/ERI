@@ -140,7 +140,7 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxB
 		{
 			var result services.SuggestResult
 			result, sugErr = svc.Suggest(r.Context(), req.Email)
-			if sugErr == nil && len(result.Alternatives) > 0 {
+			if len(result.Alternatives) > 0 {
 				alts = append(alts[0:0], result.Alternatives...)
 			}
 		}
