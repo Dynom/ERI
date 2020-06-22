@@ -146,7 +146,6 @@ func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitLi
 	}
 
 	return checkValidator
-
 }
 
 func registerHealthHandler(mux *http.ServeMux, logger logrus.FieldLogger) {
@@ -323,6 +322,6 @@ func writeErrorJSONResponse(logger logrus.FieldLogger, w http.ResponseWriter, re
 			"error":         err,
 			"bytes_written": c,
 		}).Error("Failed to write response")
-		return
 	}
+
 }
