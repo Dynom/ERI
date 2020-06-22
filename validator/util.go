@@ -24,7 +24,7 @@ func getNewArtifact(ctx context.Context, ep types.EmailParts, options ...Artifac
 		Steps:       0,
 		Timings:     make(Timings, 10),
 		email:       ep,
-		mx:          []string{""},
+		mx:          nil,
 		ctx:         ctx,
 		dialer: &net.Dialer{
 			Timeout: time.Second * 60,
@@ -92,11 +92,11 @@ func fetchMXHosts(ctx context.Context, resolver LookupMX, domain string) ([]stri
 
 	mxs, err := resolver.LookupMX(ctx, domain)
 	if err != nil {
-		return []string{}, fmt.Errorf("MX lookup failed %w", err)
+		return nil, fmt.Errorf("MX lookup failed %w", err)
 	}
 
 	if len(mxs) == 0 {
-		return []string{}, fmt.Errorf("no MX records found %w", err)
+		return nil, fmt.Errorf("no MX records found %w", err)
 	}
 
 	// Reading an external source, limiting to a liberal amount

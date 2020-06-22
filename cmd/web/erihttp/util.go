@@ -11,6 +11,15 @@ import (
 func GetBodyFromHTTPRequest(r *http.Request, maxBodySize int64) ([]byte, error) {
 	var empty []byte
 
+	if r.Method != http.MethodPost {
+		if len(r.Method) > 16 {
+			// If the method value exceeds this size, let's not bother logging it since it might be abuse. Number is arbitrary
+			return empty, ErrInvalidRequest
+		}
+
+		return empty, fmt.Errorf("%w HTTP Method %q is unsupported", ErrInvalidRequest, r.Method)
+	}
+
 	if r.Body == nil {
 		return empty, ErrMissingBody
 	}
@@ -21,7 +30,7 @@ func GetBodyFromHTTPRequest(r *http.Request, maxBodySize int64) ([]byte, error) 
 
 	if ct := r.Header.Get("Content-Type"); ct != "application/json" {
 		if len(ct) > 128 {
-			// An arbitrary number. If the header value exceeds this size, let's not bother logging it since it might be abuse
+			// If the header value exceeds this size, let's not bother logging it since it might be abuse. Number is arbitrary
 			return empty, ErrUnsupportedContentType
 		}
 

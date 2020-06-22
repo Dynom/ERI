@@ -44,7 +44,7 @@ func (a *AutocompleteSvc) Autocomplete(ctx context.Context, domain string, limit
 		return AutocompleteResult{}, ErrInputTooLong
 	}
 
-	// Fetching a bit more, to create a greater change we're left with a proper limit when done filtering
+	// Fetching a bit more, to have a greater chance that we're left with enough when we're done with filtering
 	list, err := a.finder.GetMatchingPrefix(ctx, domain, uint(limit*2))
 	if err != nil {
 		return AutocompleteResult{}, err

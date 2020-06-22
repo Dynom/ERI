@@ -183,6 +183,7 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxB
 }
 
 func NewHealthHandler(logger logrus.FieldLogger) http.HandlerFunc {
+	var ok = []byte("OK")
 
 	logger = logger.WithField("handler", "health")
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -192,9 +193,9 @@ func NewHealthHandler(logger logrus.FieldLogger) http.HandlerFunc {
 		w.Header().Set("content-type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 
-		_, err := w.Write([]byte("OK"))
+		_, err := w.Write(ok)
 		if err != nil {
-			logger.WithError(err).Error("failed to write in health handler")
+			logger.WithError(err).Error("failed to write to http.ResponseWriter")
 		}
 	}
 }
