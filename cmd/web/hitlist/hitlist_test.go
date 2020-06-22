@@ -134,8 +134,10 @@ func TestHitList_FunctionalAddAndReturn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hl := New(h, ttl)
-			if err := hl.AddEmailAddressDeadline(tt.args.email, tt.args.vr, ttl); (err != nil) != tt.wantErr {
-				t.Errorf("AddEmailAddressDeadline() error = %v, wantErr %v", err, tt.wantErr)
+
+			parts, _ := types.NewEmailParts(tt.args.email)
+			if err := hl.AddDeadline(parts, tt.args.vr, ttl); (err != nil) != tt.wantErr {
+				t.Errorf("AddDeadline() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if len(hl.hits) != tt.wantTotalDomains {
@@ -258,10 +260,10 @@ func TestHitList_AddEmailAddressDeadline(t *testing.T) {
 				h:    tt.fields.h,
 			}
 
-			email := tt.args.emailLocal + `@` + tt.args.emailDomain
+			parts := types.NewEmailFromParts(tt.args.emailLocal, tt.args.emailDomain)
 
-			if err := hl.AddEmailAddressDeadline(email, tt.args.vr, tt.args.duration); (err != nil) != tt.wantErr {
-				t.Errorf("AddEmailAddressDeadline() error = %v, wantErr %v", err, tt.wantErr)
+			if err := hl.AddDeadline(parts, tt.args.vr, tt.args.duration); (err != nil) != tt.wantErr {
+				t.Errorf("AddDeadline() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			hit, ok := hl.hits[Domain(tt.args.emailDomain)]
@@ -334,11 +336,20 @@ func TestHitList_GetValidAndUsageSortedDomains(t *testing.T) {
 
 	_ = populatedHitListFaultyDomains.AddEmailAddress("jane.doe@eXamplE.org", validVR)
 
-	populatedHitListExpiredDomains := New(mockHasher{}, time.Hour*1 /* Not used for this test set */)
-	_ = populatedHitListExpiredDomains.AddEmailAddressDeadline("john.doe@example.org", validVR, 0)
-	_ = populatedHitListExpiredDomains.AddEmailAddressDeadline("alexander@example.com", validVR, 0)
+	np := func(email string) types.EmailParts {
+		p, err := types.NewEmailParts(email)
+		if err != nil {
+			t.Fatalf("Invalid test data %q", email)
+		}
 
-	_ = populatedHitListExpiredDomains.AddEmailAddressDeadline("jane.doe@example.org", validVR, 0)
+		return p
+	}
+
+	populatedHitListExpiredDomains := New(mockHasher{}, time.Hour*1 /* Not used for this test set */)
+	_ = populatedHitListExpiredDomains.AddDeadline(np("john.doe@example.org"), validVR, 0)
+	_ = populatedHitListExpiredDomains.AddDeadline(np("alexander@example.com"), validVR, 0)
+
+	_ = populatedHitListExpiredDomains.AddDeadline(np("jane.doe@example.org"), validVR, 0)
 
 	type fields struct {
 		hits Hits
@@ -378,6 +389,8 @@ func TestHitList_GetValidAndUsageSortedDomains(t *testing.T) {
 			},
 		},
 		{
+			// Domains with a "ValidUntil" date in the past are no longer fresh, but can still be considered valid at this
+			// point. This property should be an indicator to a caching layer to determine if it's information is stale.
 			name: "With expired domains",
 			fields: fields{
 				hits: populatedHitListExpiredDomains.hits,
@@ -385,7 +398,10 @@ func TestHitList_GetValidAndUsageSortedDomains(t *testing.T) {
 				lock: sync.RWMutex{},
 				h:    populatedHitListExpiredDomains.h,
 			},
-			want: []string{},
+			want: []string{
+				"example.org",
+				"example.com",
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -600,7 +616,7 @@ func TestHitList_Add(t *testing.T) {
 			}
 
 			domain := Domain(tt.args.parts.Domain)
-			_, exists := hl.GetDomainValidationResult(domain)
+			_, exists := hl.GetDomainValidationDetails(domain)
 			if exists != tt.domainAdded {
 				t.Errorf("Domain wasn't added, while it should've been")
 			}

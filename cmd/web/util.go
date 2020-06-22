@@ -215,7 +215,7 @@ func createPersister(conf config.Config, logger logrus.FieldLogger, hitList *hit
 	var added uint64
 	logger.Debug("Backend defined, starting read and building memory structures")
 	err := backend.Range(context.Background(), func(d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error {
-		err := hitList.AddInternalParts(d, r, vr, time.Hour*60)
+		err := hitList.AddInternalParts(d, r, vr)
 		if err != nil {
 			logger.WithError(err).Warn("Unable to hydrate hitList")
 		}
