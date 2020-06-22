@@ -61,9 +61,11 @@ func Test_fetchMXHosts(t *testing.T) {
 		{name: "Happy flow", want: []string{"mx1.example.org"}, args: args{hosts: []string{"mx1.example.org"}}},
 
 		// The bad
-		{wantErr: true, name: "no MX records", want: []string{}, args: args{hosts: []string{}}},
+		{wantErr: true, name: "no MX records", want: nil, args: args{hosts: []string{}}},
+		{wantErr: true, name: "lookup error", want: nil, args: args{hosts: []string{"."}, err: errors.New("err")}},
+
+		// We had a result, but all were invalid. The result is an empty slice instead of a nil slice.
 		{wantErr: true, name: "malformed MX records", want: []string{}, args: args{hosts: []string{"."}}},
-		{wantErr: true, name: "lookup error", want: []string{}, args: args{hosts: []string{"."}, err: errors.New("err")}},
 	}
 
 	ctx := context.Background()
@@ -78,7 +80,7 @@ func Test_fetchMXHosts(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("fetchMXHosts() got = %v, want %v", got, tt.want)
+				t.Errorf("fetchMXHosts() got = %#v, want %#v", got, tt.want)
 			}
 		})
 	}
