@@ -9,6 +9,10 @@ var (
 	ErrUnsupportedContentType = errors.New("unsupported content-type")
 )
 
+var (
+	empty = make([]string, 0)
+)
+
 type ERIResponse interface {
 
 	// Hacking around Generics, like it's 1999.
@@ -22,7 +26,7 @@ type AutoCompleteResponse struct {
 
 func (r *AutoCompleteResponse) PrepareResponse() {
 	if r.Suggestions == nil {
-		r.Suggestions = []string{}
+		r.Suggestions = empty
 	}
 }
 
@@ -34,7 +38,7 @@ type SuggestResponse struct {
 
 func (r *SuggestResponse) PrepareResponse() {
 	if r.Alternatives == nil {
-		r.Alternatives = []string{}
+		r.Alternatives = empty
 	}
 }
 
