@@ -61,6 +61,7 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 			"steps":       vr.Steps.String(),
 			"validations": vr.Validations.String(),
 		}).Debug("Input doesn't have a valid structure")
+
 		err = validator.ErrEmailAddressSyntax
 	}
 
@@ -82,7 +83,7 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 		parts := types.NewEmailFromParts(parts.Local, alt)
 		return SuggestResult{
 			Alternatives: []string{parts.Address},
-		}, nil
+		}, err
 	}
 
 	return sr, err
