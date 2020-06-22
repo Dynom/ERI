@@ -14,8 +14,6 @@ func NewContext(parent context.Context) *Context {
 type Context struct {
 	parent    context.Context
 	errEvalFn ErrEvalFn
-
-	//context.Context
 }
 
 type ErrEvalFn func(parent context.Context) error
