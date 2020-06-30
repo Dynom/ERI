@@ -1,5 +1,7 @@
 # Ignore all by default
 *
+docker/*
+dist/*
 
 # This doesn't work as advertised, compared to .gitignore. Keeping it in to not break stuff, this basically resets
 # the previous statement

@@ -15,6 +15,7 @@ import (
 	"github.com/Dynom/ERI/validator"
 	"github.com/Dynom/ERI/validator/validations"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var (
@@ -29,6 +30,7 @@ var checkCmd = &cobra.Command{
 Some examples:
 
   - eri-cli check john.doe@example.org
+  - eri-cli check example.org
   - cat list.csv | eri-cli check
   - echo "copy (select email from users) to STDOUT WITH CSV" | \
     psql <connection string> | \
@@ -37,15 +39,17 @@ Some examples:
     eri-cli report --only-invalid > report.json
 `,
 	Args: func(cmd *cobra.Command, args []string) error {
+
+		var stdInFromTerminal = terminal.IsTerminal(int(os.Stdin.Fd()))
 		if len(args) > 1 {
 			return errors.New("too many arguments, expected 0 or 1")
 		}
 
-		if len(args) > 0 && isStdinPiped() {
+		if len(args) > 0 && !stdInFromTerminal {
 			return errors.New("can't read both from stdin and argument")
 		}
 
-		if len(args) == 0 && !isStdinPiped() {
+		if len(args) == 0 && stdInFromTerminal {
 			return errors.New("missing argument")
 		}
 
@@ -67,18 +71,20 @@ Some examples:
 
 		v := validator.NewEmailAddressValidator(dialer)
 
+		var workers = int(checkSettings.Workers)
 		var it *iterator.CallbackIterator
 		if len(args) > 0 {
 			it = createTextIterator(strings.NewReader(args[0]))
-		} else if isStdinPiped() {
+			workers = 1
+		} else {
 			switch checkSettings.Format {
 			case "":
 				fallthrough
 			case "csv":
-				it = createCSVIterator(os.Stdin)
+				it = createCSVIterator(cmd.InOrStdin())
 			case "text":
 				// @todo this can probably go, since the liberal CSV parser handles the default text use-case as well
-				it = createTextIterator(os.Stdin)
+				it = createTextIterator(cmd.InOrStdin())
 			default:
 				cmd.PrintErrf("bad format %q", checkSettings.Format)
 				return
@@ -91,12 +97,6 @@ Some examples:
 		}
 
 		jsonEncoder := json.NewEncoder(cmd.OutOrStdout())
-
-		var workers = 1
-		if isStdinPiped() {
-			workers = int(checkSettings.Workers)
-		}
-
 		wi := werkit.WerkIt{}
 		wi.StartCheckWorkers(workers, func(tasks <-chan werkit.CheckTask) {
 			for task := range tasks {
@@ -123,19 +123,17 @@ Some examples:
 				continue
 			}
 
-			var parts types.EmailParts
-			if checkSettings.Check.InputIsDomain {
-				parts = types.EmailParts{
-					Address: email,
-					Domain:  email,
-				}
-			} else {
-				parts, err = types.NewEmailParts(email)
-			}
-
+			parts, err := types.NewEmailParts(email)
 			if err != nil {
-				cmd.PrintErr(err)
-				continue
+				if err == types.ErrInvalidEmailAddress && !checkSettings.Check.InputIsEmailAddress {
+					parts = types.EmailParts{
+						Address: email,
+						Domain:  email,
+					}
+				} else {
+					cmd.PrintErr(err)
+					continue
+				}
 			}
 
 			wi.Process(werkit.CheckTask{
@@ -175,6 +173,6 @@ func init() {
 	checkCmd.Flags().Uint64Var(&checkSettings.CSV.column, "csv-column", 0, "The column to read email addresses from, 0-indexed")
 	checkCmd.Flags().IPVar(&checkSettings.Check.Resolver, "resolver", nil, "Custom DNS resolver IP (e.g.: 1.1.1.1) to use, otherwise system default is used")
 	checkCmd.Flags().DurationVar(&checkSettings.Check.TTL, "ttl", 30*time.Second, "Max duration per check, e.g.: '2s' or '100ms'. When exceeded, a check is considered invalid")
-	checkCmd.Flags().BoolVar(&checkSettings.Check.InputIsDomain, "input-is-domain", false, "The input is a domain-name only. Checks if the domain could be valid to receive e-mail")
+	checkCmd.Flags().BoolVar(&checkSettings.Check.InputIsEmailAddress, "input-is-email", false, "If the input isn't an e-mail address, don't fall back on domain only checks")
 	checkCmd.Flags().Uint64Var(&checkSettings.Workers, "workers", 50, "The number of concurrent workers to use when in piped mode (1-1024)")
 }

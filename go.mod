@@ -22,8 +22,9 @@ require (
 	github.com/sirupsen/logrus v1.5.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5 // indirect
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
-	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f // indirect
+	golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4 // indirect
 	golang.org/x/tools v0.0.0-20200408032209-46bd65c8538f // indirect
 	google.golang.org/api v0.21.0
 	google.golang.org/genproto v0.0.0-20200407120235-9eb9bb161a06 // indirect

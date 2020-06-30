@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"fmt"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -19,6 +21,33 @@ type CheckResultFull struct {
 	Version uint     `json:"version"`
 }
 
+func (c CheckResultFull) String() string {
+	var result = new(strings.Builder)
+	var err error
+
+	f := func(format string, arg ...interface{}) {
+		if err != nil {
+			return
+		}
+
+		_, err = fmt.Fprintf(result, format, arg...)
+	}
+
+	var valid = "invalid"
+	if c.Valid {
+		valid = "valid"
+	}
+
+	f("%-7s ", valid)
+	f("Checks:%-27s ", fmt.Sprintf("%+v", c.Checks))
+	f("Passed:%-27s ", fmt.Sprintf("%+v", c.Passed))
+	f("Version:%d ", c.Version)
+
+	f("%s", c.Input)
+
+	return result.String()
+}
+
 type CheckSettings struct {
 	Format  string
 	CSV     csvOptions
@@ -27,9 +56,9 @@ type CheckSettings struct {
 }
 
 type checkOptions struct {
-	Resolver      net.IP
-	TTL           time.Duration
-	InputIsDomain bool
+	Resolver            net.IP
+	TTL                 time.Duration
+	InputIsEmailAddress bool
 }
 
 type csvOptions struct {
