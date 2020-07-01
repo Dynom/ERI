@@ -17,6 +17,11 @@ const (
 	RFStats ReportFormat = "stats"
 )
 
+const (
+	outputFormatJSON = "json"
+	outputFormatText = "text"
+)
+
 type ReportFormat string
 
 type ReportSettings struct {
@@ -57,8 +62,8 @@ var reportCmd = &cobra.Command{
 		}
 
 		switch reportSettings.Format {
-		case "json":
-		case "text":
+		case outputFormatJSON:
+		case outputFormatText:
 		default:
 			return fmt.Errorf("unsupported format %q", reportSettings.Format)
 		}
@@ -67,7 +72,7 @@ var reportCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		var encoder Encoder
-		if reportSettings.Format == "json" {
+		if reportSettings.Format == outputFormatJSON {
 			encoder = json.NewEncoder(cmd.OutOrStdout())
 		} else {
 			encoder = &toEncode{
@@ -144,7 +149,7 @@ var reportCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(reportCmd)
 
-	reportCmd.Flags().StringVar(&reportSettings.Format, "format", "json", "The format in which to report in, supported id: 'text' or 'json'")
+	reportCmd.Flags().StringVar(&reportSettings.Format, "format", outputFormatJSON, "The format in which to report in, supported id: '"+outputFormatText+"' or '"+outputFormatJSON+"'")
 	reportCmd.Flags().BoolVar(&reportSettings.OnlyInvalid, "only-invalid", false, "Only report rejected checks (ignored when report is stats)")
-	reportCmd.Flags().StringVar(&reportSettings.Details, "details", "full", "Type of report, supported is: 'stats' or 'full'")
+	reportCmd.Flags().StringVar(&reportSettings.Details, "details", string(RFFull), "Type of report, supported is: '"+string(RFStats)+"' or '"+string(RFFull)+"'")
 }
