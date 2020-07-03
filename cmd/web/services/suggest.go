@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
 
@@ -35,16 +36,17 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 	// @todo make this configurable and Algorithm dependent
 	const finderThreshold = 0.8
 
+	var emailStrLower = strings.ToLower(email)
 	var sr = SuggestResult{
 		Alternatives: []string{email},
 	}
 
 	log := c.logger.WithFields(logrus.Fields{
 		handlers.RequestID.String(): ctx.Value(handlers.RequestID),
-		"email":                     email,
+		"email":                     emailStrLower,
 	})
 
-	parts, partsErr := types.NewEmailParts(email)
+	parts, partsErr := types.NewEmailParts(emailStrLower)
 	if partsErr != nil {
 		log.WithError(partsErr).Debug("Unable to split input")
 		return sr, validator.ErrEmailAddressSyntax
