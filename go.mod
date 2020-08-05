@@ -8,8 +8,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Dynom/TySug v0.1.4
 	github.com/NYTimes/gziphandler v1.1.1
-	github.com/Pimmr/rig v1.0.1
-	github.com/alextanhongpin/stringdist v0.0.1 // indirect
+	github.com/Pimmr/rig v1.0.4
 	github.com/graphql-go/graphql v0.7.9
 	github.com/graphql-go/handler v0.2.3
 	github.com/juju/ratelimit v1.0.1
