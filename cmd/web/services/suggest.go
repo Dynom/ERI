@@ -32,9 +32,10 @@ type SuggestResult struct {
 	Alternatives []string
 }
 
+// @todo make this configurable and Algorithm dependent
+const finderThreshold = 0.8
+
 func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, error) {
-	// @todo make this configurable and Algorithm dependent
-	const finderThreshold = 0.8
 
 	var emailStrLower = strings.ToLower(email)
 	var sr = SuggestResult{
@@ -67,28 +68,36 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 		err = validator.ErrEmailAddressSyntax
 	}
 
-	if vr.Validations.IsValid() {
-		return sr, err
-	}
+	if !vr.Validations.IsValid() {
 
-	// No result so far, proceeding with finding domains alternatives
-	alt, score, exact := c.finder.FindCtx(ctx, parts.Domain)
-
-	log.WithFields(logrus.Fields{
-		"alt":         alt,
-		"score":       score,
-		"exact":       exact,
-		"ctx_expired": didDeadlineExpire(ctx),
-	}).Debug("Used Finder")
-
-	if score > finderThreshold {
-		parts := types.NewEmailFromParts(parts.Local, alt)
-		return SuggestResult{
-			Alternatives: []string{parts.Address},
-		}, err
+		// No result so far, proceeding with finding domain alternatives
+		alts := c.getAlternatives(ctx, parts)
+		if len(alts) > 0 {
+			sr.Alternatives = alts
+		}
 	}
 
 	return sr, err
+}
+
+func (c *SuggestSvc) getAlternatives(ctx context.Context, parts types.EmailParts) []string {
+
+	alt, score, exact := c.finder.FindCtx(ctx, parts.Domain)
+
+	c.logger.WithFields(logrus.Fields{
+		handlers.RequestID.String(): ctx.Value(handlers.RequestID),
+		"alt":                       alt,
+		"score":                     score,
+		"threshold_met":             score > finderThreshold,
+		"exact":                     exact,
+		"ctx_expired":               didDeadlineExpire(ctx),
+	}).Debug("Used Finder")
+
+	if score > finderThreshold {
+		parts = types.NewEmailFromParts(parts.Local, alt)
+	}
+
+	return []string{parts.Address}
 }
 
 func didDeadlineExpire(ctx context.Context) bool {
