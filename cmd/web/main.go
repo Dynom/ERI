@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Dynom/ERI/cmd/web/preferrer"
 	"github.com/Dynom/ERI/cmd/web/pubsub/gcp"
 	"github.com/Dynom/ERI/runtimer"
 	"github.com/rs/cors"
@@ -110,8 +111,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	prefer := preferrer.New(preferrer.Mapping(conf.Services.Suggest.Prefer))
+
 	validatorFn := createProxiedValidator(conf, logger, hitList, myFinder, pubSubSvc, persister)
-	suggestSvc := services.NewSuggestService(myFinder, validatorFn, logger)
+	suggestSvc := services.NewSuggestService(myFinder, validatorFn, prefer, logger)
 	autocompleteSvc := services.NewAutocompleteService(myFinder, hitList, conf.Services.Autocomplete.RecipientThreshold, logger)
 
 	mux := http.NewServeMux()
