@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -73,6 +74,9 @@ type Config struct {
 			RecipientThreshold uint64 `toml:"recipientThreshold" usage:"Define the minimum amount of recipients a domain needs before allowed in the autocomplete"`
 			MaxSuggestions     uint64 `toml:"maxSuggestions" usage:"The maximum number of suggestions to return"`
 		} `toml:"autocomplete"`
+		Suggest struct {
+			Prefer Preferred `toml:"prefer" env:"-" usage:"A repeatable flag to create a preference list for common alternatives, example.com=example.org"`
+		} `toml:"suggest"`
 	} `toml:"services"`
 	Backend struct {
 		Driver             string `toml:"driver" usage:"List a driver to use, currently supporting: 'memory' or 'postgres'"`
@@ -112,6 +116,40 @@ func (c Config) GetSensored() Config {
 
 func (c *Config) String() string {
 	return fmt.Sprintf("%+v", c.GetSensored())
+}
+
+type Preferred map[string]string
+
+func (p Preferred) String() string {
+	var v string
+	for header, value := range p {
+		v += `"` + header + `" -> "` + value + `",`
+	}
+
+	if len(v) > 0 {
+		v = v[0 : len(v)-1]
+	}
+
+	return v
+}
+
+func (p *Preferred) Set(v string) error {
+	s := strings.SplitN(v, `=`, 2)
+	if len(s) != 2 {
+		return fmt.Errorf("invalid Preferred alternative argument %q, expecting <domain>=<preferred domain>", v)
+	}
+
+	if *p == nil {
+		*p = make(map[string]string, 1)
+	}
+
+	if _, exists := (*p)[s[0]]; exists {
+		return errors.New("duplicate preferred mapping specified")
+	}
+
+	(*p)[s[0]] = s[1]
+
+	return nil
 }
 
 type Headers map[string]string

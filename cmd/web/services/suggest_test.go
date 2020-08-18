@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Dynom/ERI/cmd/web/preferrer"
 	"github.com/sirupsen/logrus"
 
 	"github.com/sirupsen/logrus/hooks/test"
@@ -44,6 +45,7 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 		validator   validator.CheckFn
 		finderList  []string
 		logContains string
+		preferMap   preferrer.Mapping
 	}{
 		{
 			name:       "All good",
@@ -54,12 +56,30 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			finderList: []string{},
 		},
 		{
+			name:       "Including preferred",
+			email:      "john.doe@example.com",
+			want:       SuggestResult{Alternatives: []string{"john.doe@example.org", "john.doe@example.com"}},
+			wantErr:    false,
+			validator:  createMockValidator(validations.FSyntax|validations.FValid, validations.FSyntax|validations.FValid),
+			finderList: []string{"example.com", "example.org"},
+			preferMap:  preferrer.Mapping{"example.com": "example.org"},
+		},
+		{
 			name:       "Invalid domain, should fall back on finder",
 			email:      "john.doe@example.or",
 			want:       SuggestResult{Alternatives: []string{"john.doe@example.org"}},
 			wantErr:    false,
 			validator:  createMockValidator(validations.FSyntax, validations.FSyntax),
 			finderList: []string{"example.org"},
+		},
+		{
+			name:       "Invalid domain, should fall back on finder and be corrected by preferrer",
+			email:      "john.doe@example.cm",
+			want:       SuggestResult{Alternatives: []string{"john.doe@example.org"}},
+			wantErr:    false,
+			validator:  createMockValidator(validations.FSyntax, validations.FSyntax),
+			finderList: []string{"example.org"},
+			preferMap:  preferrer.Mapping{"example.com": "example.org"},
 		},
 		{
 			name:       "Invalid domain, finder has no alternative",
@@ -99,7 +119,9 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 				return
 			}
 
-			svc := NewSuggestService(f, tt.validator, logger)
+			p := preferrer.New(tt.preferMap)
+
+			svc := NewSuggestService(f, tt.validator, p, logger)
 			got, err := svc.Suggest(context.Background(), tt.email)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Suggest() error = %v, wantErr %v", err, tt.wantErr)

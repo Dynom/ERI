@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
+	"github.com/Dynom/ERI/cmd/web/preferrer"
 
 	"github.com/Dynom/ERI/validator"
 
@@ -14,11 +15,16 @@ import (
 	"github.com/Dynom/TySug/finder"
 )
 
-func NewSuggestService(f *finder.Finder, val validator.CheckFn, logger logrus.FieldLogger) *SuggestSvc {
+func NewSuggestService(f *finder.Finder, val validator.CheckFn, prefer preferrer.HasPreferred, logger logrus.FieldLogger) *SuggestSvc {
+	if prefer == nil {
+		prefer = preferrer.New(nil)
+	}
+
 	return &SuggestSvc{
 		finder:    f,
 		validator: val,
 		logger:    logger.WithField("svc", "suggest"),
+		prefer:    prefer,
 	}
 }
 
@@ -26,15 +32,17 @@ type SuggestSvc struct {
 	finder    *finder.Finder
 	validator validator.CheckFn
 	logger    *logrus.Entry
+	prefer    preferrer.HasPreferred
 }
 
 type SuggestResult struct {
 	Alternatives []string
 }
 
+// @todo make this configurable and Algorithm dependent
+const finderThreshold = 0.8
+
 func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, error) {
-	// @todo make this configurable and Algorithm dependent
-	const finderThreshold = 0.8
 
 	var emailStrLower = strings.ToLower(email)
 	var sr = SuggestResult{
@@ -67,28 +75,54 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 		err = validator.ErrEmailAddressSyntax
 	}
 
-	if vr.Validations.IsValid() {
-		return sr, err
+	if !vr.Validations.IsValid() {
+
+		// No result so far, proceeding with finding domain alternatives
+		alts := c.getAlternatives(ctx, parts)
+		if len(alts) > 0 {
+			sr.Alternatives = alts
+		}
 	}
 
-	// No result so far, proceeding with finding domains alternatives
+	var alts = make([]string, 0, len(sr.Alternatives))
+	for _, alt := range sr.Alternatives {
+		parts, err := types.NewEmailParts(alt)
+		if err != nil {
+			log.WithError(err).Error("Input doesn't have valid structure")
+			continue
+		}
+
+		if preferred, exists := c.prefer.HasPreferred(parts); exists {
+			parts := types.NewEmailFromParts(parts.Local, preferred)
+			alts = append(alts, parts.Address, alt)
+		} else {
+			alts = append(alts, alt)
+		}
+	}
+
+	sr.Alternatives = alts
+
+	return sr, err
+}
+
+func (c *SuggestSvc) getAlternatives(ctx context.Context, parts types.EmailParts) []string {
+
 	alt, score, exact := c.finder.FindCtx(ctx, parts.Domain)
 
-	log.WithFields(logrus.Fields{
-		"alt":         alt,
-		"score":       score,
-		"exact":       exact,
-		"ctx_expired": didDeadlineExpire(ctx),
+	c.logger.WithFields(logrus.Fields{
+		handlers.RequestID.String(): ctx.Value(handlers.RequestID),
+		"alt":                       alt,
+		"score":                     score,
+		"threshold_met":             score > finderThreshold,
+		"exact":                     exact,
+		"ctx_expired":               didDeadlineExpire(ctx),
 	}).Debug("Used Finder")
 
 	if score > finderThreshold {
-		parts := types.NewEmailFromParts(parts.Local, alt)
-		return SuggestResult{
-			Alternatives: []string{parts.Address},
-		}, err
+		parts = types.NewEmailFromParts(parts.Local, alt)
 	}
 
-	return sr, err
+	return []string{parts.Address}
 }
 
 func didDeadlineExpire(ctx context.Context) bool {

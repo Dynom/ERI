@@ -117,3 +117,12 @@
 
     # The maximum number of suggestions to return
     maxSuggestions = 5
+
+
+  [services.suggest]
+
+    # Prefer allows mapping correct domains to favor alternative domains. A common example could be to map frequently
+    # occurring typos e.g.: example.com to point to example.org. The result is that when a mapping is found for a given
+    # domain, the preferred variant is prepended in the list of alternatives. The left-hand-side must be unique.
+    [services.suggest.prefer]
+      # The syntax is: "<domain>" = "<preferred domain>"
