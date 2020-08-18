@@ -66,7 +66,7 @@ func main() {
 	}
 
 	logger.WithFields(logrus.Fields{
-		"config": conf.GetSensored(),
+		"config": conf.String(),
 	}).Info("Starting up...")
 
 	h, err := highwayhash.New128([]byte(conf.Hash.Key))
