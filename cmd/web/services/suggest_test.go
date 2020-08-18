@@ -73,6 +73,15 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			finderList: []string{"example.org"},
 		},
 		{
+			name:       "Invalid domain, should fall back on finder and be corrected by preferrer",
+			email:      "john.doe@example.cm",
+			want:       SuggestResult{Alternatives: []string{"john.doe@example.org"}},
+			wantErr:    false,
+			validator:  createMockValidator(validations.FSyntax, validations.FSyntax),
+			finderList: []string{"example.org"},
+			preferMap:  preferrer.Mapping{"example.com": "example.org"},
+		},
+		{
 			name:       "Invalid domain, finder has no alternative",
 			email:      "john.doe@example.or",
 			want:       SuggestResult{Alternatives: []string{"john.doe@example.or"}},
