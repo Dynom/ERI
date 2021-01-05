@@ -3,6 +3,7 @@ package runtimer
 import (
 	"os"
 	"os/signal"
+	"sync"
 )
 
 type Callback func(s os.Signal)
@@ -14,6 +15,7 @@ func New(signals ...os.Signal) *SignalHandler {
 	sh := &SignalHandler{
 		c:    c,
 		done: make(chan struct{}),
+		lock: sync.Mutex{},
 	}
 
 	go sh.handle()
@@ -25,6 +27,7 @@ type SignalHandler struct {
 	c    chan os.Signal
 	done chan struct{}
 	fns  []Callback
+	lock sync.Mutex
 }
 
 func (sh *SignalHandler) handle() {
@@ -42,7 +45,9 @@ func (sh *SignalHandler) handle() {
 }
 
 func (sh *SignalHandler) RegisterCallback(fn Callback) {
+	sh.lock.Lock()
 	sh.fns = append(sh.fns, fn)
+	sh.lock.Unlock()
 }
 
 // Wait block until all callback's have been called
