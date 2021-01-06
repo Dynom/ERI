@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/Dynom/ERI/cmd/web/preferrer"
@@ -40,6 +41,11 @@ var Version = "dev"
 func main() {
 	var conf config.Config
 	var err error
+	var exitCode = 0
+
+	defer func() {
+		os.Exit(exitCode)
+	}()
 
 	conf, err = config.NewConfig("config.toml")
 	if err != nil {
@@ -72,7 +78,8 @@ func main() {
 	h, err := highwayhash.New128([]byte(conf.Hash.Key))
 	if err != nil {
 		logger.WithError(err).Error("Unable to create our hash.Hash")
-		os.Exit(1)
+		exitCode = 1
+		runtime.Goexit()
 	}
 
 	hitList := hitlist.New(
@@ -83,7 +90,8 @@ func main() {
 	persister, err := createPersister(conf, logger, hitList)
 	if err != nil {
 		logger.WithError(err).Error("Unable to setup PG persister")
-		os.Exit(1)
+		exitCode = 1
+		runtime.Goexit()
 	}
 
 	defer deferClose(persister, logger)
@@ -97,7 +105,8 @@ func main() {
 
 	if err != nil {
 		logger.WithError(err).Error("Unable to create Finder")
-		os.Exit(1)
+		exitCode = 1
+		runtime.Goexit()
 	}
 
 	rtPubSub := runtimer.New(os.Interrupt, os.Kill)
@@ -108,7 +117,8 @@ func main() {
 
 	if err != nil {
 		logger.WithError(err).Error("Unable to create the pub/sub client")
-		os.Exit(1)
+		exitCode = 1
+		runtime.Goexit()
 	}
 
 	prefer := preferrer.New(preferrer.Mapping(conf.Services.Suggest.Prefer))
@@ -127,7 +137,8 @@ func main() {
 	schema, err := NewGraphQLSchema(conf, suggestSvc, autocompleteSvc)
 	if err != nil {
 		logger.WithError(err).Error("Unable to build schema")
-		os.Exit(1)
+		exitCode = 1
+		runtime.Goexit()
 	}
 
 	mux.Handle("/graph", gqlHandler.New(&gqlHandler.Config{
