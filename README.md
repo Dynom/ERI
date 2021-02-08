@@ -152,10 +152,21 @@ Download a binary and take it for a spin. The default configuration should get y
 ./eri -backend-driver=memory -listen-on="localhost:1338"
 ```  
 ## Client
-```js
-@todo
-
+Install [eri-js](https://www.npmjs.com/package/eri-js).
+```bash
+npm install eri-js
 ```
+
+An example:
+```js
+window.addEventListener("DOMContentLoaded", () => {
+  const c = ERIClient.new({url: "http://localhost:1338"});
+  c.suggest("john@example.org", (result) => {
+    console.log(result);
+  });
+});
+```
+For more help, see the package: https://www.npmjs.com/package/eri-js
 
 # ERIs design
 ## Multiple instances
