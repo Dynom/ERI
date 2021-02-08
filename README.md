@@ -166,7 +166,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 });
 ```
-For more help, see the package: https://www.npmjs.com/package/eri-js
+For more help, see the package: https://github.com/Dynom/ERI-js
 
 # ERIs design
 ## Multiple instances
