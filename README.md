@@ -166,11 +166,19 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 });
 ```
+
 For more help, see the package: https://github.com/Dynom/ERI-js
+
+# Integration
+## Data scrubbing
+When integrating ERI in your application, the initial results might be poor. When you change the validation mechanism (to include ERI) your data might still be too "dirty" to work with. After feeding your existing e-mail addresses into ERI you might want to cleanup the data first. The autocomplete endpoint might give odd results (e.g.: hotmail.com.com). Scrubbing this data from ERI's hitlist table and with the new mechanisms in place should prevent those addresses to end up into your backend in the future, but without the scrubbing you'll stay in a less-than-ideal situation.
+
+## To proxy or to expose directly
+While ERI is designed to be exposed publicly, you might have different ideas about how to protect your backend services. Adding a proxy is a good alternative, and it allows you to fine-tune the rate-limiter to that specific use-case.
 
 # ERIs design
 ## Multiple instances
-ERI communicates by a broadcasting setup. Currently, GCPs pub/sub and Postgres listen/notify is on the wishlist. This is chatty with many instances, however for a small setup, handling up to 10.000 req/s, this works quite well.
+ERI communicates by a broadcasting setup. Currently, GCPs pub/sub is supported and Postgres listen/notify is on the wishlist. This is chatty with many instances, however for a small setup, handling up to 10.000 req/s, this works quite well.
 
 ## Persistence
 ERI uses Postgres as persistence backend.

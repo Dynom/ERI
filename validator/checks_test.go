@@ -25,7 +25,7 @@ func Test_checkEmailAddressSyntax(t *testing.T) {
 		// All bad
 		{name: "Invalid visible character", email: "js@d.org>", wantErr: true},
 		{name: "ending on a dot", email: "js@example.org.", wantErr: true},
-		{name: "ending on a dot", email: "joh n@hot1mail.com", wantErr: true},
+		{name: "White space character in local part", email: "joh n@hot1mail.com", wantErr: true},
 		{name: "missing local", email: "@hot1mail.com", wantErr: true},
 		{name: "missing domain", email: "john.doe@", wantErr: true},
 

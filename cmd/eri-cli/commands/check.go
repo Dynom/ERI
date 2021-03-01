@@ -173,7 +173,7 @@ func init() {
 	rootCmd.AddCommand(checkCmd)
 
 	// Disabled for now, since foo\nbar\n parses fine in the liberal CSV parser.
-	//checkCmd.Flags().StringVar(&checkSettings.Format, "format", inputFormatCSV, "Format to read. CSV works also for unquoted emails separated with a '\\n'")
+	// checkCmd.Flags().StringVar(&checkSettings.Format, "format", inputFormatCSV, "Format to read. CSV works also for unquoted emails separated with a '\\n'")
 	checkCmd.Flags().Uint64Var(&checkSettings.CSV.skipRows, "csv-skip-rows", 0, "Rows to skip, useful when wanting to skip the header in CSV files")
 	checkCmd.Flags().Uint64Var(&checkSettings.CSV.column, "csv-column", 0, "The column to read email addresses from, 0-indexed")
 	checkCmd.Flags().IPVar(&checkSettings.Check.Resolver, "resolver", nil, "Custom DNS resolver IP (e.g.: 1.1.1.1) to use, otherwise system default is used")

@@ -9,11 +9,14 @@ require (
 	github.com/Dynom/TySug v0.1.4
 	github.com/NYTimes/gziphandler v1.1.1
 	github.com/Pimmr/rig v1.0.4
+	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/graphql-go/graphql v0.7.9
 	github.com/graphql-go/handler v0.2.3
 	github.com/juju/ratelimit v1.0.1
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/lib/pq v1.7.0
+	github.com/mailgun/mailgun-go/v4 v4.1.4 // indirect
+	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/minio/highwayhash v1.0.0
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/cors v1.7.0

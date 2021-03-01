@@ -73,8 +73,12 @@
     # disables the custom resolver and uses the locally configured one (not recommended)
     resolver = "8.8.8.8"
 
-    # Choose from: "structure", "lookup", "connect" (not recommended)
-    # For initial setup and learning, structure is probably most suitable
+    # Choose from: "structure", "lookup" or "connect" (the latter is not recommended in production)
+    #
+    # For initial setup and learning of a valid list of e-mail addresses, "structure" is probably most suitable as it
+    # won't perform external requests. This speeds up the process significantly. The option "connect" performs an
+    # actual connection to the MX hosts configured for the domain, this can easily lead to false positives, since
+    # popular e-mail service providers will either reject entirely or just reply "all is good"
     suggest = "lookup"
 
   [backend]
@@ -100,7 +104,7 @@
 
   [rateLimiter]
 
-    # Leaky bucket implementation. Rate is per second. This means ~100 req/s, with bursts / peaks. Set the capacity or
+    # Leaky bucket implementation. Rate is per second. This means ~100 req/s, with bursts or peaks. Set the capacity or
     # rate to <= 0 to disable rate limiting entirely
     rate = 100
     capacity = 500
@@ -112,7 +116,8 @@
   [services.autocomplete]
 
     # Domains need at least (inclusive) this amount of recipients to be considered for the autocomplete API
-    # This is mostly to prevent leaking possibly private information
+    # This is mostly to prevent leaking possibly private information. The suggested value is the mean of the recipient
+    # to domain ratio.
     recipientThreshold = 1000
 
     # The maximum number of suggestions to return
@@ -126,3 +131,4 @@
     # domain, the preferred variant is prepended in the list of alternatives. The left-hand-side must be unique.
     [services.suggest.prefer]
       # The syntax is: "<domain>" = "<preferred domain>"
+      # Example: "example.com" = "example.org"
