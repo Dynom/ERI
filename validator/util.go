@@ -170,6 +170,14 @@ func looksLikeValidLocalPart(local string) bool {
 	var tryRegex bool
 	for i, c := range local {
 		switch {
+		default:
+			if c > utf8.RuneSelf {
+				tryRegex = true
+				break
+			}
+
+			return false
+
 		case 97 <= c && c <= 122 /* a-z */ :
 		case c == 46 && 0 < i && i < lastIndexPos /* . not first or last */ :
 		case 48 <= c && c <= 57 /* 0-9 */ :
@@ -189,18 +197,11 @@ func looksLikeValidLocalPart(local string) bool {
 		case c == 63 /* ? */ :
 		case c == 94 /* ^ */ :
 		case c == 95 /* _ */ :
-		case c == '\x60' /* ` (96) */ :
+		case c == 96 /* ` */ :
 		case c == 123 /* { */ :
 		case c == 124 /* | */ :
 		case c == 125 /* } */ :
 		case c == 126 /* ~ */ :
-		default:
-			if c > utf8.RuneSelf {
-				tryRegex = true
-				break
-			}
-
-			return false
 		}
 	}
 
