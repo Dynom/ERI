@@ -152,10 +152,11 @@ func MightBeAHostOrIP(h string) bool {
 	return dotCount > 0
 }
 
-// Note: These explicitly exclude 0x00A0. NBSP is a frequently occurring erroneous character in e-mail addresses
-//       (possibly introduced by a copy & paste from rich formatted documents) and not expected to be desired.
+// Note: These explicitly exclude several, otherwise legal, characters (such as: 0x00A0).
+//       NBSP is a frequently occurring erroneous character in e-mail addresses (possibly introduced by a copy & paste
+//       from rich formatted documents) and not expected to be desired.
 var (
-	reLocal  = regexp.MustCompile(`(?i)\A(?:(?:[\p{L}\p{N}]|[!#$%&'*+\-/=?^_\x60{|}~]|[\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])+(?:\.(?:[\p{L}\p{N}]|[!#$%&'*+\-/=?^_\x60{|}~]|[\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])+)*)\z`)
+	reLocal  = regexp.MustCompile(`(?i)\A(?:(?:[\p{L}\p{N}]|[!#$%&'*+\-/=?^_\x60{|}~]|[\x{00C0}-\x{1FFF}\x{2070}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])+(?:\.(?:[\p{L}\p{N}]|[!#$%&'*+\-/=?^_\x60{|}~]|[\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])+)*)\z`)
 	reDomain = regexp.MustCompile(`(?i)\A(?:[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}](?:[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}-]*[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])?\.)+[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}](?:[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}-]*[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])?\z`)
 )
 

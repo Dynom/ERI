@@ -146,7 +146,8 @@ func Test_looksLikeValidLocalPart(t *testing.T) {
 		{want: true, local: "john.doe"},
 		{want: true, local: "j0hn.doe"},
 		{want: true, local: "John.doe"},
-		{want: true, local: "john`doe"}, // \x60
+		{want: true, local: "john`doe"},      // \x60
+		{want: true, local: "john\u00C0doe"}, // First letter in the Latin-1 supplement block
 
 		// The good, Unicode
 		{want: true, local: "用户"},       // Chinese
@@ -162,9 +163,17 @@ func Test_looksLikeValidLocalPart(t *testing.T) {
 		{local: "john doe"},
 		{local: "john\ndoe"},
 		{local: "john.doe\n"},
-		{local: "john.doe\u00a0"},
+		{local: "john.doe\u00A0"},
+
+		// Common copy&paste mistakes
+		{local: "\u2018john"}, // A common quotation mark
+		{local: "\u00A0john"}, // A common space character, found in the lower end of the Latin-1 supplement block
+		{local: "\u2000john"}, // Start of of the Unicode General Punctuation block
+		{local: "\u206Fjohn"}, // End of the Unicode General Punctuation block
 	}
+
 	for _, tt := range tests {
+		tt := tt
 		t.Run("testing "+tt.local, func(t *testing.T) {
 			if got := looksLikeValidLocalPart(tt.local); got != tt.want {
 				t.Errorf("looksLikeValidLocalPart(%q) = %v, want %v", tt.local, got, tt.want)
