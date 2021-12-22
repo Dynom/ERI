@@ -6,7 +6,7 @@ jobs:
   lint-and-test:
     docker:
       # specify the version
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.17
 
     working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
     environment:
