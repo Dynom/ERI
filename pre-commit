@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -o pipefail -o nounset -o errexit -o errtrace
+
+ROOT_DIR="$(pwd)"
+while [ ! -d "${ROOT_DIR}/.git" ]; do
+
+    ROOT_DIR="$(dirname ${ROOT_DIR})"
+    if [ "x${ROOT_DIR}" == "x/" ]; then
+        echo "Cannot find .git directory, I use that as reference for the commands."
+        exit 1
+    fi
+done
+
+echo "Running the checks in ${ROOT_DIR}..."
+go build ./... && \
+    golangci-lint run || exit $?
