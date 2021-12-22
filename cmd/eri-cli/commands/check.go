@@ -15,7 +15,7 @@ import (
 	"github.com/Dynom/ERI/validator"
 	"github.com/Dynom/ERI/validator/validations"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 var (
@@ -45,7 +45,7 @@ Some examples:
 `,
 	Args: func(cmd *cobra.Command, args []string) error {
 
-		var stdInFromTerminal = terminal.IsTerminal(int(os.Stdin.Fd()))
+		var stdInFromTerminal = term.IsTerminal(int(os.Stdin.Fd()))
 		if len(args) > 1 {
 			return errors.New("too many arguments, expected 0 or 1")
 		}

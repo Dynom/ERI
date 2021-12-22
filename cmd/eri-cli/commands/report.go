@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 const (
@@ -51,7 +51,7 @@ var reportCmd = &cobra.Command{
 	Long: `Some examples:
   - bzcat list.bz2 | eri-cli check | eri-cli report --only-invalid > report.json`,
 	Args: func(cmd *cobra.Command, args []string) error {
-		var stdInFromTerminal = terminal.IsTerminal(int(os.Stdin.Fd()))
+		var stdInFromTerminal = term.IsTerminal(int(os.Stdin.Fd()))
 
 		if len(args) > 0 {
 			return errors.New("report doesn't take any arguments")
