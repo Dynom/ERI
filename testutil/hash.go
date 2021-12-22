@@ -17,7 +17,7 @@ type MockHasher struct {
 	v []byte
 }
 
-func (s MockHasher) Write(p []byte) (int, error) {
+func (s *MockHasher) Write(p []byte) (int, error) {
 	s.v = p
 	return len(p), nil
 }

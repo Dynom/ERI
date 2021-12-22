@@ -15,7 +15,7 @@ import (
 )
 
 func TestStorage_Range(t *testing.T) {
-	list := hitlist.New(testutil.MockHasher{}, time.Second*1)
+	list := hitlist.New(&testutil.MockHasher{}, time.Second*1)
 
 	type testDataS struct {
 		parts types.EmailParts
@@ -151,7 +151,7 @@ func TestStorage_Range(t *testing.T) {
 }
 
 func TestStorage_Store(t *testing.T) {
-	list := hitlist.New(testutil.MockHasher{}, time.Second*1)
+	list := hitlist.New(&testutil.MockHasher{}, time.Second*1)
 
 	type args struct {
 		ctx   context.Context
