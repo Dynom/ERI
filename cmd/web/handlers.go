@@ -154,6 +154,7 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxB
 			log.WithFields(logrus.Fields{
 				"suggest_response": sr,
 				"error":            sugErr,
+				"input":            req.Email,
 			}).Warn("Suggest error")
 			sr.Error = sugErr.Error()
 		}

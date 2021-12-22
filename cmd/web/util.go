@@ -30,6 +30,11 @@ import (
 	"github.com/Dynom/ERI/cmd/web/config"
 )
 
+const (
+	ErrExConfig      = 78 // As per sysexits
+	ErrExUnavailable = 69
+)
+
 func confHeadersToHTTPHeaders(ch config.Headers) http.Header {
 	headers := http.Header{}
 	for h, v := range ch {

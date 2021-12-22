@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -21,6 +22,9 @@ var (
 
 func NewConfig(fileName string) (Config, error) {
 	c := Config{}
+
+	// Not reading a config file on startup, might not show any feedback
+	c.Log.Level = logrus.TraceLevel.String()
 
 	b, err := ioutil.ReadFile(fileName)
 	if err != nil {

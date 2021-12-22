@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -44,16 +45,23 @@ func main() {
 	var exitCode = 0
 
 	defer func() {
+		v := recover()
+		if v != nil {
+			fmt.Println(v)
+		}
+
 		os.Exit(exitCode)
 	}()
 
 	conf, err = config.NewConfig("config.toml")
 	if err != nil {
+		exitCode = ErrExConfig
 		panic(err)
 	}
 
 	err = rig.ParseStruct(&conf)
 	if err != nil {
+		exitCode = ErrExConfig
 		panic(err)
 	}
 
@@ -61,6 +69,7 @@ func main() {
 	var logWriter *io.PipeWriter
 	logger, logWriter, err = newLogger(conf)
 	if err != nil {
+		exitCode = ErrExUnavailable
 		panic(err)
 	}
 
@@ -78,7 +87,7 @@ func main() {
 	h, err := highwayhash.New128([]byte(conf.Hash.Key))
 	if err != nil {
 		logger.WithError(err).Error("Unable to create our hash.Hash")
-		exitCode = 1
+		exitCode = ErrExConfig
 		runtime.Goexit()
 	}
 
@@ -90,7 +99,7 @@ func main() {
 	persister, err := createPersister(conf, logger, hitList)
 	if err != nil {
 		logger.WithError(err).Error("Unable to setup PG persister")
-		exitCode = 1
+		exitCode = ErrExUnavailable
 		runtime.Goexit()
 	}
 
@@ -105,7 +114,7 @@ func main() {
 
 	if err != nil {
 		logger.WithError(err).Error("Unable to create Finder")
-		exitCode = 1
+		exitCode = ErrExUnavailable
 		runtime.Goexit()
 	}
 
@@ -117,7 +126,7 @@ func main() {
 
 	if err != nil {
 		logger.WithError(err).Error("Unable to create the pub/sub client")
-		exitCode = 1
+		exitCode = ErrExUnavailable
 		runtime.Goexit()
 	}
 
@@ -137,7 +146,7 @@ func main() {
 	schema, err := NewGraphQLSchema(conf, suggestSvc, autocompleteSvc)
 	if err != nil {
 		logger.WithError(err).Error("Unable to build schema")
-		exitCode = 1
+		exitCode = ErrExUnavailable
 		runtime.Goexit()
 	}
 
