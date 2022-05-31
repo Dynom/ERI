@@ -2,7 +2,6 @@ package validator
 
 import (
 	"fmt"
-	"net"
 	"net/mail"
 	"net/smtp"
 	"time"
@@ -94,11 +93,6 @@ func checkIfDomainHasMX(a *Artifact) error {
 	a.Timings.Add("checkIfDomainHasMX", time.Since(start))
 
 	if err != nil {
-		if e, ok := err.(net.Error); ok && e.Temporary() {
-			_ = e
-			// @todo what do we do when it's a temporary error?
-		}
-
 		return ValidationError{
 			Validator: "checkIfDomainHasMX",
 			Internal:  err,
@@ -134,11 +128,6 @@ func checkIfMXHasIP(a *Artifact) error {
 
 		if innerErr != nil || len(ips) == 0 {
 			a.mx[i] = ""
-
-			if e, ok := err.(net.Error); ok && e.Temporary() {
-				// @todo what do we do when it's a temporary error?
-				_ = e
-			}
 
 			if innerErr != nil {
 				err = wrapError(err, innerErr)
@@ -185,11 +174,6 @@ func checkMXAcceptsConnect(a *Artifact) error {
 
 	conn, err := getConnection(a.ctx, a.dialer, mxToCheck)
 	a.Timings.Add("checkMXAcceptsConnect", time.Since(start))
-
-	if e, ok := err.(net.Error); ok && e.Temporary() {
-		// @todo what do we do when it's a temporary error?
-		_ = e
-	}
 
 	if err != nil {
 		return ValidationError{
