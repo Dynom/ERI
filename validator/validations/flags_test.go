@@ -16,6 +16,7 @@ func TestFlag_String(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.f.String(); got != tt.want {
 				t.Errorf("String() = %v, want %v", got, tt.want)

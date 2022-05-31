@@ -94,3 +94,8 @@ bzcat emails.bz2 | \
     jq .email | \
     xargs ./updateStatus.sh 
 ```
+
+Using Shell process substitution
+```bash
+eri-cli check --input-is-email < <( echo "john@example.org" ) | jq .valid
+```

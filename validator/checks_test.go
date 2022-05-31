@@ -163,7 +163,7 @@ func Test_looksLikeValidLocalPart(t *testing.T) {
 		{local: "john doe"},
 		{local: "john\ndoe"},
 		{local: "john.doe\n"},
-		{local: "john.doe\u00A0"},
+		{local: "john.doe\u00A0"}, // nbsp
 
 		// Common copy&paste mistakes
 		{local: "\u2018john"}, // A common quotation mark
