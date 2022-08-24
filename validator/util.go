@@ -84,6 +84,12 @@ func getConnection(ctx context.Context, dialer DialContext, mxHost string) (net.
 		}
 	}
 
+	// When dialing fails, we could end up with a nil connection, which indicates that all options have been exhausted
+	// and that we've ended up with no reachable hosts
+	if conn == nil {
+		return conn, fmt.Errorf("no connection possible %w", ErrInvalidHost)
+	}
+
 	return conn, err
 }
 

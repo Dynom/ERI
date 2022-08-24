@@ -17,7 +17,7 @@ type stubDialer struct {
 
 func (sd stubDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	// We don't use net.Conn, so returning nil for the interface here is safe
-	return nil, sd.err
+	return &net.IPConn{}, sd.err
 }
 
 type stubResolver struct {
@@ -98,7 +98,6 @@ func Test_getConnection(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    net.Conn
 		wantErr bool
 	}{
 		// The good
@@ -115,13 +114,10 @@ func Test_getConnection(t *testing.T) {
 			dialer := stubDialer{}
 			dialer.err = tt.args.err
 
-			got, err := getConnection(ctx, dialer, "mx.example.org")
+			_, err := getConnection(ctx, dialer, "mx.example.org")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getConnection() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getConnection() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
