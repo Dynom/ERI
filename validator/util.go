@@ -128,6 +128,7 @@ func fetchMXHosts(ctx context.Context, resolver LookupMX, domain string) ([]stri
 
 // MightBeAHostOrIP is a very rudimentary check to see if the argument could be either a host name or IP address
 // It aims on speed and not for correctness. It's intended to weed-out bogus responses such as '.'
+//
 //nolint:gocyclo
 func MightBeAHostOrIP(h string) bool {
 
@@ -159,8 +160,9 @@ func MightBeAHostOrIP(h string) bool {
 }
 
 // Note: These explicitly exclude several, otherwise legal, characters (such as: 0x00A0).
-//       NBSP is a frequently occurring erroneous character in e-mail addresses (possibly introduced by a copy & paste
-//       from rich formatted documents) and not expected to be desired.
+//
+//	NBSP is a frequently occurring erroneous character in e-mail addresses (possibly introduced by a copy & paste
+//	from rich formatted documents) and not expected to be desired.
 var (
 	reLocal  = regexp.MustCompile(`(?i)\A(?:(?:[\p{L}\p{N}]|[!#$%&'*+\-/=?^_\x60{|}~]|[\x{00C0}-\x{1FFF}\x{2070}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])+(?:\.(?:[\p{L}\p{N}]|[!#$%&'*+\-/=?^_\x60{|}~]|[\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])+)*)\z`)
 	reDomain = regexp.MustCompile(`(?i)\A(?:[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}](?:[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}-]*[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])?\.)+[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}](?:[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}-]*[\p{L}\p{N}\x{00A1}-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}])?\z`)
