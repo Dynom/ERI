@@ -122,7 +122,7 @@ func Test_validateSequence(t *testing.T) {
 					func(a *Artifact) error {
 						// This fn shouldn't run
 						a.Validations.SetFlag(validations.FDisposable)
-						a.Steps.SetFlag(validations.FDomainHasIP)
+						a.Steps.SetFlag(validations.FMXDomainHasIP)
 						return nil
 					},
 				},
@@ -146,7 +146,7 @@ func Test_validateSequence(t *testing.T) {
 					func(a *Artifact) error {
 						// This fn shouldn't run
 						a.Validations.SetFlag(validations.FDisposable)
-						a.Steps.SetFlag(validations.FDomainHasIP)
+						a.Steps.SetFlag(validations.FMXDomainHasIP)
 						return nil
 					},
 				},

@@ -107,8 +107,8 @@ func checkIfDomainHasMX(a *Artifact) error {
 
 // checkIfMXHasIP performs a NS lookup and fetches the IP addresses of the MX hosts
 func checkIfMXHasIP(a *Artifact) error {
-	if a.Steps.HasFlag(validations.FDomainHasIP) {
-		if !a.Validations.HasFlag(validations.FDomainHasIP) {
+	if a.Steps.HasFlag(validations.FMXDomainHasIP) {
+		if !a.Validations.HasFlag(validations.FMXDomainHasIP) {
 			return ValidationError{
 				Validator: "checkIfMXHasIP",
 				error:     ErrEmailAddressSyntax,
@@ -118,7 +118,7 @@ func checkIfMXHasIP(a *Artifact) error {
 		return nil
 	}
 
-	a.Steps.SetFlag(validations.FDomainHasIP)
+	a.Steps.SetFlag(validations.FMXDomainHasIP)
 
 	var err error
 	for i, domain := range a.mx {
@@ -143,7 +143,7 @@ func checkIfMXHasIP(a *Artifact) error {
 		}
 	}
 
-	a.Validations.SetFlag(validations.FDomainHasIP)
+	a.Validations.SetFlag(validations.FMXDomainHasIP)
 	return nil
 }
 

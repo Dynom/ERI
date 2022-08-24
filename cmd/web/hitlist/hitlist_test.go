@@ -14,7 +14,7 @@ import (
 
 func Test_getValidDomains(t *testing.T) {
 	validDuration := time.Now().Add(1 * time.Hour)
-	validFlags := validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FDomainHasIP
+	validFlags := validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FMXDomainHasIP
 	validVR := validator.Result{
 		Validations: validations.Validations(validFlags),
 		Steps:       validations.Steps(validFlags),
@@ -521,12 +521,12 @@ func TestHitList_AddDomain(t *testing.T) {
 			args: args{
 				d: "example.org",
 				vr: validator.Result{
-					Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FDomainHasIP),
+					Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FMXDomainHasIP),
 				},
 			},
 			wantErr: false,
 			wantVR: validator.Result{
-				Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FDomainHasIP),
+				Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup | validations.FMXDomainHasIP),
 			},
 		},
 		{

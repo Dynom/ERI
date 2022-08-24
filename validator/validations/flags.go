@@ -2,22 +2,25 @@ package validations
 
 import "strings"
 
+// Validation Flags, these flags represent successful validation steps. Depending on how far you want to go, you can
+// classify a validation as valid enough, for your use-case.
 const (
-	// Validation Flags, these flags represent successful validation steps. Depending on how far you want to go, you can
-	// classify a validation as valid enough, for your use-case.
-	FValid       Flag = 1 << iota
-	FSyntax      Flag = 1 << iota
-	FMXLookup    Flag = 1 << iota
-	FDomainHasIP Flag = 1 << iota
-	FHostConnect Flag = 1 << iota
-	FValidRCPT   Flag = 1 << iota
-	FDisposable  Flag = 1 << iota // Address / Domain is considered a disposable e-mail trap
+	FValid         Flag = 1 << iota
+	FSyntax        Flag = 1 << iota
+	FMXLookup      Flag = 1 << iota
+	FMXDomainHasIP Flag = 1 << iota // Flag set when the MX domain is verified to have at least one resolvable IP
+	FHostConnect   Flag = 1 << iota
+	FValidRCPT     Flag = 1 << iota
+	FDisposable    Flag = 1 << iota // Address / Domain is considered a disposable e-mail trap
+
+	// FDomainHasIP is Deprecated: Unclear naming. Prefer FMXDomainHasIP
+	FDomainHasIP = FMXDomainHasIP // @deprecated
 )
 
 type Flag uint8
 
 func (f Flag) AsStringSlice() []string {
-	var flags = []Flag{FValid, FSyntax, FMXLookup, FDomainHasIP, FHostConnect, FValidRCPT, FDomainHasIP}
+	var flags = []Flag{FValid, FSyntax, FMXLookup, FMXDomainHasIP, FHostConnect, FValidRCPT, FDisposable}
 	var r = make([]string, 0, len(flags))
 
 	for _, flag := range flags {
@@ -50,8 +53,8 @@ func toString(f Flag) string {
 		return "syntax"
 	case FMXLookup:
 		return "lookup"
-	case FDomainHasIP:
-		return "domainHasIP"
+	case FMXDomainHasIP:
+		return "mxDomainHasIP"
 	case FHostConnect:
 		return "hostConnect"
 	case FValidRCPT:

@@ -50,7 +50,7 @@ func (v Validations) HasFlag(f Flag) bool {
 	return v&Validations(f) != 0
 }
 
-// isValidationsForValidDomain checks if a mask of validations really marks a domain as valid.
+// IsValidationsForValidDomain checks if a mask of validations really marks a domain as valid.
 func (v Validations) IsValidationsForValidDomain() bool {
-	return (v.HasFlag(FMXLookup) || v.HasFlag(FDomainHasIP) || v.HasFlag(FHostConnect)) && v.HasFlag(FSyntax)
+	return (v.HasFlag(FMXLookup) || v.HasFlag(FMXDomainHasIP) || v.HasFlag(FHostConnect)) && v.HasFlag(FSyntax)
 }
