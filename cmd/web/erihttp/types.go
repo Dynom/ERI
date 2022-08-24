@@ -33,6 +33,7 @@ func (r *AutoCompleteResponse) PrepareResponse() {
 type SuggestResponse struct {
 	Alternatives    []string `json:"alternatives"`
 	MalformedSyntax bool     `json:"malformed_syntax"`
+	MisconfiguredMX bool     `json:"misconfigured_mx"`
 	Error           string   `json:"error,omitempty"`
 }
 
