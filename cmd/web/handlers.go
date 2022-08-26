@@ -23,7 +23,12 @@ const (
 	failedResponseError     = "Generating response failed."
 )
 
-func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.AutocompleteSvc, maxSuggestions uint64, maxBodySize uint64) http.HandlerFunc {
+type marshalFn func(v interface{}) ([]byte, error)
+
+func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.AutocompleteSvc, maxSuggestions uint64, maxBodySize uint64, jsonMarshaller marshalFn) http.HandlerFunc {
+	if jsonMarshaller == nil {
+		jsonMarshaller = json.Marshal
+	}
 
 	logger = logger.WithField("handler", "auto complete")
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +86,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.Autocomplet
 			return
 		}
 
-		response, err := json.Marshal(erihttp.AutoCompleteResponse{
+		response, err := jsonMarshaller(erihttp.AutoCompleteResponse{
 			Suggestions: result.Suggestions,
 		})
 
@@ -107,8 +112,12 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.Autocomplet
 	}
 }
 
-// NewSuggestHandler constructs a HTTP handler that deals with suggestion requests
-func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxBodySize uint64) http.HandlerFunc {
+// NewSuggestHandler constructs an HTTP handler that deals with suggestion requests
+func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxBodySize uint64, jsonMarshaller marshalFn) http.HandlerFunc {
+	if jsonMarshaller == nil {
+		jsonMarshaller = json.Marshal
+	}
+
 	log := logger.WithField("handler", "suggest")
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -159,7 +168,7 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxB
 			sr.Error = sugErr.Error()
 		}
 
-		response, err := json.Marshal(sr)
+		response, err := jsonMarshaller(sr)
 
 		if err != nil {
 			log.WithFields(logrus.Fields{

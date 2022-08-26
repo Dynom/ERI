@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -44,9 +44,9 @@ func TestWithGzipHandler(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		if err != nil {
-			t.Errorf("ioutil.ReadAll(r.Body) Setting up the test failed %s", err)
+			t.Errorf("io.ReadAll(r.Body) Setting up the test failed %s", err)
 			t.FailNow()
 		}
 
@@ -88,9 +88,9 @@ func TestWithGzipHandler(t *testing.T) {
 			}
 
 			defer res.Body.Close()
-			b, err := ioutil.ReadAll(res.Body)
+			b, err := io.ReadAll(res.Body)
 			if err != nil {
-				t.Errorf("ioutil.ReadAll(res.Body) Setting up the test failed %s", err)
+				t.Errorf("io.ReadAll(res.Body) Setting up the test failed %s", err)
 				t.FailNow()
 			}
 

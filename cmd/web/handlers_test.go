@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -78,13 +78,14 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 		requestBody io.Reader
 		ctx         context.Context
 		want        wants
+		marshaller  marshalFn
 	}{
 		{
 			name:        "correct POST body",
 			requestBody: bytes.NewReader(validRequestBody),
 			ctx:         context.Background(),
 			want: wants{
-				statusCode: 200,
+				statusCode: http.StatusOK,
 			},
 		},
 		{
@@ -92,7 +93,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 			requestBody: strings.NewReader("burp"),
 			ctx:         context.Background(),
 			want: wants{
-				statusCode: 400,
+				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
@@ -100,7 +101,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 			requestBody: nil,
 			ctx:         context.Background(),
 			want: wants{
-				statusCode: 400,
+				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
@@ -108,7 +109,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 			requestBody: strings.NewReader(strings.Repeat(".", int(maxBodySize)+1)),
 			ctx:         context.Background(),
 			want: wants{
-				statusCode: 400,
+				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
@@ -116,7 +117,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 			requestBody: bytes.NewReader(validRequestBody[0 : len(validRequestBody)-1]), // stripping off the '}'
 			ctx:         context.Background(),
 			want: wants{
-				statusCode: 400,
+				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
@@ -124,7 +125,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 			requestBody: bytes.NewReader(emptyArgumentValidStructureRequestBody),
 			ctx:         context.Background(),
 			want: wants{
-				statusCode: 400,
+				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
@@ -132,7 +133,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 			requestBody: bytes.NewReader(tooLongArgumentValidStructureRequestBody),
 			ctx:         context.Background(),
 			want: wants{
-				statusCode: 400,
+				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
@@ -140,7 +141,18 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 			requestBody: bytes.NewReader(validRequestBody),
 			ctx:         expiredContext,
 			want: wants{
-				statusCode: 200,
+				statusCode: http.StatusOK,
+			},
+		},
+		{
+			name:        "Unable to marshal response",
+			requestBody: bytes.NewReader(validRequestBody),
+			ctx:         context.Background(),
+			marshaller: func(v interface{}) ([]byte, error) {
+				return nil, fmt.Errorf("test failure")
+			},
+			want: wants{
+				statusCode: http.StatusInternalServerError,
 			},
 		},
 	}
@@ -151,7 +163,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			hook.Reset()
-			handlerFunc := NewAutoCompleteHandler(logger, svc, 10, maxBodySize)
+			handlerFunc := NewAutoCompleteHandler(logger, svc, 10, maxBodySize, tt.marshaller)
 
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/", tt.requestBody)
@@ -163,7 +175,7 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 			if tt.want.statusCode != rec.Code {
 				t.Errorf("NewAutoCompleteHandler() = %+v, want %+v", rec, tt.want)
 
-				b, _ := ioutil.ReadAll(rec.Result().Body)
+				b, _ := io.ReadAll(rec.Result().Body)
 				t.Logf("Body: %s", b)
 				for _, l := range hook.AllEntries() {
 					t.Logf("Logs: %s", l.Message)
@@ -238,6 +250,7 @@ func TestNewSuggestHandler(t *testing.T) {
 			name        string
 			requestBody io.Reader
 			ctx         context.Context
+			marshaller  marshalFn
 			want        wants
 		}{
 			{
@@ -245,7 +258,7 @@ func TestNewSuggestHandler(t *testing.T) {
 				requestBody: bytes.NewReader(validRequestBody),
 				ctx:         context.Background(),
 				want: wants{
-					statusCode: 200,
+					statusCode: http.StatusOK,
 				},
 			},
 			{
@@ -253,7 +266,7 @@ func TestNewSuggestHandler(t *testing.T) {
 				requestBody: strings.NewReader("burp"),
 				ctx:         context.Background(),
 				want: wants{
-					statusCode: 400,
+					statusCode: http.StatusBadRequest,
 				},
 			},
 			{
@@ -261,7 +274,7 @@ func TestNewSuggestHandler(t *testing.T) {
 				requestBody: nil,
 				ctx:         context.Background(),
 				want: wants{
-					statusCode: 400,
+					statusCode: http.StatusBadRequest,
 				},
 			},
 			{
@@ -269,7 +282,7 @@ func TestNewSuggestHandler(t *testing.T) {
 				requestBody: strings.NewReader(strings.Repeat(".", int(maxBodySize)+1)),
 				ctx:         context.Background(),
 				want: wants{
-					statusCode: 400,
+					statusCode: http.StatusBadRequest,
 				},
 			},
 			{
@@ -277,7 +290,7 @@ func TestNewSuggestHandler(t *testing.T) {
 				requestBody: bytes.NewReader(validRequestBody[0 : len(validRequestBody)-1]), // stripping off the '}'
 				ctx:         context.Background(),
 				want: wants{
-					statusCode: 400,
+					statusCode: http.StatusBadRequest,
 				},
 			},
 			{
@@ -285,7 +298,7 @@ func TestNewSuggestHandler(t *testing.T) {
 				requestBody: bytes.NewReader(emptyArgumentValidStructureRequestBody),
 				ctx:         context.Background(),
 				want: wants{
-					statusCode: 200,
+					statusCode: http.StatusOK,
 				},
 			},
 			{
@@ -293,7 +306,18 @@ func TestNewSuggestHandler(t *testing.T) {
 				requestBody: bytes.NewReader(validRequestBody),
 				ctx:         expiredContext,
 				want: wants{
-					statusCode: 200,
+					statusCode: http.StatusOK,
+				},
+			},
+			{
+				name:        "Unable to marshal response",
+				requestBody: bytes.NewReader(validRequestBody),
+				ctx:         context.Background(),
+				marshaller: func(v interface{}) ([]byte, error) {
+					return nil, fmt.Errorf("test failure")
+				},
+				want: wants{
+					statusCode: http.StatusInternalServerError,
 				},
 			},
 		}
@@ -311,7 +335,7 @@ func TestNewSuggestHandler(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 
 				hook.Reset()
-				handlerFunc := NewSuggestHandler(logger, svc, maxBodySize)
+				handlerFunc := NewSuggestHandler(logger, svc, maxBodySize, tt.marshaller)
 
 				rec := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/", tt.requestBody)
@@ -323,7 +347,7 @@ func TestNewSuggestHandler(t *testing.T) {
 				if tt.want.statusCode != rec.Code {
 					t.Errorf("NewSuggestHandler() = %+v, want %+v", rec, tt.want)
 
-					b, _ := ioutil.ReadAll(rec.Result().Body)
+					b, _ := io.ReadAll(rec.Result().Body)
 					t.Logf("Body: %s", b)
 					for _, l := range hook.AllEntries() {
 						t.Logf("Logs: %s", l.Message)
@@ -359,7 +383,7 @@ func TestNewSuggestHandler(t *testing.T) {
 
 			// Building the service
 			svc := services.NewSuggestService(myFinder, val, nil, logger)
-			handlerFunc := NewSuggestHandler(logger, svc, maxBodySize)
+			handlerFunc := NewSuggestHandler(logger, svc, maxBodySize, nil)
 
 			// Setting up the request
 			req := httptest.NewRequest(http.MethodPost, "/", createSuggestRequestBytesReader(t, "nonexisting@exampleorg"))
@@ -384,7 +408,7 @@ func TestNewSuggestHandler(t *testing.T) {
 }
 
 func restoreSuggestResponse(t *testing.T, r io.Reader) erihttp.SuggestResponse {
-	responseStr, err := ioutil.ReadAll(r)
+	responseStr, err := io.ReadAll(r)
 	if err != nil {
 		t.Fatal(err)
 	}

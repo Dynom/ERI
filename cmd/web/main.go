@@ -140,8 +140,8 @@ func main() {
 	registerProfileHandler(mux, conf)
 	registerHealthHandler(mux, logger)
 
-	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc, conf.Server.MaxRequestSize))
-	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, autocompleteSvc, conf.Services.Autocomplete.MaxSuggestions, conf.Server.MaxRequestSize))
+	mux.HandleFunc("/suggest", NewSuggestHandler(logger, suggestSvc, conf.Server.MaxRequestSize, nil))
+	mux.HandleFunc("/autocomplete", NewAutoCompleteHandler(logger, autocompleteSvc, conf.Services.Autocomplete.MaxSuggestions, conf.Server.MaxRequestSize, nil))
 
 	schema, err := NewGraphQLSchema(conf, suggestSvc, autocompleteSvc)
 	if err != nil {
