@@ -11,13 +11,21 @@ import (
 	"github.com/Dynom/ERI/types"
 )
 
+func newStubDialer(err error) *stubDialer {
+	return &stubDialer{
+		conn: &net.IPConn{},
+		err:  err,
+	}
+}
+
 type stubDialer struct {
-	err error
+	err  error
+	conn net.Conn
 }
 
 func (sd stubDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	// We don't use net.Conn, so returning nil for the interface here is safe
-	return &net.IPConn{}, sd.err
+	return sd.conn, sd.err
 }
 
 type stubResolver struct {
@@ -92,8 +100,11 @@ func Test_getConnection(t *testing.T) {
 	// @todo
 
 	type args struct {
-		err error
+		err  error
+		conn net.Conn
 	}
+
+	defaultConn := &net.IPConn{}
 
 	tests := []struct {
 		name    string
@@ -101,18 +112,19 @@ func Test_getConnection(t *testing.T) {
 		wantErr bool
 	}{
 		// The good
-		{name: "happy flow", args: args{err: nil}},
-		{name: "expected error", args: args{err: errors.New("connection refused")}},
+		{name: "happy flow", args: args{err: nil, conn: defaultConn}},
+		{name: "expected error", args: args{err: errors.New("connection refused"), conn: defaultConn}},
 
 		// The bad
-		{wantErr: true, name: "unexpected error", args: args{err: errors.New("b0rk")}},
+		{wantErr: true, name: "unexpected error", args: args{err: errors.New("b0rk"), conn: defaultConn}},
+		{wantErr: true, name: "no conn", args: args{err: nil, conn: nil}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			dialer := stubDialer{}
-			dialer.err = tt.args.err
+			dialer := newStubDialer(tt.args.err)
+			dialer.conn = tt.args.conn
 
 			_, err := getConnection(ctx, dialer, "mx.example.org")
 			if (err != nil) != tt.wantErr {

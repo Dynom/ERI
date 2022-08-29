@@ -127,7 +127,7 @@ func fetchMXHosts(ctx context.Context, resolver LookupMX, domain string) ([]stri
 }
 
 // MightBeAHostOrIP is a very rudimentary check to see if the argument could be either a host name or IP address
-// It aims on speed and not for correctness. It's intended to weed-out bogus responses such as '.'
+// It aims at speed and not correctness. It's intended to weed-out bogus responses such as '.'
 //
 //nolint:gocyclo
 func MightBeAHostOrIP(h string) bool {
