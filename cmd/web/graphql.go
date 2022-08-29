@@ -69,7 +69,8 @@ func NewGraphQLSchema(conf config.Config, suggestSvc *services.SuggestSvc, autoc
 
 				return erihttp.SuggestResponse{
 					Alternatives:    result.Alternatives,
-					MalformedSyntax: sugErr == validator.ErrEmailAddressSyntax,
+					MalformedSyntax: errors.Is(sugErr, validator.ErrEmailAddressSyntax),
+					MisconfiguredMX: !result.HasValidMX,
 				}, err
 			},
 			Description: "Get suggestions",

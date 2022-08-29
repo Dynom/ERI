@@ -145,18 +145,15 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxB
 		}
 
 		var alts = []string{req.Email}
-		var sugErr error
-		{
-			var result services.SuggestResult
-			result, sugErr = svc.Suggest(r.Context(), req.Email)
-			if len(result.Alternatives) > 0 {
-				alts = append(alts[0:0], result.Alternatives...)
-			}
+		result, sugErr := svc.Suggest(r.Context(), req.Email)
+		if len(result.Alternatives) > 0 {
+			alts = append(alts[0:0], result.Alternatives...)
 		}
 
 		sr := erihttp.SuggestResponse{
 			Alternatives:    alts,
 			MalformedSyntax: errors.Is(sugErr, validator.ErrEmailAddressSyntax),
+			MisconfiguredMX: !result.HasValidMX,
 		}
 
 		if sugErr != nil {

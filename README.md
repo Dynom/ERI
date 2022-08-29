@@ -5,7 +5,7 @@
 
 
 # ERI
-Email Recipient Inspector is a project for preventing email typos. It's a self-learning service, a library or a command line utility. The services can help your uses to prevent mistakes when entering their email address. The library allows you to incorporate the features in your own business layer and the cli can be used as a convenient way to test domains or e-mail addresses.
+Email Recipient Inspector is a project for preventing email typos. It's a self-learning service, a library or a command line utility. The services can help your uses to prevent mistakes when entering their email address. The library allows you to incorporate the features in your own business layer and the cli can be used as a convenient way to test domains or email addresses.
 
 # ERI as command line utility
 ## Installation
@@ -93,9 +93,16 @@ The local part (left of the `@`) remains completely untouched. It's simply echoe
   "alternatives": [
     "john.doe@example.org"
   ],
-  "malformed_syntax": false
+  "malformed_syntax": false,
+  "misconfigured_mx": false
 }
 ```
+##### The advisory fields
+Please take note: These fields are advisory. Email delivery is still possible (even though unlikely) when these advisory fields are false. For example the recipient "root" on a local system is considered invalid. For web-use, however, It'll be mostly correct.
+
+ - `malformed_syntax` (bool) is an indication of the syntax. The check is fairly liberal. If `true`, chances are pretty good the email will never work.` _Note: this is permanent_.
+ - `misconfigured_mx` (bool) is an indication of a misconfigured MX. If `true`, it's unlikely that the host can accept email. _Note: this can be temporary!_.
+
 
 ### /autocomplete
 The autocomplete endpoint returns a list of domains matching the prefix. To prevent leaking sensitive information, ERI is configured with a threshold to limit exposure of rarely used domains.
@@ -171,7 +178,7 @@ For more help, see the package: https://github.com/Dynom/ERI-js
 
 # Integration
 ## Data scrubbing
-When integrating ERI in your application, the initial results might be poor. When you change the validation mechanism (to include ERI) your data might still be too "dirty" to work with. After feeding your existing e-mail addresses into ERI you might want to cleanup the data first. The autocomplete endpoint might give odd results (e.g.: hotmail.com.com). Scrubbing this data from ERI's hitlist table and with the new mechanisms in place should prevent those addresses to end up into your backend in the future, but without the scrubbing you'll stay in a less-than-ideal situation.
+When integrating ERI in your application, the initial results might be poor. When you change the validation mechanism (to include ERI) your data might still be too "dirty" to work with. After feeding your existing email addresses into ERI you might want to cleanup the data first. The autocomplete endpoint might give odd results (e.g.: hotmail.com.com). Scrubbing this data from ERI's hitlist table and with the new mechanisms in place should prevent those addresses to end up into your backend in the future, but without the scrubbing you'll stay in a less-than-ideal situation.
 
 ## To proxy or to expose directly
 While ERI is designed to be exposed publicly, you might have different ideas about how to protect your backend services. Adding a proxy is a good alternative, and it allows you to fine-tune the rate-limiter to that specific use-case.
@@ -201,7 +208,7 @@ Mailcheck works completely in JavaScript, with the option to use only known TLDs
 
 
 # Email delivery nuances
-Ever since the first e-mail got sent in 1971 a lot has happened with electronic mail. In modern days email is seen as "the" way to identify and communicate with people online. Because of this, many people will easily give away their email addresses and people receive many, many emails. It's hard to read it all, not even counting the spam. Looking specifically at my own behaviour, I don't even open email unless I think it's important, just by scanning the sender and the subject of the email.
+Ever since the first email got sent in 1971 a lot has happened with electronic mail. In modern days email is seen as "the" way to identify and communicate with people online. Because of this, many people will easily give away their email addresses and people receive many, many emails. It's hard to read it all, not even counting the spam. Looking specifically at my own behaviour, I don't even open email unless I think it's important, just by scanning the sender and the subject of the email.
 
 With this in mind, even with a perfect validator, and a brilliantly composed and relevant email, it's still possible your email won't be read. ERI is designed to help out the user willing to trust you with their email address. ERI is not designed as a marketing tool to help optimise email delivery.
 
