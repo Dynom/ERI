@@ -14,11 +14,11 @@ func TestValidations_HasFlag(t *testing.T) {
 		want bool
 	}{
 		{want: true, name: "has flag", v: FValid, tf: FValid},
-		{want: true, name: "has flag (multiple)", v: FValid | FDomainHasIP, tf: FValid},
-		{want: true, name: "has flag (multiple)", v: FSyntax | FDomainHasIP, tf: FDomainHasIP},
+		{want: true, name: "has flag (multiple)", v: FValid | FMXDomainHasIP, tf: FValid},
+		{want: true, name: "has flag (multiple)", v: FSyntax | FMXDomainHasIP, tf: FMXDomainHasIP},
 
 		{name: "doesn't have flag", v: 0, tf: FValid},
-		{name: "doesn't have flag", v: FDomainHasIP, tf: FValid},
+		{name: "doesn't have flag", v: FMXDomainHasIP, tf: FValid},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -38,7 +38,7 @@ func TestValidations_IsValid(t *testing.T) {
 	}{
 		{want: true, name: "mega valid", v: FValid},
 		{name: "default value", v: 0},
-		{name: "some flags", v: FSyntax | FDomainHasIP},
+		{name: "some flags", v: FSyntax | FMXDomainHasIP},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -56,8 +56,8 @@ func TestValidations_IsValidationsForValidDomain(t *testing.T) {
 		v    Flag
 		want bool
 	}{
-		{want: true, name: "All domain flags", v: FSyntax | FHostConnect | FMXLookup | FDomainHasIP},
-		{want: true, name: "Domain has IP", v: FSyntax | FDomainHasIP},
+		{want: true, name: "All domain flags", v: FSyntax | FHostConnect | FMXLookup | FMXDomainHasIP},
+		{want: true, name: "Domain has IP", v: FSyntax | FMXDomainHasIP},
 		{want: true, name: "Domain accepted connections", v: FSyntax | FHostConnect},
 		{want: true, name: "DNS lookup showed domain has MX records", v: FSyntax | FMXLookup},
 
@@ -332,20 +332,20 @@ func BenchmarkTypeMemoryUsageInt64(b *testing.B) {
 }
 
 func ExampleMaskTest() {
-	fmt.Printf("FValid        %08b %d\n", FValid, FValid)
-	fmt.Printf("FSyntax       %08b %d\n", FSyntax, FSyntax)
-	fmt.Printf("FMXLookup     %08b %d\n", FMXLookup, FMXLookup)
-	fmt.Printf("FDomainHasIP  %08b %d\n", FDomainHasIP, FDomainHasIP)
-	fmt.Printf("FHostConnect  %08b %d\n", FHostConnect, FHostConnect)
-	fmt.Printf("FValidRCPT    %08b %d\n", FValidRCPT, FValidRCPT)
-	fmt.Printf("FDisposable   %08b %d\n", FDisposable, FDisposable)
+	fmt.Printf("FValid          %08b %d\n", FValid, FValid)
+	fmt.Printf("FSyntax         %08b %d\n", FSyntax, FSyntax)
+	fmt.Printf("FMXLookup       %08b %d\n", FMXLookup, FMXLookup)
+	fmt.Printf("FMXDomainHasIP  %08b %d\n", FMXDomainHasIP, FMXDomainHasIP)
+	fmt.Printf("FHostConnect    %08b %d\n", FHostConnect, FHostConnect)
+	fmt.Printf("FValidRCPT      %08b %d\n", FValidRCPT, FValidRCPT)
+	fmt.Printf("FDisposable     %08b %d\n", FDisposable, FDisposable)
 
 	// Output:
-	// FValid        00000001 1
-	// FSyntax       00000010 2
-	// FMXLookup     00000100 4
-	// FDomainHasIP  00001000 8
-	// FHostConnect  00010000 16
-	// FValidRCPT    00100000 32
-	// FDisposable   01000000 64
+	// FValid          00000001 1
+	// FSyntax         00000010 2
+	// FMXLookup       00000100 4
+	// FMXDomainHasIP  00001000 8
+	// FHostConnect    00010000 16
+	// FValidRCPT      00100000 32
+	// FDisposable     01000000 64
 }

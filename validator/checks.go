@@ -2,7 +2,6 @@ package validator
 
 import (
 	"fmt"
-	"net"
 	"net/mail"
 	"net/smtp"
 	"time"
@@ -94,11 +93,6 @@ func checkIfDomainHasMX(a *Artifact) error {
 	a.Timings.Add("checkIfDomainHasMX", time.Since(start))
 
 	if err != nil {
-		if e, ok := err.(net.Error); ok && e.Temporary() {
-			_ = e
-			// @todo what do we do when it's a temporary error?
-		}
-
 		return ValidationError{
 			Validator: "checkIfDomainHasMX",
 			Internal:  err,
@@ -113,8 +107,8 @@ func checkIfDomainHasMX(a *Artifact) error {
 
 // checkIfMXHasIP performs a NS lookup and fetches the IP addresses of the MX hosts
 func checkIfMXHasIP(a *Artifact) error {
-	if a.Steps.HasFlag(validations.FDomainHasIP) {
-		if !a.Validations.HasFlag(validations.FDomainHasIP) {
+	if a.Steps.HasFlag(validations.FMXDomainHasIP) {
+		if !a.Validations.HasFlag(validations.FMXDomainHasIP) {
 			return ValidationError{
 				Validator: "checkIfMXHasIP",
 				error:     ErrEmailAddressSyntax,
@@ -124,7 +118,7 @@ func checkIfMXHasIP(a *Artifact) error {
 		return nil
 	}
 
-	a.Steps.SetFlag(validations.FDomainHasIP)
+	a.Steps.SetFlag(validations.FMXDomainHasIP)
 
 	var err error
 	for i, domain := range a.mx {
@@ -134,11 +128,6 @@ func checkIfMXHasIP(a *Artifact) error {
 
 		if innerErr != nil || len(ips) == 0 {
 			a.mx[i] = ""
-
-			if e, ok := err.(net.Error); ok && e.Temporary() {
-				// @todo what do we do when it's a temporary error?
-				_ = e
-			}
 
 			if innerErr != nil {
 				err = wrapError(err, innerErr)
@@ -154,7 +143,7 @@ func checkIfMXHasIP(a *Artifact) error {
 		}
 	}
 
-	a.Validations.SetFlag(validations.FDomainHasIP)
+	a.Validations.SetFlag(validations.FMXDomainHasIP)
 	return nil
 }
 
@@ -185,11 +174,6 @@ func checkMXAcceptsConnect(a *Artifact) error {
 
 	conn, err := getConnection(a.ctx, a.dialer, mxToCheck)
 	a.Timings.Add("checkMXAcceptsConnect", time.Since(start))
-
-	if e, ok := err.(net.Error); ok && e.Temporary() {
-		// @todo what do we do when it's a temporary error?
-		_ = e
-	}
 
 	if err != nil {
 		return ValidationError{

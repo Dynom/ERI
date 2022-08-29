@@ -6,6 +6,7 @@ import (
 
 	"github.com/Dynom/ERI/cmd/web/erihttp/handlers"
 	"github.com/Dynom/ERI/cmd/web/preferrer"
+	"github.com/Dynom/ERI/validator/validations"
 
 	"github.com/Dynom/ERI/validator"
 
@@ -37,6 +38,7 @@ type SuggestSvc struct {
 
 type SuggestResult struct {
 	Alternatives []string
+	HasValidMX   bool
 }
 
 // @todo make this configurable and Algorithm dependent
@@ -100,6 +102,7 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 		}
 	}
 
+	sr.HasValidMX = vr.Validations.HasFlag(validations.FMXDomainHasIP | validations.FMXLookup)
 	sr.Alternatives = alts
 
 	return sr, err

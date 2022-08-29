@@ -3,7 +3,6 @@ package erihttp
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -37,7 +36,7 @@ func GetBodyFromHTTPRequest(r *http.Request, maxBodySize int64) ([]byte, error) 
 		return empty, fmt.Errorf("%w %q", ErrUnsupportedContentType, ct)
 	}
 
-	b, err := ioutil.ReadAll(io.LimitReader(r.Body, maxBodySize+1))
+	b, err := io.ReadAll(io.LimitReader(r.Body, maxBodySize+1))
 	if err != nil {
 		return empty, ErrInvalidRequest
 	}

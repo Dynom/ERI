@@ -328,5 +328,4 @@ func writeErrorJSONResponse(logger logrus.FieldLogger, w http.ResponseWriter, re
 			"bytes_written": c,
 		}).Error("Failed to write response")
 	}
-
 }

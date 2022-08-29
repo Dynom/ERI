@@ -7,23 +7,25 @@ jobs:
     working_directory: /home/circleci/eri
     docker:
       # specify the version
-      - image: circleci/golang:1.17
+      - image: cimg/go:1.19
 
     environment:
         BINARY_NAME: "eri-linux-amd64"
         TEST_RESULTS: "/tmp/test-results"
+        GOFLAGS: "-buildvcs=false -trimpath"
 
     steps:
       - checkout
       - run: mkdir -p ${TEST_RESULTS}
       - run: go install github.com/jstemmer/go-junit-report@latest
-      - run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.43.0
+      - run: go install github.com/mattn/goveralls@latest
+      - run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.49.0
 
       - run:
           name: Build
           command: |
             TAG=${CIRCLE_TAG:-dev}
-            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "${BINARY_NAME}" -a -ldflags="-w -s -X main.Version=${TAG}" ./cmd/web
+            GOFLAGS="-buildvcs=false -trimpath" CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "${BINARY_NAME}" -a -ldflags="-w -s -X main.Version=${TAG}" ./cmd/web
 
       - run:
           # Check if we have updates to minor/patch level packages we're explicitly referencing
@@ -40,8 +42,7 @@ jobs:
           name: Test
           command: |
             go test -v ./... | go-junit-report > ${TEST_RESULTS}/report.xml
-            go test -cover -coverprofile=${TEST_RESULTS}/coverage.txt -covermode=atomic  ./...
-            go test -race ./...
+            go test -cover -race -covermode=atomic -coverprofile=${TEST_RESULTS}/coverage.txt ./...
             go tool cover -html=${TEST_RESULTS}/coverage.txt -o ${TEST_RESULTS}/coverage.html
 
       - store_test_results:
@@ -51,9 +52,9 @@ jobs:
           path: "/tmp/test-results"
 
       - run:
-          name: Codecov upload
+          name: Coveralls upload
           command: |
-            bash <(curl -s https://codecov.io/bash) -f ${TEST_RESULTS}/coverage.txt
+            goveralls -coverprofile=${TEST_RESULTS}/coverage.txt -service=circle-ci -repotoken=${COVERALLS_TOKEN}
 
 
 workflows:
@@ -61,6 +62,9 @@ workflows:
   build-test:
     jobs:
       - lint-and-test:
+          context:
+            - org-global
+            - "Public repos"
           filters:
             branches:
               only: /.*/

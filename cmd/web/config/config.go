@@ -4,7 +4,7 @@ import (
 	"encoding"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -26,7 +26,7 @@ func NewConfig(fileName string) (Config, error) {
 	// Not reading a config file on startup, might not show any feedback
 	c.Log.Level = logrus.TraceLevel.String()
 
-	b, err := ioutil.ReadFile(fileName)
+	b, err := os.ReadFile(fileName)
 	if err != nil {
 		return c, fmt.Errorf("unable to open %q, reason: %w", fileName, err)
 	}
