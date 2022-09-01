@@ -42,7 +42,6 @@
         "gosec",
         "unconvert",
         "goconst",
-#        "gocognit",
         "depguard",
         "misspell",
         "unparam",
