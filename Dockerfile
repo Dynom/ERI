@@ -1,13 +1,14 @@
-FROM golang:1.14 as build
+FROM golang:1.19 as build
 
 ARG VERSION="dev"
 
 WORKDIR /ERI
 COPY . .
 
-RUN go test -test.short -test.v -test.race ./...
-RUN CGO_ENABLED=0 GO111MODULE=on go build -trimpath -v -a -ldflags "-w -X main.Version=${VERSION}" ./cmd/web
-RUN CGO_ENABLED=0 GO111MODULE=on go build -trimpath -v -a -ldflags "-w -X main.Version=${VERSION}" ./cmd/eri-cli
+RUN go mod download
+RUN go test -v -race ./...
+RUN GOFLAGS="-buildvcs=false -trimpath" CGO_ENABLED=0 GO111MODULE=on go build -v -ldflags "-w -X main.Version=${VERSION}" -a ./cmd/web
+RUN GOFLAGS="-buildvcs=false -trimpath" CGO_ENABLED=0 GO111MODULE=on go build -v -ldflags "-w -X main.Version=${VERSION}" ./cmd/eri-cli
 
 # @see https://github.com/GoogleContainerTools/distroless
 # This 🥑 base image provides Time Zone data and CA-certificates
