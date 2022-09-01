@@ -6,7 +6,6 @@ import (
 	"net"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/Dynom/ERI/types"
 )
@@ -136,14 +135,11 @@ func Test_getConnection(t *testing.T) {
 }
 
 func TestEmailValidator_getNewArtifact(t *testing.T) {
-
-	t.Run("Context deadline is propagated", func(t *testing.T) {
-		deadline := time.Now().Add(time.Minute * 1)
-		ctx, _ := context.WithDeadline(context.Background(), deadline)
-
-		a := getNewArtifact(ctx, types.EmailParts{}, WithDeadlineCTX(ctx))
-		if a.dialer.Deadline.UTC() != deadline.UTC() {
-			t.Errorf("Expected the deadline to propagate, it didn't %s\n%+v", deadline, a)
+	t.Run("Dialer is set with default resolver", func(t *testing.T) {
+		ctx := context.Background()
+		a := getNewArtifact(ctx, types.EmailParts{}, WithDialer(&net.Dialer{Resolver: nil}))
+		if a.dialer == nil || a.resolver == nil {
+			t.Errorf("Expected a default dialer to be used, it didn't %+v", a.dialer)
 		}
 	})
 }

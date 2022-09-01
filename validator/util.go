@@ -46,18 +46,7 @@ func WithDialer(dialer *net.Dialer) ArtifactFn {
 
 	return func(artifact *Artifact) {
 		artifact.dialer = dialer
-	}
-}
-
-func WithDeadlineCTX(ctx context.Context) ArtifactFn {
-	return func(artifact *Artifact) {
-		if artifact.dialer == nil {
-			return
-		}
-
-		if d, ok := ctx.Deadline(); ok {
-			artifact.dialer.Deadline = d
-		}
+		artifact.resolver = dialer.Resolver
 	}
 }
 
