@@ -25,20 +25,21 @@ type FakeInt64 struct {
 	Validations int64
 }
 
-var bigMapInt8 map[string]FakeInt8
-var bigMapInt16 map[string]FakeInt16
-var bigMapInt32 map[string]FakeInt32
-var bigMapInt64 map[string]FakeInt64
+var (
+	bigMapInt8  map[string]FakeInt8
+	bigMapInt16 map[string]FakeInt16
+	bigMapInt32 map[string]FakeInt32
+	bigMapInt64 map[string]FakeInt64
+)
 
 func BenchmarkMemoryUsage(b *testing.B) {
-
 	const mapSize = 1000
 	const keySize = 5
 	const alnum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-	var keys = make([]string, mapSize)
+	keys := make([]string, mapSize)
 	for i := 0; i < mapSize; i++ {
-		var key = make([]byte, keySize)
+		key := make([]byte, keySize)
 		for i := uint(0); i < keySize; i++ {
 			key[i] = alnum[rand.Intn(len(alnum))]
 		}

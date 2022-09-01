@@ -19,7 +19,7 @@ import (
 
 func validatorContextTTLProxy(duration time.Duration, fn validator.CheckFn) validator.CheckFn {
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
-		var afn = options
+		afn := options
 
 		ctx, cancel := context.WithTimeout(ctx, duration)
 		defer cancel()
@@ -30,10 +30,9 @@ func validatorContextTTLProxy(duration time.Duration, fn validator.CheckFn) vali
 
 // validatorHitListProxy Keeps HitList up-to-date and acts as a partial cache for the validator
 func validatorHitListProxy(hitList *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
-
 	logger = logger.WithField("middleware", "cache_proxy")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
-		var afn = options
+		afn := options
 
 		cvr, exists := hitList.GetDomainValidationDetails(hitlist.Domain(parts.Domain))
 
@@ -76,7 +75,6 @@ func validatorHitListProxy(hitList *hitlist.HitList, logger logrus.FieldLogger, 
 func validatorPersistProxy(persister persist.Persister, hitList *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
 	logger = logger.WithField("middleware", "persist_proxy")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
-
 		logger := logger.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
 
 		_, existed := hitList.Has(parts)
@@ -111,7 +109,6 @@ func validatorPersistProxy(persister persist.Persister, hitList *hitlist.HitList
 }
 
 func validatorNotifyProxy(svc *gcp.PubSubSvc, _ *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
-
 	logger = logger.WithField("middleware", "notification_publisher")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 		logger := logger.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
@@ -126,7 +123,6 @@ func validatorNotifyProxy(svc *gcp.PubSubSvc, _ *hitlist.HitList, logger logrus.
 		}
 
 		err := svc.Publish(ctx, data)
-
 		if err != nil {
 			logger.WithFields(logrus.Fields{
 				"error": err,
@@ -142,7 +138,6 @@ func validatorNotifyProxy(svc *gcp.PubSubSvc, _ *hitlist.HitList, logger logrus.
 func validatorUpdateFinderProxy(finder *finder.Finder, hitList *hitlist.HitList, logger logrus.FieldLogger, fn validator.CheckFn) validator.CheckFn {
 	logger = logger.WithField("middleware", "finder_updater")
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
-
 		logger := logger.WithField(handlers.RequestID.String(), ctx.Value(handlers.RequestID))
 
 		vr := fn(ctx, parts, options...)

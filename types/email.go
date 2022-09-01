@@ -5,9 +5,7 @@ import (
 	"strings"
 )
 
-var (
-	ErrInvalidEmailAddress = errors.New("invalid e-mail address, address is missing @")
-)
+var ErrInvalidEmailAddress = errors.New("invalid e-mail address, address is missing @")
 
 // NewEmailFromParts reconstructs EmailParts from two parts
 func NewEmailFromParts(local, domain string) EmailParts {

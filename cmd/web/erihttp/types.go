@@ -9,12 +9,9 @@ var (
 	ErrUnsupportedContentType = errors.New("unsupported content-type")
 )
 
-var (
-	empty = make([]string, 0)
-)
+var empty = make([]string, 0)
 
 type ERIResponse interface {
-
 	// Hacking around Generics, like it's 1999.
 	PrepareResponse()
 }

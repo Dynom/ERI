@@ -20,7 +20,6 @@ type WerkIt struct {
 }
 
 func (wi *WerkIt) StartCheckWorkers(workers int, fn func(tasks <-chan CheckTask)) {
-
 	wi.tasks = make(chan CheckTask)
 	wi.wg.Add(workers)
 	for i := workers; i > 0; i-- {

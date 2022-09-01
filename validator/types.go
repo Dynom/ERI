@@ -13,11 +13,12 @@ type Artifact struct {
 	Validations validations.Validations
 	Steps       validations.Steps
 	Timings
-	email  types.EmailParts
-	mx     []string
-	ctx    context.Context
-	dialer *net.Dialer
-	conn   net.Conn
+	email    types.EmailParts
+	mx       []string
+	ctx      context.Context
+	dialer   DialContext
+	resolver LookupMX
+	conn     net.Conn
 }
 
 type stateFn func(a *Artifact) error

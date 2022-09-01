@@ -11,7 +11,6 @@ import (
 type PersistCallbackFn func(d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error
 
 type Persister interface {
-
 	// Store stores the parts and vr. The implementation decides what key to use, although it should use a similar one
 	// use to restore data using the Get or Range implementations
 	Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipient, vr validator.Result) error

@@ -12,7 +12,6 @@ import (
 )
 
 func NewGraphQLSchema(conf config.Config, suggestSvc *services.SuggestSvc, autocompleteSvc *services.AutocompleteSvc) (graphql.Schema, error) {
-
 	suggestionType := graphql.NewObject(graphql.ObjectConfig{
 		Name: "suggestion",
 		Fields: graphql.Fields{

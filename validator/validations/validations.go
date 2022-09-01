@@ -17,7 +17,6 @@ func (v Validations) IsValid() bool {
 // MergeWithNext appends to Validations are returns the result. If the new validations aren't considered valid, it will
 // mark the new Validations as unsuccessful as well. It's opinionated in that it's part of an incremental validation chain
 func (v Validations) MergeWithNext(new Validations) Validations {
-
 	v.MarkAsInvalid()
 	return v | new
 }

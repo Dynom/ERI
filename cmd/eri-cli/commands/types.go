@@ -22,7 +22,7 @@ type CheckResultFull struct {
 }
 
 func (c CheckResultFull) String() string {
-	var result = new(strings.Builder)
+	result := new(strings.Builder)
 	var err error
 
 	f := func(format string, arg ...interface{}) {
@@ -33,7 +33,7 @@ func (c CheckResultFull) String() string {
 		_, err = fmt.Fprintf(result, format, arg...)
 	}
 
-	var valid = "invalid"
+	valid := "invalid"
 	if c.Valid {
 		valid = "valid"
 	}

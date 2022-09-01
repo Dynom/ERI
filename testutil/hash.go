@@ -27,7 +27,6 @@ func (s MockHasher) Sum(p []byte) []byte {
 }
 
 func (s MockHasher) Reset() {
-
 }
 
 func (s MockHasher) Size() int {

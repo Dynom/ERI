@@ -11,7 +11,7 @@ func SetVersion(v string) {
 }
 
 func init() {
-	var versionCmd = &cobra.Command{
+	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "The version",
 		Run: func(cmd *cobra.Command, args []string) {

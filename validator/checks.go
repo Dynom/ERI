@@ -89,7 +89,7 @@ func checkIfDomainHasMX(a *Artifact) error {
 	a.Steps.SetFlag(validations.FMXLookup)
 
 	start := time.Now()
-	mxs, err := fetchMXHosts(a.ctx, a.dialer.Resolver, a.email.Domain)
+	mxs, err := fetchMXHosts(a.ctx, a.resolver, a.email.Domain)
 	a.Timings.Add("checkIfDomainHasMX", time.Since(start))
 
 	if err != nil {
@@ -105,7 +105,8 @@ func checkIfDomainHasMX(a *Artifact) error {
 	return nil
 }
 
-// checkIfMXHasIP performs a NS lookup and fetches the IP addresses of the MX hosts
+// checkIfMXHasIP performs a NS lookup and fetches the IP addresses of the MX hosts.
+// expects to run after checkIfDomainHasMX()
 func checkIfMXHasIP(a *Artifact) error {
 	if a.Steps.HasFlag(validations.FMXDomainHasIP) {
 		if !a.Validations.HasFlag(validations.FMXDomainHasIP) {
@@ -123,7 +124,7 @@ func checkIfMXHasIP(a *Artifact) error {
 	var err error
 	for i, domain := range a.mx {
 		start := time.Now()
-		ips, innerErr := a.dialer.Resolver.LookupIPAddr(a.ctx, domain)
+		ips, innerErr := a.resolver.LookupMX(a.ctx, domain)
 		a.Timings.Add("checkIfMXHasIP "+domain, time.Since(start))
 
 		if innerErr != nil || len(ips) == 0 {

@@ -46,18 +46,7 @@ func WithDialer(dialer *net.Dialer) ArtifactFn {
 
 	return func(artifact *Artifact) {
 		artifact.dialer = dialer
-	}
-}
-
-func WithDeadlineCTX(ctx context.Context) ArtifactFn {
-	return func(artifact *Artifact) {
-		if artifact.dialer == nil {
-			return
-		}
-
-		if d, ok := ctx.Deadline(); ok {
-			artifact.dialer.Deadline = d
-		}
+		artifact.resolver = dialer.Resolver
 	}
 }
 
@@ -95,7 +84,6 @@ func getConnection(ctx context.Context, dialer DialContext, mxHost string) (net.
 
 // fetchMXHosts collects up to N MX hosts for a given domain
 func fetchMXHosts(ctx context.Context, resolver LookupMX, domain string) ([]string, error) {
-
 	mxs, err := resolver.LookupMX(ctx, domain)
 	if err != nil {
 		return nil, fmt.Errorf("MX lookup failed %w", err)
@@ -106,14 +94,13 @@ func fetchMXHosts(ctx context.Context, resolver LookupMX, domain string) ([]stri
 	}
 
 	// Reading an external source, limiting to a liberal amount
-	var allocateMax = 3
+	allocateMax := 3
 	if l := len(mxs); l < allocateMax {
 		allocateMax = l
 	}
 
-	var collected = make([]string, 0, allocateMax)
+	collected := make([]string, 0, allocateMax)
 	for _, mx := range mxs[:allocateMax] {
-
 		if MightBeAHostOrIP(mx.Host) {
 			collected = append(collected, mx.Host)
 		}
@@ -131,7 +118,6 @@ func fetchMXHosts(ctx context.Context, resolver LookupMX, domain string) ([]stri
 //
 //nolint:gocyclo
 func MightBeAHostOrIP(h string) bool {
-
 	// @todo merge with looksLikeValidDomain() -- Do we want regex fallback?
 
 	// Normally we can assume that host names have a tld or consists at least out of 4 characters
@@ -170,8 +156,7 @@ var (
 
 //nolint:gocyclo
 func looksLikeValidLocalPart(local string) bool {
-
-	var lastIndexPos = len(local)
+	lastIndexPos := len(local)
 	if 1 > lastIndexPos || lastIndexPos > 63 {
 		return false
 	}
@@ -223,7 +208,7 @@ func looksLikeValidLocalPart(local string) bool {
 
 //nolint:gocyclo
 func looksLikeValidDomain(domain string) bool {
-	var lastIndexPos = len(domain) - 1
+	lastIndexPos := len(domain) - 1
 
 	// Normally we can assume that host names have a tld and/or consists at least out of 4 characters
 	if 3 >= lastIndexPos || lastIndexPos >= 253 {
@@ -260,7 +245,7 @@ func looksLikeValidDomain(domain string) bool {
 }
 
 // wrapError wraps an error with the parent error and ignores the parent when it's nil
-func wrapError(parent error, new error) error {
+func wrapError(parent, new error) error {
 	if parent == nil {
 		return new
 	}

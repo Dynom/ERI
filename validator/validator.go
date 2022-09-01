@@ -8,11 +8,12 @@ import (
 	"github.com/Dynom/ERI/types"
 )
 
-type CheckFn func(ctx context.Context, parts types.EmailParts, options ...ArtifactFn) Result
-type ArtifactFn func(artifact *Artifact)
+type (
+	CheckFn    func(ctx context.Context, parts types.EmailParts, options ...ArtifactFn) Result
+	ArtifactFn func(artifact *Artifact)
+)
 
 func NewEmailAddressValidator(dialer *net.Dialer) EmailValidator {
-
 	// @todo fix when Go's stdlib offers a nicer API for this
 	if dialer == nil {
 		dialer = &net.Dialer{}
@@ -41,7 +42,7 @@ func prependOptions(options []ArtifactFn, o ...ArtifactFn) []ArtifactFn {
 // Warning: Using this _can_ degrade your IPs reputation, since it's also a process spammers use.
 func (v *EmailValidator) CheckWithRCPT(ctx context.Context, emailParts types.EmailParts, options ...ArtifactFn) Result {
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDeadlineCTX(ctx))...),
+		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer))...),
 		[]stateFn{
 			getSyntaxCheck(emailParts),
 			checkIfDomainHasMX,
@@ -57,7 +58,7 @@ func (v *EmailValidator) CheckWithRCPT(ctx context.Context, emailParts types.Ema
 // accepts connections, but won't try any mail commands.
 func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.EmailParts, options ...ArtifactFn) Result {
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDeadlineCTX(ctx))...),
+		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer))...),
 		[]stateFn{
 			getSyntaxCheck(emailParts),
 			checkIfDomainHasMX,
@@ -71,7 +72,7 @@ func (v *EmailValidator) CheckWithConnect(ctx context.Context, emailParts types.
 // CheckWithLookup performs a sanity check using DNS lookups. It won't connect to the actual hosts.
 func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.EmailParts, options ...ArtifactFn) Result {
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDeadlineCTX(ctx))...),
+		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer))...),
 		[]stateFn{
 			getSyntaxCheck(emailParts),
 			checkIfDomainHasMX,
@@ -84,7 +85,7 @@ func (v *EmailValidator) CheckWithLookup(ctx context.Context, emailParts types.E
 // CheckWithSyntax performs only a syntax check.
 func (v *EmailValidator) CheckWithSyntax(ctx context.Context, emailParts types.EmailParts, options ...ArtifactFn) Result {
 	artifact, _ := validateSequence(ctx,
-		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer), WithDeadlineCTX(ctx))...),
+		getNewArtifact(ctx, emailParts, prependOptions(options, WithDialer(v.dialer))...),
 		[]stateFn{
 			getSyntaxCheck(emailParts),
 		})

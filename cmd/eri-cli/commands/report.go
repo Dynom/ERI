@@ -51,7 +51,7 @@ var reportCmd = &cobra.Command{
 	Long: `Some examples:
   - bzcat list.bz2 | eri-cli check | eri-cli report --only-invalid > report.json`,
 	Args: func(cmd *cobra.Command, args []string) error {
-		var stdInFromTerminal = term.IsTerminal(int(os.Stdin.Fd()))
+		stdInFromTerminal := term.IsTerminal(int(os.Stdin.Fd()))
 
 		if len(args) > 0 {
 			return errors.New("report doesn't take any arguments")
@@ -92,7 +92,7 @@ var reportCmd = &cobra.Command{
 
 		if reportSettings.Details == string(RFStats) {
 			now := time.Now()
-			var report = ReportStats{}
+			report := ReportStats{}
 			for {
 				var cr CheckResultFull
 				err := decoder.Decode(&cr)

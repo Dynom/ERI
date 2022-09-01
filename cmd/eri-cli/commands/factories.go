@@ -23,7 +23,6 @@ func createTextIterator(r io.Reader) *iterator.CallbackIterator {
 }
 
 func createCSVIterator(r io.Reader) *iterator.CallbackIterator {
-
 	reader := csv.NewReader(r)
 	reader.FieldsPerRecord = int(checkSettings.CSV.column)
 	reader.ReuseRecord = true
@@ -32,7 +31,7 @@ func createCSVIterator(r io.Reader) *iterator.CallbackIterator {
 	var eof bool
 
 	if checkSettings.CSV.skipRows > 0 {
-		var toSkip = checkSettings.CSV.skipRows
+		toSkip := checkSettings.CSV.skipRows
 		for ; toSkip > 0; toSkip-- {
 			_, err := reader.Read()
 			if err == io.EOF {

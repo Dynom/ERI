@@ -1,11 +1,16 @@
 package validator
 
 import (
+	"context"
+	"errors"
+	"net"
 	"net/mail"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Dynom/ERI/types"
+	"github.com/Dynom/ERI/validator/validations"
 )
 
 func Test_checkEmailAddressSyntax(t *testing.T) {
@@ -68,7 +73,6 @@ func Test_checkEmailAddressSyntax(t *testing.T) {
 		{parts: types.NewEmailFromParts("john.doe", ""), wantErr: true},
 	} {
 		t.Run("only structure check/"+tt.parts.Address, func(t *testing.T) {
-
 			a := &Artifact{
 				Validations: 0,
 				Timings:     make(Timings, 10),
@@ -125,7 +129,6 @@ func Test_checkDomainSyntax(t *testing.T) {
 }
 
 func Test_looksLikeValidLocalPartSpecifics(t *testing.T) {
-
 	// Should match up with the classes we test in our regexes
 	localSpecifics := "!#$%&'*+-/=?^_\x60{|}~"
 
@@ -250,6 +253,129 @@ func Test_looksLikeValidDomain(t *testing.T) {
 		t.Run("testing "+domain, func(t *testing.T) {
 			if got := looksLikeValidDomain(domain); got != tt.want {
 				t.Errorf("looksLikeValidDomain(%q) = %v, want %v (bad char: 0x%x, %q))", tt.domain, got, tt.want, tt.badChar, tt.badChar)
+			}
+		})
+	}
+}
+
+func Test_checkIfDomainHasMX(t *testing.T) {
+	tests := []struct {
+		name     string
+		resolver LookupMX
+		steps    validations.Steps
+		wantErr  bool
+	}{
+		{
+			name:     "all good",
+			resolver: buildLookupMX([]string{"example.org"}, nil),
+			wantErr:  false,
+		},
+		{
+			name:     "lookup error",
+			resolver: buildLookupMX([]string{"example.org"}, errors.New("rip")),
+			wantErr:  true,
+		},
+		{
+			name:     "no mx hosts",
+			resolver: buildLookupMX([]string{}, nil),
+			wantErr:  true,
+		},
+		{
+			name:     "bad MX hosts",
+			resolver: buildLookupMX([]string{".", ".."}, nil),
+			wantErr:  true,
+		},
+		{
+			name:     "Step already defined, but not valid",
+			resolver: buildLookupMX([]string{".", ".."}, nil),
+			steps:    validations.Steps(validations.FMXLookup),
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			a := &Artifact{
+				resolver:    tt.resolver,
+				Steps:       tt.steps,
+				Validations: 0,
+			}
+
+			if err := checkIfDomainHasMX(a); (err != nil) != tt.wantErr {
+				t.Errorf("checkIfDomainHasMX() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			// Since we run an MX check, the step should always be defined
+			if !a.Steps.HasFlag(validations.FMXLookup) {
+				t.Errorf("Expected the flag to be specified as Step %+v", a.Steps)
+			}
+
+			// Depending on the validations, we either want or don't want the flag defined
+			if !tt.wantErr && !a.Validations.HasFlag(validations.FMXLookup) {
+				t.Errorf("Expected the flag to be specified as Validation %+v", a.Validations)
+			} else if tt.wantErr && a.Validations.HasFlag(validations.FMXLookup) {
+				t.Errorf("Expected the flag to NOT be specified as Validation %+v", a.Validations)
+			}
+		})
+	}
+}
+
+func Test_checkIfMXHasIP(t *testing.T) {
+	expiredCtx, cancel := context.WithDeadline(context.Background(), time.Now())
+	cancel()
+
+	tests := []struct {
+		name     string
+		resolver LookupMX
+		steps    validations.Steps
+		mx       []string
+		ctx      context.Context
+		wantErr  bool
+	}{
+		{
+			name:     "all good",
+			resolver: buildLookupMX([]string{"example.org"}, nil),
+			wantErr:  false,
+		},
+		{
+			name:     "lookup fail",
+			resolver: buildLookupMX([]string{"127.0.0.1"}, errors.New("lookup fail")),
+			mx:       []string{"mx.example.org"},
+			wantErr:  true,
+		},
+		{
+			name:     "deadline expired",
+			resolver: &net.Resolver{},
+			mx:       []string{"mx.example.org"},
+			ctx:      expiredCtx,
+			wantErr:  true,
+		},
+		{
+			name:    "Step already defined, but not valid",
+			steps:   validations.Steps(validations.FMXDomainHasIP),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.ctx == nil {
+				tt.ctx = context.Background()
+			}
+
+			a := &Artifact{
+				resolver:    tt.resolver,
+				Steps:       tt.steps,
+				mx:          tt.mx,
+				ctx:         tt.ctx,
+				Validations: 0,
+			}
+
+			err := checkIfMXHasIP(a)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("checkIfMXHasIP() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

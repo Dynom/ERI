@@ -42,7 +42,7 @@ var Version = "dev"
 func main() {
 	var conf config.Config
 	var err error
-	var exitCode = 0
+	exitCode := 0
 
 	defer func() {
 		v := recover()
@@ -111,7 +111,6 @@ func main() {
 		finder.WithAlgorithm(finder.NewJaroWinklerDefaults()),
 		finder.WithPrefixBuckets(conf.Finder.UseBuckets),
 	)
-
 	if err != nil {
 		logger.WithError(err).Error("Unable to create Finder")
 		exitCode = ErrExUnavailable

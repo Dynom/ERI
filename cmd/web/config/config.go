@@ -186,9 +186,7 @@ func (h *Headers) Set(v string) error {
 	return nil
 }
 
-var (
-	_ encoding.TextUnmarshaler
-)
+var _ encoding.TextUnmarshaler
 
 type ValidatorType string
 
@@ -204,7 +202,7 @@ func (vt *ValidatorType) Set(v string) error {
 type ValidatorTypes []ValidatorType
 
 func (v ValidatorTypes) AsStringSlice() []string {
-	var result = make([]string, 0, len(v))
+	result := make([]string, 0, len(v))
 	for _, part := range v {
 		result = append(result, string(part))
 	}
@@ -213,7 +211,7 @@ func (v ValidatorTypes) AsStringSlice() []string {
 }
 
 func (vt *ValidatorType) UnmarshalText(value []byte) error {
-	var validTypes = ValidatorTypes{VTStructure, VTLookup}
+	validTypes := ValidatorTypes{VTStructure, VTLookup}
 
 	v := string(value)
 	for _, t := range validTypes.AsStringSlice() {

@@ -17,16 +17,20 @@ var (
 	ErrInvalidSyntax       = errors.New("invalid syntax")
 )
 
-type Hits map[Domain]Hit
-type Domain string
-type Hit struct {
-	Recipients       map[rcpt]struct{}
-	ValidUntil       time.Time
-	ValidationResult validator.Result
-}
+type (
+	Hits   map[Domain]Hit
+	Domain string
+	Hit    struct {
+		Recipients       map[rcpt]struct{}
+		ValidUntil       time.Time
+		ValidationResult validator.Result
+	}
+)
 
-type Recipient []byte
-type rcpt string
+type (
+	Recipient []byte
+	rcpt      string
+)
 
 func New(h hash.Hash, ttl time.Duration) *HitList {
 	l := HitList{
@@ -106,7 +110,7 @@ func (hl *HitList) GetDomainValidationDetails(d Domain) (validator.Details, bool
 // GetValidAndUsageSortedDomains returns the used domains, sorted by their associated recipients (high>low)
 func (hl *HitList) GetValidAndUsageSortedDomains() []string {
 	hl.lock.RLock()
-	var domains = getValidDomains(hl.hits)
+	domains := getValidDomains(hl.hits)
 	hl.lock.RUnlock()
 
 	return domains
@@ -130,11 +134,10 @@ func (hl *HitList) AddInternalParts(domain Domain, recipient Recipient, vr valid
 
 // AddInternalPartsDuration adds values considered "safe". Has an extra duration option which shouldn't be negative
 func (hl *HitList) AddInternalPartsDuration(domain Domain, recipient Recipient, vr validator.Result, duration time.Duration) error {
-
 	hl.lock.Lock()
 	defer hl.lock.Unlock()
 
-	var now = time.Now()
+	now := time.Now()
 	dh, ok := hl.hits[domain]
 
 	if !ok {
@@ -169,7 +172,6 @@ func (hl *HitList) AddDeadline(parts types.EmailParts, vr validator.Result, dura
 	}
 
 	domain, safeLocal, err := hl.CreateInternalTypes(parts)
-
 	if err != nil {
 		return err
 	}
@@ -189,7 +191,7 @@ func (hl *HitList) AddEmailAddress(email string, vr validator.Result) error {
 
 // AddDomain learns of a domain and it's validity.
 func (hl *HitList) AddDomain(d string, vr validator.Result) error {
-	var domain = Domain(strings.ToLower(d))
+	domain := Domain(strings.ToLower(d))
 
 	if len(domain) == 0 {
 		return ErrInvalidDomainSyntax
@@ -223,7 +225,7 @@ func getValidDomains(hits Hits) []string {
 		Recipients int64
 	}
 
-	var sortStats = make([]stats, 0, len(hits))
+	sortStats := make([]stats, 0, len(hits))
 	for domain, details := range hits {
 
 		if !details.ValidationResult.Validations.IsValidationsForValidDomain() {

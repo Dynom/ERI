@@ -6,7 +6,6 @@ import (
 	"net"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/Dynom/ERI/types"
 )
@@ -52,7 +51,6 @@ func buildLookupMX(mxHosts []string, err error) LookupMX {
 }
 
 func Test_fetchMXHosts(t *testing.T) {
-
 	type args struct {
 		hosts []string
 		err   error
@@ -64,7 +62,6 @@ func Test_fetchMXHosts(t *testing.T) {
 		want    []string
 		wantErr bool
 	}{
-
 		// The good
 		{name: "Happy flow", want: []string{"mx1.example.org"}, args: args{hosts: []string{"mx1.example.org"}}},
 
@@ -78,7 +75,6 @@ func Test_fetchMXHosts(t *testing.T) {
 
 	ctx := context.Background()
 	for _, tt := range tests {
-
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := fetchMXHosts(ctx, buildLookupMX(tt.args.hosts, tt.args.err), "foobar.local")
 
@@ -95,7 +91,6 @@ func Test_fetchMXHosts(t *testing.T) {
 }
 
 func Test_getConnection(t *testing.T) {
-
 	// @todo validate connection timeout workings
 	// @todo
 
@@ -136,14 +131,11 @@ func Test_getConnection(t *testing.T) {
 }
 
 func TestEmailValidator_getNewArtifact(t *testing.T) {
-
-	t.Run("Context deadline is propagated", func(t *testing.T) {
-		deadline := time.Now().Add(time.Minute * 1)
-		ctx, _ := context.WithDeadline(context.Background(), deadline)
-
-		a := getNewArtifact(ctx, types.EmailParts{}, WithDeadlineCTX(ctx))
-		if a.dialer.Deadline.UTC() != deadline.UTC() {
-			t.Errorf("Expected the deadline to propagate, it didn't %s\n%+v", deadline, a)
+	t.Run("Dialer is set with default resolver", func(t *testing.T) {
+		ctx := context.Background()
+		a := getNewArtifact(ctx, types.EmailParts{}, WithDialer(&net.Dialer{Resolver: nil}))
+		if a.dialer == nil || a.resolver == nil {
+			t.Errorf("Expected a default dialer to be used, it didn't %+v", a.dialer)
 		}
 	})
 }

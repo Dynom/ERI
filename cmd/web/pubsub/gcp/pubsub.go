@@ -81,14 +81,13 @@ func (svc PubSubSvc) getSubscriptionID() string {
 }
 
 func (svc *PubSubSvc) Publish(ctx context.Context, data pubsub.Data) error {
-
 	logger := svc.logger.WithFields(logrus.Fields{
 		handlers.RequestID.String(): ctx.Value(handlers.RequestID),
 	})
 
 	// @todo Current design is chatty. Do we need to support batching and publish at earliest: interval / max payload size?
 
-	var notification = pubsub.Notification{
+	notification := pubsub.Notification{
 		SenderID: svc.getSubscriptionID(),
 		Data:     data,
 	}
@@ -130,7 +129,6 @@ func (svc *PubSubSvc) getTopic(ctx context.Context, topicName string) (*gcppubsu
 	svc.topic = topic
 
 	return svc.topic, nil
-
 }
 
 func (svc *PubSubSvc) maintainSubscription(ctx context.Context, fn NotifyFn, topic *gcppubsub.Topic) {
@@ -139,8 +137,8 @@ func (svc *PubSubSvc) maintainSubscription(ctx context.Context, fn NotifyFn, top
 	subscriptionID := svc.getSubscriptionID()
 
 	var attempts uint64
-	var retries = -1
-	var lastErrorTime = time.Time{}
+	retries := -1
+	lastErrorTime := time.Time{}
 	for {
 		var err error
 		attempts++
@@ -234,7 +232,6 @@ func (svc *PubSubSvc) maintainSubscription(ctx context.Context, fn NotifyFn, top
 // Listen uses the client co connect to GCP and attach to a Topic, while attaching a new unique subscriber for
 // receiving notifications. Listen returns immediately
 func (svc *PubSubSvc) Listen(ctx context.Context, fn NotifyFn) error {
-
 	topic, err := svc.getTopic(ctx, svc.topicName)
 	if err != nil {
 		svc.logger.WithFields(logrus.Fields{
@@ -260,7 +257,6 @@ func (svc *PubSubSvc) createSubscription(ctx context.Context, topic *gcppubsub.T
 			ExpirationPolicy:    time.Hour * 25,
 		},
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +282,6 @@ func (svc *PubSubSvc) listen(ctx context.Context, subscription Subscription, fn 
 	var received uint
 	var ignored uint
 	return subscription.Receive(ctx, func(ctx context.Context, message *gcppubsub.Message) {
-
 		receivedLock.Lock()
 		received++
 		numSeen := received
@@ -330,7 +325,6 @@ func (svc *PubSubSvc) listen(ctx context.Context, subscription Subscription, fn 
 		// Calling cb
 		fn(ctx, notification)
 	})
-
 }
 
 // sleepyTime sleeps up to a max of (retries * time.Second), depending on how long it has been since time t
@@ -347,7 +341,6 @@ func shouldResetRetries(t time.Time, retries int) bool {
 }
 
 func getDurationToSleep(t time.Time, retries int) time.Duration {
-
 	retries *= 2
 	if retries <= 0 {
 		retries = 1

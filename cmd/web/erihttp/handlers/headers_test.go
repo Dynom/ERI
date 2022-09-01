@@ -57,7 +57,7 @@ func TestWithHeaders(t *testing.T) {
 			}
 
 			// Extracted the known headers from the response.
-			var got = http.Header{}
+			got := http.Header{}
 			h := mockResponse.Header()
 			for key := range h {
 				for _, v := range h.Values(key) {

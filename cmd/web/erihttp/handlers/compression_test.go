@@ -67,7 +67,6 @@ func TestWithGzipHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			server := httptest.NewServer(tt.use(mux))
 			defer server.Close()
 

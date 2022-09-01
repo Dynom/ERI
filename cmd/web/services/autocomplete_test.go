@@ -16,7 +16,6 @@ import (
 )
 
 func TestAutocompleteSvc_Autocomplete(t *testing.T) {
-
 	ctxExpired, cancel := context.WithTimeout(context.Background(), -1*time.Hour)
 	cancel()
 
@@ -165,7 +164,6 @@ func TestAutocompleteSvc_Autocomplete(t *testing.T) {
 }
 
 func TestAutocompleteSvc_filter(t *testing.T) {
-
 	ctxExpired, cancel := context.WithTimeout(context.Background(), -1*time.Hour)
 	cancel()
 
