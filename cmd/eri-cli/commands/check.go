@@ -18,9 +18,7 @@ import (
 	"golang.org/x/term"
 )
 
-var (
-	checkSettings = &CheckSettings{}
-)
+var checkSettings = &CheckSettings{}
 
 const (
 	inputFormatText = "text"
@@ -44,8 +42,7 @@ Some examples:
     eri-cli report --only-invalid > report.json
 `,
 	Args: func(cmd *cobra.Command, args []string) error {
-
-		var stdInFromTerminal = term.IsTerminal(int(os.Stdin.Fd()))
+		stdInFromTerminal := term.IsTerminal(int(os.Stdin.Fd()))
 		if len(args) > 1 {
 			return errors.New("too many arguments, expected 0 or 1")
 		}
@@ -69,14 +66,14 @@ Some examples:
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		var dialer = &net.Dialer{}
+		dialer := &net.Dialer{}
 		if checkSettings.Check.Resolver != nil {
 			setCustomResolver(dialer, checkSettings.Check.Resolver)
 		}
 
 		v := validator.NewEmailAddressValidator(dialer)
 
-		var workers = int(checkSettings.Workers)
+		workers := int(checkSettings.Workers)
 		var it *iterator.CallbackIterator
 		if len(args) > 0 {
 			it = createTextIterator(strings.NewReader(args[0]))
@@ -153,7 +150,7 @@ Some examples:
 }
 
 func doCheck(ctx context.Context, fn validator.CheckFn, parts types.EmailParts) CheckResultFull {
-	var result = CheckResultFull{
+	result := CheckResultFull{
 		Input:   parts.Address,
 		Version: 2,
 	}

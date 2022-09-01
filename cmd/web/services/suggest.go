@@ -45,9 +45,8 @@ type SuggestResult struct {
 const finderThreshold = 0.8
 
 func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, error) {
-
-	var emailStrLower = strings.ToLower(email)
-	var sr = SuggestResult{
+	emailStrLower := strings.ToLower(email)
+	sr := SuggestResult{
 		Alternatives: []string{email},
 	}
 
@@ -86,7 +85,7 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 		}
 	}
 
-	var alts = make([]string, 0, len(sr.Alternatives))
+	alts := make([]string, 0, len(sr.Alternatives))
 	for _, alt := range sr.Alternatives {
 		parts, err := types.NewEmailParts(alt)
 		if err != nil {
@@ -109,7 +108,6 @@ func (c *SuggestSvc) Suggest(ctx context.Context, email string) (SuggestResult, 
 }
 
 func (c *SuggestSvc) getAlternatives(ctx context.Context, parts types.EmailParts) []string {
-
 	alt, score, exact := c.finder.FindCtx(ctx, parts.Domain)
 
 	c.logger.WithFields(logrus.Fields{

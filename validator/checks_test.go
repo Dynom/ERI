@@ -73,7 +73,6 @@ func Test_checkEmailAddressSyntax(t *testing.T) {
 		{parts: types.NewEmailFromParts("john.doe", ""), wantErr: true},
 	} {
 		t.Run("only structure check/"+tt.parts.Address, func(t *testing.T) {
-
 			a := &Artifact{
 				Validations: 0,
 				Timings:     make(Timings, 10),
@@ -130,7 +129,6 @@ func Test_checkDomainSyntax(t *testing.T) {
 }
 
 func Test_looksLikeValidLocalPartSpecifics(t *testing.T) {
-
 	// Should match up with the classes we test in our regexes
 	localSpecifics := "!#$%&'*+-/=?^_\x60{|}~"
 
@@ -324,7 +322,6 @@ func Test_checkIfDomainHasMX(t *testing.T) {
 }
 
 func Test_checkIfMXHasIP(t *testing.T) {
-
 	expiredCtx, cancel := context.WithDeadline(context.Background(), time.Now())
 	cancel()
 

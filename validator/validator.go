@@ -8,11 +8,12 @@ import (
 	"github.com/Dynom/ERI/types"
 )
 
-type CheckFn func(ctx context.Context, parts types.EmailParts, options ...ArtifactFn) Result
-type ArtifactFn func(artifact *Artifact)
+type (
+	CheckFn    func(ctx context.Context, parts types.EmailParts, options ...ArtifactFn) Result
+	ArtifactFn func(artifact *Artifact)
+)
 
 func NewEmailAddressValidator(dialer *net.Dialer) EmailValidator {
-
 	// @todo fix when Go's stdlib offers a nicer API for this
 	if dialer == nil {
 		dialer = &net.Dialer{}

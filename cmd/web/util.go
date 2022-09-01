@@ -67,12 +67,11 @@ func newLogger(conf config.Config) (*logrus.Logger, *io.PipeWriter, error) {
 }
 
 func registerProfileHandler(mux *http.ServeMux, conf config.Config) {
-
 	if !conf.Server.Profiler.Enable {
 		return
 	}
 
-	var prefix = "debug"
+	prefix := "debug"
 	if conf.Server.Profiler.Prefix != "" {
 		prefix = conf.Server.Profiler.Prefix
 	}
@@ -125,7 +124,7 @@ func mapValidatorTypeToValidatorFn(vt config.ValidatorType, v validator.EmailVal
 }
 
 func createProxiedValidator(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList, myFinder *finder.Finder, pubSubSvc *gcp.PubSubSvc, persister persist.Persister) validator.CheckFn {
-	var dialer = &net.Dialer{}
+	dialer := &net.Dialer{}
 	if conf.Validator.Resolver != "" {
 		setCustomResolver(dialer, conf.Validator.Resolver)
 	}
@@ -161,7 +160,6 @@ func registerHealthHandler(mux *http.ServeMux, logger logrus.FieldLogger) {
 }
 
 func pubSubNotificationHandler(hitList *hitlist.HitList, logger logrus.FieldLogger, myFinder *finder.Finder) gcp.NotifyFn {
-
 	logger = logger.WithField("handler", "notification")
 	return func(ctx context.Context, notification pubsub.Notification) {
 		parts := types.NewEmailFromParts(notification.Data.Local, notification.Data.Domain)
@@ -193,7 +191,7 @@ func pubSubNotificationHandler(hitList *hitlist.HitList, logger logrus.FieldLogg
 }
 
 func createPersister(conf config.Config, logger logrus.FieldLogger, hitList *hitlist.HitList) (persist.Persister, error) {
-	var driver = conf.Backend.Driver
+	driver := conf.Backend.Driver
 	var backend persist.Persister
 
 	logger = logger.WithField("backend_driver", driver)
@@ -228,7 +226,6 @@ func createPersister(conf config.Config, logger logrus.FieldLogger, hitList *hit
 		added++
 		return nil
 	})
-
 	if err != nil {
 		logger.WithError(err).Warn("Unable Range the database")
 		return nil, err
@@ -268,7 +265,6 @@ func createPubSubSvc(conf config.Config, logger logrus.FieldLogger, rt *runtimer
 		option.WithUserAgent("eri-"+Version),
 		option.WithCredentialsFile(conf.GCP.CredentialsFile),
 	)
-
 	if err != nil {
 		psClientCtxCancel()
 		return nil, err
@@ -312,7 +308,6 @@ func createPubSubSvc(conf config.Config, logger logrus.FieldLogger, rt *runtimer
 
 // writeErrorJSONResponse Sets the error on a response and writes it with the corresponding Content-Type
 func writeErrorJSONResponse(logger logrus.FieldLogger, w http.ResponseWriter, responseType erihttp.ERIResponse) {
-
 	responseType.PrepareResponse()
 	response, err := json.Marshal(responseType)
 	if err != nil {

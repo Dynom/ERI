@@ -35,7 +35,6 @@ type AutocompleteResult struct {
 }
 
 func (a *AutocompleteSvc) Autocomplete(ctx context.Context, domain string, limit uint64) (AutocompleteResult, error) {
-
 	if domain == "" {
 		return AutocompleteResult{}, ErrEmptyInput
 	}

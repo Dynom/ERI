@@ -161,7 +161,6 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			hook.Reset()
 			handlerFunc := NewAutoCompleteHandler(logger, svc, 10, maxBodySize, tt.marshaller)
 
@@ -190,7 +189,6 @@ func TestNewHealthHandler(t *testing.T) {
 	logger, hook := testLog.NewNullLogger()
 
 	t.Run("simple GET", func(t *testing.T) {
-
 		hook.Reset()
 		handlerFunc := NewHealthHandler(logger)
 
@@ -333,7 +331,6 @@ func TestNewSuggestHandler(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-
 				hook.Reset()
 				handlerFunc := NewSuggestHandler(logger, svc, maxBodySize, tt.marshaller)
 
@@ -359,7 +356,6 @@ func TestNewSuggestHandler(t *testing.T) {
 	})
 
 	t.Run("Functional", func(t *testing.T) {
-
 		// Setup
 		refs := []string{"gmail.com", "example.org", "mail.com"}
 		myFinder, err := finder.New(refs, finder.WithAlgorithm(finder.NewJaroWinklerDefaults()))
@@ -369,7 +365,6 @@ func TestNewSuggestHandler(t *testing.T) {
 		}
 
 		t.Run("Run finder on malformed input as well", func(t *testing.T) {
-
 			// resetting logger
 			hook.Reset()
 

@@ -20,8 +20,8 @@ const (
 type Flag uint8
 
 func (f Flag) AsStringSlice() []string {
-	var flags = []Flag{FValid, FSyntax, FMXLookup, FMXDomainHasIP, FHostConnect, FValidRCPT, FDisposable}
-	var r = make([]string, 0, len(flags))
+	flags := []Flag{FValid, FSyntax, FMXLookup, FMXDomainHasIP, FHostConnect, FValidRCPT, FDisposable}
+	r := make([]string, 0, len(flags))
 
 	for _, flag := range flags {
 		if f&flag == 0 {

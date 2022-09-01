@@ -35,7 +35,6 @@ func (s *Memory) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipien
 func (s *Memory) Range(_ context.Context, cb PersistCallbackFn) error {
 	s.m.Range(func(key, value interface{}) bool {
 		internalParts, err := types.NewEmailParts(key.(string))
-
 		if err != nil {
 			return true // Ignoring non-recoverable problem
 		}

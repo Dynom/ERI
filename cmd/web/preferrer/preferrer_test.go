@@ -38,7 +38,6 @@ func TestPreferrer_HasPreferred(t *testing.T) {
 		want  string
 		has   bool
 	}{
-
 		{name: "nil map", m: nil, parts: types.NewEmailFromParts("john.doe", "example.org"), want: "example.org", has: false},
 		{name: "match", m: Mapping{"example.com": "example.org"}, parts: types.NewEmailFromParts("john.doe", "example.com"), want: "example.org", has: true},
 		{name: "no match", m: Mapping{"a": "b"}, parts: types.NewEmailFromParts("john.doe", "example.org"), want: "example.org", has: false},

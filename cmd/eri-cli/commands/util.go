@@ -17,7 +17,6 @@ func setCustomResolver(dialer *net.Dialer, ip net.IP) {
 	}
 
 	dialer.Resolver.Dial = func(ctx context.Context, network, address string) (conn net.Conn, e error) {
-
 		d := net.Dialer{}
 		return d.DialContext(ctx, network, net.JoinHostPort(ip.String(), `53`))
 	}

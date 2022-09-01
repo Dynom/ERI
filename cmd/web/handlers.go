@@ -25,7 +25,7 @@ const (
 
 type marshalFn func(v interface{}) ([]byte, error)
 
-func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.AutocompleteSvc, maxSuggestions uint64, maxBodySize uint64, jsonMarshaller marshalFn) http.HandlerFunc {
+func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.AutocompleteSvc, maxSuggestions, maxBodySize uint64, jsonMarshaller marshalFn) http.HandlerFunc {
 	if jsonMarshaller == nil {
 		jsonMarshaller = json.Marshal
 	}
@@ -89,7 +89,6 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.Autocomplet
 		response, err := jsonMarshaller(erihttp.AutoCompleteResponse{
 			Suggestions: result.Suggestions,
 		})
-
 		if err != nil {
 			logger.WithFields(logrus.Fields{
 				"response": response,
@@ -144,7 +143,7 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxB
 			return
 		}
 
-		var alts = []string{req.Email}
+		alts := []string{req.Email}
 		result, sugErr := svc.Suggest(r.Context(), req.Email)
 		if len(result.Alternatives) > 0 {
 			alts = append(alts[0:0], result.Alternatives...)
@@ -166,7 +165,6 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxB
 		}
 
 		response, err := jsonMarshaller(sr)
-
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"response": response,
@@ -190,11 +188,10 @@ func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxB
 }
 
 func NewHealthHandler(logger logrus.FieldLogger) http.HandlerFunc {
-	var ok = []byte("OK")
+	ok := []byte("OK")
 
 	logger = logger.WithField("handler", "health")
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		logger := logger.WithField(handlers.RequestID.String(), r.Context().Value(handlers.RequestID))
 
 		w.Header().Set("content-type", "text/plain")

@@ -10,9 +10,8 @@ import (
 )
 
 func TestWerkItSingleWorker(t *testing.T) {
-
 	const expect = 1
-	var testCounter = 0
+	testCounter := 0
 
 	wi := &WerkIt{}
 	wi.StartCheckWorkers(1, func(tasks <-chan CheckTask) {
@@ -37,7 +36,7 @@ func TestWerkItSingleWorker(t *testing.T) {
 
 func TestWerkItManyWorkers(t *testing.T) {
 	const expect = 1
-	var testCounter = 0
+	testCounter := 0
 
 	wi := &WerkIt{}
 	wi.StartCheckWorkers(100, func(tasks <-chan CheckTask) {
@@ -46,7 +45,7 @@ func TestWerkItManyWorkers(t *testing.T) {
 		}
 	})
 
-	var lock = sync.RWMutex{}
+	lock := sync.RWMutex{}
 	wi.Process(CheckTask{
 		Fn: func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 			lock.Lock()
@@ -65,9 +64,8 @@ func TestWerkItManyWorkers(t *testing.T) {
 }
 
 func TestWerkItSingleWorkerMultipleRuns(t *testing.T) {
-
 	const expect = 100
-	var testCounter = 0
+	testCounter := 0
 
 	wi := &WerkIt{}
 	wi.StartCheckWorkers(1, func(tasks <-chan CheckTask) {
@@ -76,7 +74,7 @@ func TestWerkItSingleWorkerMultipleRuns(t *testing.T) {
 		}
 	})
 
-	var fn = func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
+	fn := func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 		testCounter++
 		return validator.Result{}
 	}
@@ -94,9 +92,8 @@ func TestWerkItSingleWorkerMultipleRuns(t *testing.T) {
 }
 
 func TestWerkItManyWorkerMultipleRuns(t *testing.T) {
-
 	const expect = 10000
-	var testCounter = 0
+	testCounter := 0
 
 	wi := &WerkIt{}
 	wi.StartCheckWorkers(500, func(tasks <-chan CheckTask) {
@@ -105,8 +102,8 @@ func TestWerkItManyWorkerMultipleRuns(t *testing.T) {
 		}
 	})
 
-	var lock = sync.RWMutex{}
-	var fn = func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
+	lock := sync.RWMutex{}
+	fn := func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 		lock.Lock()
 		testCounter++
 		lock.Unlock()

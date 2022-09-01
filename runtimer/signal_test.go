@@ -6,7 +6,6 @@ import (
 )
 
 func TestSignalHandler_RegisterCallback(t *testing.T) {
-
 	sh := New()
 
 	if got, expect := len(sh.fns), 0; got != expect {
@@ -22,7 +21,6 @@ func TestSignalHandler_RegisterCallback(t *testing.T) {
 }
 
 func TestSignalHandler_handle(t *testing.T) {
-
 	sh := New(os.Interrupt)
 
 	const expect = 42

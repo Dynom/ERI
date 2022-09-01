@@ -26,7 +26,8 @@ func TestContext_Err(t *testing.T) {
 			fields: fields{
 				Context:   ctx,
 				errEvalFn: nil,
-			}},
+			},
+		},
 		{
 			name:    "nil err, when no err and no erroneous errFn",
 			wantErr: false,
@@ -35,14 +36,16 @@ func TestContext_Err(t *testing.T) {
 				errEvalFn: func(parent context.Context) error {
 					return nil
 				},
-			}},
+			},
+		},
 		{
 			name:    "err, when context err and no errFn",
 			wantErr: true,
 			fields: fields{
 				Context:   canceledCtx,
 				errEvalFn: nil,
-			}},
+			},
+		},
 		{
 			name:    "err, when no err and erroneous errFn",
 			wantErr: true,
@@ -51,7 +54,8 @@ func TestContext_Err(t *testing.T) {
 				errEvalFn: func(parent context.Context) error {
 					return errors.New("foo")
 				},
-			}},
+			},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -67,7 +71,6 @@ func TestContext_Err(t *testing.T) {
 }
 
 func TestContext_SetParent(t *testing.T) {
-
 	c := NewContext(nil)
 	if c.Context != nil {
 		t.Errorf("Expected a nil context, instead it was %#v", c.Context)

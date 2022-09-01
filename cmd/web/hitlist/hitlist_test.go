@@ -86,9 +86,7 @@ func Test_getValidDomains(t *testing.T) {
 
 // TestHitList_FunctionalAddAndReturn is a functional test, testing adding and retrieving of
 func TestHitList_FunctionalAddAndReturn(t *testing.T) {
-
 	validVR := validator.Result{
-
 		// Validations need to be valid for a domain for this test
 		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
 	}
@@ -153,7 +151,6 @@ func TestHitList_FunctionalAddAndReturn(t *testing.T) {
 
 func TestHitList_AddEmailAddressDeadlineDuplicates(t *testing.T) {
 	validVR := validator.Result{
-
 		// Validations need to be valid for a domain for this test
 		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
 	}
@@ -170,7 +167,6 @@ func TestHitList_AddEmailAddressDeadlineDuplicates(t *testing.T) {
 
 func TestHitList_AddEmailAddressDeadline(t *testing.T) {
 	validVR := validator.Result{
-
 		// Validations need to be valid for a domain for this test
 		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
 	}
@@ -291,9 +287,8 @@ func (s mockHasher) Write(p []byte) (int, error) {
 }
 
 func (s mockHasher) Sum(p []byte) []byte {
-
 	// Make sure we did something, reverse the input
-	var r = make([]byte, len(p))
+	r := make([]byte, len(p))
 	for i, v := range p {
 		j := len(r) - 1 - i
 		r[j] = v
@@ -303,7 +298,6 @@ func (s mockHasher) Sum(p []byte) []byte {
 }
 
 func (s mockHasher) Reset() {
-
 }
 
 func (s mockHasher) Size() int {
@@ -316,7 +310,6 @@ func (s mockHasher) BlockSize() int {
 
 func TestHitList_GetValidAndUsageSortedDomains(t *testing.T) {
 	validVR := validator.Result{
-
 		// Validations need to be valid for a domain for this test
 		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
 	}
@@ -422,7 +415,6 @@ func TestHitList_GetValidAndUsageSortedDomains(t *testing.T) {
 
 func TestHitList_AddEmailAddress(t *testing.T) {
 	validVR := validator.Result{
-
 		// Validations need to be valid for a domain for this test
 		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
 	}
@@ -439,7 +431,6 @@ func TestHitList_AddEmailAddress(t *testing.T) {
 
 func TestHitList_AddDomain(t *testing.T) {
 	validVR := validator.Result{
-
 		// Validations need to be valid for a domain for this test
 		Validations: validations.Validations(validations.FValid | validations.FSyntax | validations.FMXLookup),
 	}
@@ -566,7 +557,6 @@ func TestHitList_AddDomain(t *testing.T) {
 }
 
 func TestHitList_Add(t *testing.T) {
-
 	type args struct {
 		parts types.EmailParts
 		vr    validator.Result
@@ -778,7 +768,6 @@ func TestHitList_GetInternalTypes(t *testing.T) {
 }
 
 func TestHitList_GetRecipientCount(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		toAdd      []types.EmailParts

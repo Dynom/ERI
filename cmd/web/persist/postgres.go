@@ -38,7 +38,6 @@ func (p *Postgres) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipi
 			SET
 				validations = EXCLUDED.validations,
 			  steps = EXCLUDED.steps`)
-
 	if err != nil {
 		return err
 	}
@@ -50,7 +49,6 @@ func (p *Postgres) Store(ctx context.Context, d hitlist.Domain, r hitlist.Recipi
 }
 
 func (p *Postgres) Range(ctx context.Context, cb PersistCallbackFn) error {
-
 	if err := p.db.Ping(); err != nil {
 		return err
 	}
@@ -64,7 +62,6 @@ func (p *Postgres) Range(ctx context.Context, cb PersistCallbackFn) error {
 		FROM
       hitlist
 	`)
-
 	if err != nil {
 		return err
 	}
@@ -92,7 +89,6 @@ func (p *Postgres) Range(ctx context.Context, cb PersistCallbackFn) error {
 			Validations: validations.Validations(row.Validations),
 			Steps:       validations.Steps(row.Steps),
 		})
-
 		if err != nil {
 			return err
 		}

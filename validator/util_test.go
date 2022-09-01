@@ -51,7 +51,6 @@ func buildLookupMX(mxHosts []string, err error) LookupMX {
 }
 
 func Test_fetchMXHosts(t *testing.T) {
-
 	type args struct {
 		hosts []string
 		err   error
@@ -63,7 +62,6 @@ func Test_fetchMXHosts(t *testing.T) {
 		want    []string
 		wantErr bool
 	}{
-
 		// The good
 		{name: "Happy flow", want: []string{"mx1.example.org"}, args: args{hosts: []string{"mx1.example.org"}}},
 
@@ -77,7 +75,6 @@ func Test_fetchMXHosts(t *testing.T) {
 
 	ctx := context.Background()
 	for _, tt := range tests {
-
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := fetchMXHosts(ctx, buildLookupMX(tt.args.hosts, tt.args.err), "foobar.local")
 
@@ -94,7 +91,6 @@ func Test_fetchMXHosts(t *testing.T) {
 }
 
 func Test_getConnection(t *testing.T) {
-
 	// @todo validate connection timeout workings
 	// @todo
 

@@ -193,7 +193,6 @@ func TestStartingFromEmptyValidations(t *testing.T) {
 	if Validations(v).IsValid() {
 		t.Errorf("Expected v no longer to be valid, I got: %08b", v)
 	}
-
 }
 
 func TestValidations_Merge(t *testing.T) {
@@ -309,6 +308,7 @@ func BenchmarkTypeMemoryUsageInt8(b *testing.B) {
 
 	Int8[0] += 1
 }
+
 func BenchmarkTypeMemoryUsageInt16(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Int16 = make([]int16, amount)
@@ -316,6 +316,7 @@ func BenchmarkTypeMemoryUsageInt16(b *testing.B) {
 
 	Int16[0] += 1
 }
+
 func BenchmarkTypeMemoryUsageInt32(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Int32 = make([]int32, amount)
@@ -323,6 +324,7 @@ func BenchmarkTypeMemoryUsageInt32(b *testing.B) {
 
 	Int32[0] += 1
 }
+
 func BenchmarkTypeMemoryUsageInt64(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Int64 = make([]int64, amount)

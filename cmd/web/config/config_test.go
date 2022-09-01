@@ -248,7 +248,6 @@ func TestHeaders_String(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Converting to a slice and sorting, to make sure we have a consistent comparision.
 			got := strings.Split(tt.h.String(), ",")
 			sort.Strings(got)
@@ -472,7 +471,6 @@ func TestValidatorType_UnmarshalText(t *testing.T) {
 			if _ = vt.UnmarshalText([]byte(tt.value)); string(vt) != tt.value {
 				t.Errorf("UnmarshalText() value not on value receiver. Setting value %s doesn't reflect variable %v", tt.value, vt)
 			}
-
 		})
 	}
 }
@@ -491,7 +489,6 @@ func TestValidatorTypes_AsStringSlice(t *testing.T) {
 }
 
 func TestConfig_GetSensored(t *testing.T) {
-
 	cfg := Config{}
 	cfg.Backend.URL = "test"
 
@@ -531,7 +528,6 @@ func TestConfig_GetSensored(t *testing.T) {
 }
 
 func TestConfig_String(t *testing.T) {
-
 	cfg := Config{}
 
 	cfg2 := Config{}

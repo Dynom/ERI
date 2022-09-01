@@ -26,7 +26,7 @@ func NewServer(mux http.Handler, config config.Config, logger logrus.FieldLogger
 		mux = h(mux)
 	}
 
-	var wTTL = defaultReadWriteTTL
+	wTTL := defaultReadWriteTTL
 	if config.Server.Profiler.Enable {
 		wTTL = 31 * time.Second
 	}

@@ -21,10 +21,8 @@ func (cv contextValue) String() string {
 }
 
 func WithRequestLogger(logger logrus.FieldLogger) Middleware {
-
 	logger = logger.WithField("middleware", "request_logger")
 	return func(handler http.Handler) http.Handler {
-
 		var reqID uint64
 		m := sync.Mutex{}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +48,6 @@ func WithRequestLogger(logger logrus.FieldLogger) Middleware {
 			}).Debug("Request start")
 
 			defer func(w *CustomResponseWriter) {
-
 				logger.WithFields(logrus.Fields{
 					"time_µs":             time.Since(now).Microseconds(),
 					"response_size_bytes": w.BytesWritten,

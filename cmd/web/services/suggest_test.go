@@ -19,7 +19,7 @@ import (
 	"github.com/Dynom/TySug/finder"
 )
 
-func createMockValidator(v validations.Flag, s validations.Flag) validator.CheckFn {
+func createMockValidator(v, s validations.Flag) validator.CheckFn {
 	return func(ctx context.Context, parts types.EmailParts, options ...validator.ArtifactFn) validator.Result {
 		return validator.Result{
 			Validations: validations.Validations(v),

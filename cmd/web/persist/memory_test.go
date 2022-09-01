@@ -225,7 +225,7 @@ func TestStoreAndRetrieve(t *testing.T) {
 	ctx := context.Background()
 
 	var domain hitlist.Domain = "example.org"
-	var recipient = hitlist.Recipient("jane")
+	recipient := hitlist.Recipient("jane")
 
 	s := NewMemory()
 	err := s.Store(ctx, domain, recipient, validator.Result{})

@@ -12,9 +12,7 @@ import (
 	"github.com/Dynom/ERI/validator/validations"
 )
 
-var (
-	expiredDeadlineContext, _ = context.WithDeadline(context.Background(), time.Now())
-)
+var expiredDeadlineContext, _ = context.WithDeadline(context.Background(), time.Now())
 
 func TestEmailValidator_CheckWithLookup(t *testing.T) {
 	validParts, _ := types.NewEmailParts("john.doe@example.org")
@@ -38,10 +36,8 @@ func TestEmailValidator_CheckWithLookup(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-
 		t.Run(tt.name, func(t *testing.T) {
 			v := &EmailValidator{
-
 				dialer: &net.Dialer{
 					Deadline: time.Now().Add(10 * time.Second),
 					Timeout:  10 * time.Second,
@@ -61,7 +57,6 @@ func TestEmailValidator_CheckWithLookup(t *testing.T) {
 }
 
 func Test_validateSequence(t *testing.T) {
-
 	ctxExpiredDeadline, cancel := context.WithTimeout(context.Background(), -1*time.Hour)
 	defer cancel()
 
@@ -236,7 +231,7 @@ func TestNewEmailAddressValidator(t *testing.T) {
 var looksLikeValidDomainResult bool
 
 func Benchmark_looksLikeValidDomain(b *testing.B) {
-	var tests = []string{
+	tests := []string{
 		// good
 		"example.org",
 		"a.b.c.d.e.f.g.h.i.j.example.org",
