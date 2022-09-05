@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -96,6 +97,17 @@ func TestAutocompleteSvc_Autocomplete(t *testing.T) {
 			args: args{
 				ctx:    ctxExpired,
 				domain: "",
+				limit:  2,
+			},
+			want:    AutocompleteResult{},
+			wantErr: true,
+		},
+		{
+			name:   "Domain too long",
+			fields: fields{recipientThreshold: 1},
+			args: args{
+				ctx:    ctxExpired,
+				domain: strings.Repeat("a", 255),
 				limit:  2,
 			},
 			want:    AutocompleteResult{},
