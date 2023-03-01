@@ -10,6 +10,10 @@
     [linters-settings.gocognit]
         min-complexity = 12
 
+    [linters-settings.gofumpt]
+        lang-version = "1.20"
+        extra-rules = true
+
     [linters-settings.goconst]
         min-len = 2
         min-occurrences = 2

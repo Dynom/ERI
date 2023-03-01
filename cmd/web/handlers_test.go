@@ -171,15 +171,25 @@ func TestNewAutoCompleteHandler(t *testing.T) {
 
 			handlerFunc.ServeHTTP(rec, req)
 
+			b, _ := io.ReadAll(rec.Result().Body)
 			if tt.want.statusCode != rec.Code {
 				t.Errorf("NewAutoCompleteHandler() = %+v, want %+v", rec, tt.want)
 
-				b, _ := io.ReadAll(rec.Result().Body)
 				t.Logf("Body: %s", b)
 				for _, l := range hook.AllEntries() {
 					t.Logf("Logs: %s", l.Message)
 					t.Logf("Meta: %v", l.Data)
 				}
+			}
+
+			var r erihttp.AutoCompleteResponse
+			err := json.Unmarshal(b, &r)
+			if err != nil {
+				t.Fatalf("Error unmarshalling: %s", err.Error())
+			}
+
+			if r.Suggestions == nil {
+				t.Errorf("Expected the result to never be nil (instead it should be an empty slice)")
 			}
 		})
 	}
@@ -341,15 +351,25 @@ func TestNewSuggestHandler(t *testing.T) {
 
 				handlerFunc.ServeHTTP(rec, req)
 
+				b, _ := io.ReadAll(rec.Result().Body)
 				if tt.want.statusCode != rec.Code {
 					t.Errorf("NewSuggestHandler() = %+v, want %+v", rec, tt.want)
 
-					b, _ := io.ReadAll(rec.Result().Body)
 					t.Logf("Body: %s", b)
 					for _, l := range hook.AllEntries() {
 						t.Logf("Logs: %s", l.Message)
 						t.Logf("Meta: %v", l.Data)
 					}
+				}
+
+				var r erihttp.SuggestResponse
+				err := json.Unmarshal(b, &r)
+				if err != nil {
+					t.Fatalf("Error unmarshalling: %s", err.Error())
+				}
+
+				if r.Alternatives == nil {
+					t.Errorf("Expected the result to never be nil (instead it should be an empty slice)")
 				}
 			})
 		}

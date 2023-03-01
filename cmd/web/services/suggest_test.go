@@ -37,6 +37,9 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 	logger, hook := test.NewNullLogger()
 	logger.SetLevel(logrus.DebugLevel)
 
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
 	tests := []struct {
 		name        string
 		email       string
@@ -46,6 +49,7 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 		finderList  []string
 		logContains string
 		preferMap   preferrer.Mapping
+		ctx         context.Context
 	}{
 		{
 			name:       "All good",
@@ -54,6 +58,7 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			wantErr:    false,
 			validator:  createMockValidator(validations.FSyntax|validations.FValid, validations.FSyntax|validations.FValid),
 			finderList: []string{},
+			ctx:        context.Background(),
 		},
 		{
 			name:       "Including preferred",
@@ -63,6 +68,7 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			validator:  createMockValidator(validations.FSyntax|validations.FValid, validations.FSyntax|validations.FValid),
 			finderList: []string{"example.com", "example.org"},
 			preferMap:  preferrer.Mapping{"example.com": "example.org"},
+			ctx:        context.Background(),
 		},
 		{
 			name:       "Invalid domain, should fall back on finder",
@@ -71,6 +77,7 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			wantErr:    false,
 			validator:  createMockValidator(validations.FSyntax, validations.FSyntax),
 			finderList: []string{"example.org"},
+			ctx:        context.Background(),
 		},
 		{
 			name:       "Invalid domain, should fall back on finder and be corrected by preferrer",
@@ -80,6 +87,7 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			validator:  createMockValidator(validations.FSyntax, validations.FSyntax),
 			finderList: []string{"example.org"},
 			preferMap:  preferrer.Mapping{"example.com": "example.org"},
+			ctx:        context.Background(),
 		},
 		{
 			name:       "Invalid domain, finder has no alternative",
@@ -88,6 +96,7 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			wantErr:    false,
 			validator:  createMockValidator(validations.FSyntax, validations.FSyntax),
 			finderList: []string{"be"}, // Note: Violates the finder.WithLengthTolerance filter, so won't be used
+			ctx:        context.Background(),
 		},
 		{
 			name:        "Malformed",
@@ -97,6 +106,7 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			validator:   createMockValidator(0, validations.FSyntax),
 			finderList:  []string{},
 			logContains: "Input doesn't have a valid structure",
+			ctx:         context.Background(),
 		},
 		{
 			name:        "Malformed",
@@ -106,6 +116,16 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			validator:   nil, // Validator should never be reached
 			finderList:  []string{},
 			logContains: "Unable to split input",
+			ctx:         context.Background(),
+		},
+		{
+			name:       "Canceled CTX",
+			email:      "john.doe@example.org",
+			want:       SuggestResult{Alternatives: []string{"john.doe@example.org"}},
+			wantErr:    true,
+			validator:  createMockValidator(validations.FSyntax|validations.FValid, validations.FSyntax|validations.FValid),
+			finderList: []string{},
+			ctx:        canceledCtx,
 		},
 	}
 
@@ -122,7 +142,7 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			p := preferrer.New(tt.preferMap)
 
 			svc := NewSuggestService(f, tt.validator, p, logger)
-			got, err := svc.Suggest(context.Background(), tt.email)
+			got, err := svc.Suggest(tt.ctx, tt.email)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Suggest() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -137,6 +157,16 @@ func TestSuggestSvc_Suggest(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("Nil preferrer should still work", func(t *testing.T) {
+		fn := func(_ context.Context, _ types.EmailParts, _ ...validator.ArtifactFn) validator.Result {
+			return validator.Result{}
+		}
+		p := NewSuggestService(nil, fn, nil, logger)
+		if p.prefer == nil {
+			t.Errorf("Expected a default preferrer to have been set.")
+		}
+	})
 }
 
 // containsLogWhileExpected returns false when a log was expected, but not found in any of the entries.
