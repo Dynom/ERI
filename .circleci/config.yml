@@ -7,7 +7,7 @@ jobs:
     working_directory: /home/circleci/eri
     docker:
       # specify the version
-      - image: cimg/go:1.19
+      - image: cimg/go:1.20
 
     environment:
         BINARY_NAME: "eri-linux-amd64"
@@ -19,7 +19,7 @@ jobs:
       - run: mkdir -p ${TEST_RESULTS}
       - run: go install github.com/jstemmer/go-junit-report@latest
       - run: go install github.com/mattn/goveralls@latest
-      - run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.49.0
+      - run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.51.2
 
       - run:
           name: Build

@@ -5,7 +5,7 @@ set -o pipefail -o nounset -o errexit -o errtrace
 ROOT_DIR="$(pwd)"
 while [ ! -d "${ROOT_DIR}/.git" ]; do
 
-    ROOT_DIR="$(dirname ${ROOT_DIR})"
+    ROOT_DIR="$(dirname "${ROOT_DIR}")"
     if [ "x${ROOT_DIR}" == "x/" ]; then
         echo "Cannot find .git directory, I use that as reference for the commands."
         exit 1
@@ -20,13 +20,13 @@ go test -short ./...
 
 cp go.mod go.mod.bak
 cp go.sum go.sum.bak
-tidy=$(go mod tidy -v 2>&1)
+tidy="$(go mod tidy -v 2>&1)"
 if [[ "$tidy" != "" ]]; then
     mv go.mod.bak go.mod
     mv go.sum.bak go.sum
 
     echo "go mod tidy:"
-    echo $tidy
+    echo "${tidy}"
     exit 1
 fi
 
