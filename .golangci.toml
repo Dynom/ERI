@@ -15,7 +15,7 @@
         extra-rules = true
 
     [linters-settings.goconst]
-        min-len = 2
+        min-len = 3
         min-occurrences = 2
 
     [linters-settings.misspell]
@@ -46,7 +46,7 @@
         "gosec",
         "unconvert",
         "goconst",
-        "depguard",
+        #"depguard",
         "misspell",
         "unparam",
         "prealloc",

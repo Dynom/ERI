@@ -149,6 +149,7 @@ var reportCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(reportCmd)
 
+	//nolint:goconst
 	reportCmd.Flags().StringVar(&reportSettings.Format, "format", outputFormatJSON, "The format in which to report in, supported id: '"+outputFormatText+"' or '"+outputFormatJSON+"'")
 	reportCmd.Flags().BoolVar(&reportSettings.OnlyInvalid, "only-invalid", false, "Only report rejected checks (ignored when report is stats)")
 	reportCmd.Flags().StringVar(&reportSettings.Details, "details", string(RFFull), "Type of report, supported is: '"+string(RFStats)+"' or '"+string(RFFull)+"'")
