@@ -22,7 +22,9 @@ func checkEmailAddressSyntax(a *Artifact) error {
 	var err error
 
 	start := time.Now()
-	defer a.Timings.Add("checkEmailAddressSyntax", time.Since(start))
+	defer func() {
+		a.Timings.Add("checkEmailAddressSyntax", time.Since(start))
+	}()
 
 	_, err = mail.ParseAddress(a.email.Address)
 	if err != nil {
@@ -59,7 +61,9 @@ func checkDomainSyntax(a *Artifact) error {
 	a.Steps.SetFlag(validations.FSyntax)
 
 	start := time.Now()
-	defer a.Timings.Add("checkDomainSyntax", time.Since(start))
+	defer func() {
+		a.Timings.Add("checkDomainSyntax", time.Since(start))
+	}()
 
 	if !looksLikeValidDomain(a.email.Domain) {
 		return ValidationError{
