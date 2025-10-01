@@ -1,56 +1,74 @@
+version = '2'
+
 [run]
-    concurrency = 4
-    tests = false
-
-[[issues.exclude-rules]]
-    linters = ["misspell"]
-    source = "cancelled"
-
-[linters-settings]
-    [linters-settings.gocognit]
-        min-complexity = 12
-
-    [linters-settings.gofumpt]
-        lang-version = "1.20"
-        extra-rules = true
-
-    [linters-settings.goconst]
-        min-len = 3
-        min-occurrences = 2
-
-    [linters-settings.misspell]
-        locale = "US"
-
-    [linters-settings.errcheck]
-        ignore = "fmt:.*,github.com/go-kit/kit/log:^Log$"
-
-    [linters-settings.exhaustive]
-        default-signifies-exhaustive = true
+concurrency = 4
+tests = false
 
 [linters]
+default = 'none'
+enable = [
+  'errcheck',
+  'exhaustive',
+  'goconst',
+  'gocritic',
+  'gosec',
+  'govet',
+  'ineffassign',
+  'misspell',
+  'prealloc',
+  'staticcheck',
+  'unconvert',
+  'unparam',
+  'unused'
+]
 
-    # Allow-listing, to be more CI safe.
-    disable-all = true
+[linters.settings]
+[linters.settings.exhaustive]
+default-signifies-exhaustive = true
 
-    # @see https://golangci-lint.run/usage/linters/#enabled-by-default-linters
-    enable = [
-        "staticcheck",
-        "gosimple",
-        "ineffassign",
-        "typecheck",
-        "govet",
-        "errcheck",
-        "unused",
-        "exhaustive",
-        "stylecheck",
-        "gosec",
-        "unconvert",
-        "goconst",
-        #"depguard",
-        "misspell",
-        "unparam",
-        "prealloc",
-        "gofumpt",
-        "exportloopref",
-        "gocritic",
-    ]
+[linters.settings.gocognit]
+min-complexity = 12
+
+[linters.settings.goconst]
+min-len = 3
+min-occurrences = 2
+
+[linters.settings.misspell]
+locale = 'US'
+
+[linters.exclusions]
+generated = 'lax'
+presets = [
+  'comments',
+  'common-false-positives',
+  'legacy',
+  'std-error-handling'
+]
+paths = [
+  'third_party$',
+  'builtin$',
+  'examples$'
+]
+
+[[linters.exclusions.rules]]
+linters = [
+  'misspell'
+]
+source = 'cancelled'
+
+[formatters]
+enable = [
+  'gofumpt'
+]
+
+[formatters.settings]
+[formatters.settings.gofumpt]
+extra-rules = true
+
+[formatters.exclusions]
+generated = 'lax'
+paths = [
+  'third_party$',
+  'builtin$',
+  'examples$'
+]
