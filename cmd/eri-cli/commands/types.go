@@ -52,7 +52,7 @@ type CheckSettings struct {
 	Format  string
 	CSV     csvOptions
 	Check   checkOptions
-	Workers uint64
+	Workers uint32
 }
 
 type checkOptions struct {
@@ -62,6 +62,6 @@ type checkOptions struct {
 }
 
 type csvOptions struct {
-	skipRows uint64
-	column   uint64
+	skipRows uint32
+	column   uint32
 }

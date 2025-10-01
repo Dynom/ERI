@@ -25,7 +25,7 @@ const (
 
 type marshalFn func(v interface{}) ([]byte, error)
 
-func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.AutocompleteSvc, maxSuggestions, maxBodySize uint64, jsonMarshaller marshalFn) http.HandlerFunc {
+func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.AutocompleteSvc, maxSuggestions, maxBodySize uint32, jsonMarshaller marshalFn) http.HandlerFunc {
 	if jsonMarshaller == nil {
 		jsonMarshaller = json.Marshal
 	}
@@ -112,7 +112,7 @@ func NewAutoCompleteHandler(logger logrus.FieldLogger, svc *services.Autocomplet
 }
 
 // NewSuggestHandler constructs an HTTP handler that deals with suggestion requests
-func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxBodySize uint64, jsonMarshaller marshalFn) http.HandlerFunc {
+func NewSuggestHandler(logger logrus.FieldLogger, svc *services.SuggestSvc, maxBodySize uint32, jsonMarshaller marshalFn) http.HandlerFunc {
 	if jsonMarshaller == nil {
 		jsonMarshaller = json.Marshal
 	}

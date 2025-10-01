@@ -333,7 +333,7 @@ func BenchmarkTypeMemoryUsageInt64(b *testing.B) {
 	Int64[0] += 1
 }
 
-func ExampleMaskTest() {
+func Example_maskTest() {
 	fmt.Printf("FValid          %08b %d\n", FValid, FValid)
 	fmt.Printf("FSyntax         %08b %d\n", FSyntax, FSyntax)
 	fmt.Printf("FMXLookup       %08b %d\n", FMXLookup, FMXLookup)

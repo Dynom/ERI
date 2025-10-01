@@ -178,11 +178,11 @@ func containsLogWhileExpected(expected string, entries []logrus.Entry) (found bo
 	for _, e := range entries {
 		if strings.Contains(e.Message, expected) {
 			found = true
-			return
+			return found
 		}
 	}
 
-	return
+	return found
 }
 
 func Test_didDeadlineExpire(t *testing.T) {

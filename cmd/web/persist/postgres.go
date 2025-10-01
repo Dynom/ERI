@@ -104,8 +104,8 @@ func rowToInternalParts(row hitListRow) (hitlist.Domain, hitlist.Recipient) {
 type hitListRow struct {
 	Domain      string `sql:"domain"`
 	Recipient   []byte `sql:"recipient"`
-	Validations int64  `sql:"validations"`
-	Steps       int64  `sql:"steps"`
+	Validations uint8  `sql:"validations"`
+	Steps       uint8  `sql:"steps"`
 }
 
 func deferClose(toClose io.Closer, log logrus.FieldLogger) {

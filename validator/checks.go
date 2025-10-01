@@ -23,7 +23,7 @@ func checkEmailAddressSyntax(a *Artifact) error {
 
 	start := time.Now()
 	defer func() {
-		a.Timings.Add("checkEmailAddressSyntax", time.Since(start))
+		a.Add("checkEmailAddressSyntax", time.Since(start))
 	}()
 
 	_, err = mail.ParseAddress(a.email.Address)
@@ -62,7 +62,7 @@ func checkDomainSyntax(a *Artifact) error {
 
 	start := time.Now()
 	defer func() {
-		a.Timings.Add("checkDomainSyntax", time.Since(start))
+		a.Add("checkDomainSyntax", time.Since(start))
 	}()
 
 	if !looksLikeValidDomain(a.email.Domain) {
@@ -94,7 +94,7 @@ func checkIfDomainHasMX(a *Artifact) error {
 
 	start := time.Now()
 	mxs, err := fetchMXHosts(a.ctx, a.resolver, a.email.Domain)
-	a.Timings.Add("checkIfDomainHasMX", time.Since(start))
+	a.Add("checkIfDomainHasMX", time.Since(start))
 
 	if err != nil {
 		return ValidationError{
@@ -129,7 +129,7 @@ func checkIfMXHasIP(a *Artifact) error {
 	for i, domain := range a.mx {
 		start := time.Now()
 		ips, innerErr := a.resolver.LookupMX(a.ctx, domain)
-		a.Timings.Add("checkIfMXHasIP "+domain, time.Since(start))
+		a.Add("checkIfMXHasIP "+domain, time.Since(start))
 
 		if innerErr != nil || len(ips) == 0 {
 			a.mx[i] = ""
@@ -178,7 +178,7 @@ func checkMXAcceptsConnect(a *Artifact) error {
 	}
 
 	conn, err := getConnection(a.ctx, a.dialer, mxToCheck)
-	a.Timings.Add("checkMXAcceptsConnect", time.Since(start))
+	a.Add("checkMXAcceptsConnect", time.Since(start))
 
 	if err != nil {
 		return ValidationError{
@@ -218,7 +218,6 @@ func checkRCPT(a *Artifact) error {
 	var err error
 
 	client, err = smtp.NewClient(a.conn, a.email.Domain)
-
 	if err != nil {
 		return ValidationError{
 			Validator: "checkRCPT",
@@ -233,7 +232,7 @@ func checkRCPT(a *Artifact) error {
 
 	start = time.Now()
 	err = client.Verify(a.email.Address)
-	a.Timings.Add("checkRCPT", time.Since(start))
+	a.Add("checkRCPT", time.Since(start))
 
 	if err == nil {
 		a.Validations.SetFlag(validations.FValidRCPT)

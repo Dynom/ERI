@@ -55,7 +55,7 @@ func createCSVIterator(r io.Reader) *iterator.CallbackIterator {
 			if eof || err == io.EOF {
 				eof = true
 
-				if uint64(len(record)) > checkSettings.CSV.column {
+				if len(record) > int(checkSettings.CSV.column) {
 					value = record[checkSettings.CSV.column]
 				}
 
@@ -66,7 +66,7 @@ func createCSVIterator(r io.Reader) *iterator.CallbackIterator {
 				return "", err
 			}
 
-			if uint64(len(record)) > checkSettings.CSV.column {
+			if len(record) > int(checkSettings.CSV.column) {
 				value = record[checkSettings.CSV.column]
 			}
 
