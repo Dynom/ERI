@@ -1,6 +1,6 @@
 module github.com/Dynom/ERI
 
-go 1.19
+go 1.24.0
 
 require (
 	cloud.google.com/go/pubsub v1.36.1
@@ -24,7 +24,7 @@ require (
 require (
 	cloud.google.com/go v0.112.0 // indirect
 	cloud.google.com/go/compute v1.24.0 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	cloud.google.com/go/iam v1.1.6 // indirect
 	github.com/alextanhongpin/stringdist v0.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -46,7 +46,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.23.1 // indirect
 	go.opentelemetry.io/otel/trace v1.23.1 // indirect
 	golang.org/x/crypto v0.19.0 // indirect
-	golang.org/x/oauth2 v0.17.0 // indirect
+	golang.org/x/oauth2 v0.31.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
