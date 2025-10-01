@@ -171,10 +171,10 @@ func init() {
 
 	// Disabled for now, since foo\nbar\n parses fine in the liberal CSV parser.
 	// checkCmd.Flags().StringVar(&checkSettings.Format, "format", inputFormatCSV, "Format to read. CSV works also for unquoted emails separated with a '\\n'")
-	checkCmd.Flags().Uint64Var(&checkSettings.CSV.skipRows, "csv-skip-rows", 0, "Rows to skip, useful when wanting to skip the header in CSV files")
-	checkCmd.Flags().Uint64Var(&checkSettings.CSV.column, "csv-column", 0, "The column to read email addresses from, 0-indexed")
+	checkCmd.Flags().Uint32Var(&checkSettings.CSV.skipRows, "csv-skip-rows", 0, "Rows to skip, useful when wanting to skip the header in CSV files")
+	checkCmd.Flags().Uint32Var(&checkSettings.CSV.column, "csv-column", 0, "The column to read email addresses from, 0-indexed")
 	checkCmd.Flags().IPVar(&checkSettings.Check.Resolver, "resolver", nil, "Custom DNS resolver IP (e.g.: 1.1.1.1) to use, otherwise system default is used")
 	checkCmd.Flags().DurationVar(&checkSettings.Check.TTL, "ttl", 30*time.Second, "Max duration per check, e.g.: '2s' or '100ms'. When exceeded, a check is considered invalid")
 	checkCmd.Flags().BoolVar(&checkSettings.Check.InputIsEmailAddress, "input-is-email", false, "If the input isn't an e-mail address, don't fall back on domain only checks")
-	checkCmd.Flags().Uint64Var(&checkSettings.Workers, "workers", 50, "The number of concurrent workers to use when in piped mode (1-1024)")
+	checkCmd.Flags().Uint32Var(&checkSettings.Workers, "workers", 50, "The number of concurrent workers to use when in piped mode (1-1024)")
 }

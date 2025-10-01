@@ -14,12 +14,12 @@ var (
 	ErrInputTooLong = errors.New("input is too long")
 )
 
-func NewAutocompleteService(f *finder.Finder, hitList *hitlist.HitList, recipientThreshold uint64, logger logrus.FieldLogger) *AutocompleteSvc {
+func NewAutocompleteService(f *finder.Finder, hitList *hitlist.HitList, recipientThreshold uint32, logger logrus.FieldLogger) *AutocompleteSvc {
 	return &AutocompleteSvc{
 		finder:             f,
 		logger:             logger,
 		hitList:            hitList,
-		recipientThreshold: recipientThreshold,
+		recipientThreshold: uint64(recipientThreshold),
 	}
 }
 
@@ -34,7 +34,7 @@ type AutocompleteResult struct {
 	Suggestions []string
 }
 
-func (a *AutocompleteSvc) Autocomplete(ctx context.Context, domain string, limit uint64) (AutocompleteResult, error) {
+func (a *AutocompleteSvc) Autocomplete(ctx context.Context, domain string, limit uint32) (AutocompleteResult, error) {
 	if domain == "" {
 		return AutocompleteResult{}, ErrEmptyInput
 	}
@@ -59,7 +59,7 @@ func (a *AutocompleteSvc) Autocomplete(ctx context.Context, domain string, limit
 	}, nil
 }
 
-func (a *AutocompleteSvc) filter(ctx context.Context, list []string, limit uint64) (filteredList []string, err error) {
+func (a *AutocompleteSvc) filter(ctx context.Context, list []string, limit uint32) (filteredList []string, err error) {
 	filteredList = make([]string, 0, limit)
 	for _, domain := range list {
 		if ctx.Err() != nil {
@@ -75,5 +75,5 @@ func (a *AutocompleteSvc) filter(ctx context.Context, list []string, limit uint6
 		}
 	}
 
-	return
+	return filteredList, err
 }

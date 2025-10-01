@@ -55,7 +55,7 @@ func (hl *HitList) Has(parts types.EmailParts) (domain, local bool) {
 	var hit Hit
 
 	if parts.Domain == "" {
-		return
+		return domain, local
 	}
 
 	inputDomain := Domain(strings.ToLower(parts.Domain))
@@ -65,7 +65,7 @@ func (hl *HitList) Has(parts types.EmailParts) (domain, local bool) {
 
 	if hit, domain = hl.hits[inputDomain]; domain {
 		if parts.Local == "" {
-			return
+			return domain, local
 		}
 
 		inputLocal := strings.ToLower(parts.Local)
@@ -74,7 +74,7 @@ func (hl *HitList) Has(parts types.EmailParts) (domain, local bool) {
 		_, local = hit.Recipients[recipient]
 	}
 
-	return
+	return domain, local
 }
 
 // CreateInternalTypes returns the Recipient and Domain types for an Email Type Parts. It's stateless, and solely
@@ -84,12 +84,12 @@ func (hl *HitList) CreateInternalTypes(p types.EmailParts) (domain Domain, recip
 	if len(p.Domain) == 0 || len(p.Local) == 0 {
 		recipient = Recipient("")
 		err = ErrInvalidSyntax
-		return
+		return domain, recipient, err
 	}
 
 	domain = Domain(strings.ToLower(p.Domain))
 	recipient = hl.h.Sum([]byte(strings.ToLower(p.Local)))
-	return
+	return domain, recipient, err
 }
 
 func (hl *HitList) GetDomainValidationDetails(d Domain) (validator.Details, bool) {
@@ -124,7 +124,7 @@ func (hl *HitList) GetRecipientCount(d Domain) (amount uint64) {
 	}
 	hl.lock.RUnlock()
 
-	return
+	return amount
 }
 
 // AddInternalParts adds values considered "safe". Typically you would only use this on provisioning HitList from a storage layer

@@ -39,13 +39,13 @@ func TestAutocompleteSvc_Autocomplete(t *testing.T) {
 	})
 
 	type fields struct {
-		recipientThreshold uint64
+		recipientThreshold uint32
 	}
 
 	type args struct {
 		ctx    context.Context
 		domain string
-		limit  uint64
+		limit  uint32
 	}
 	tests := []struct {
 		name    string
@@ -214,12 +214,12 @@ func TestAutocompleteSvc_filter(t *testing.T) {
 		finder             *finder.Finder
 		logger             logrus.FieldLogger
 		hitList            *hitlist.HitList
-		recipientThreshold uint64
+		recipientThreshold uint32
 	}
 	type args struct {
 		ctx   context.Context
 		list  []string
-		limit uint64
+		limit uint32
 	}
 	tests := []struct {
 		name    string

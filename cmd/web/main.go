@@ -122,7 +122,6 @@ func main() {
 
 	var pubSubSvc *gcp.PubSubSvc
 	pubSubSvc, err = createPubSubSvc(conf, logger, rtPubSub, hitList, myFinder)
-
 	if err != nil {
 		logger.WithError(err).Error("Unable to create the pub/sub client")
 		exitCode = ErrExUnavailable
@@ -160,7 +159,7 @@ func main() {
 
 	var bucket handlers.TakeMaxDuration
 	if conf.RateLimiter.Rate > 0 && conf.RateLimiter.Capacity > 0 {
-		bucket = ratelimit.NewBucketWithRate(float64(conf.RateLimiter.Rate), conf.RateLimiter.Capacity)
+		bucket = ratelimit.NewBucketWithRate(float64(conf.RateLimiter.Rate), int64(conf.RateLimiter.Capacity))
 	}
 
 	ct := cors.New(cors.Options{

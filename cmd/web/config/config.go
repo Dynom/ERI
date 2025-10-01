@@ -43,9 +43,9 @@ func NewConfig(fileName string) (Config, error) {
 type Config struct {
 	Server struct {
 		ListenOn        string   `toml:"listenOn"`
-		ConnectionLimit uint     `toml:"connectionLimit"`
+		ConnectionLimit uint32   `toml:"connectionLimit"`
 		InstanceID      string   `toml:"-"` // Extra identifier used in logs and for instance identification
-		MaxRequestSize  uint64   `toml:"maxRequestSize" usage:"Maximum amount of bytes until a HTTP request is accepted"`
+		MaxRequestSize  uint32   `toml:"maxRequestSize" usage:"Maximum amount of bytes until a HTTP request is accepted"`
 		NetTTL          Duration `toml:"netTTL" usage:"Max time to spend on external communication"`
 		PathStrip       string   `toml:"pathStrip"`
 		Headers         Headers  `toml:"headers" env:"-" usage:"Only (repeatable) flag or config file supported"`
@@ -75,8 +75,8 @@ type Config struct {
 	} `toml:"validator" flag:",inline" env:",inline"`
 	Services struct {
 		Autocomplete struct {
-			RecipientThreshold uint64 `toml:"recipientThreshold" usage:"Define the minimum amount of recipients a domain needs before allowed in the autocomplete"`
-			MaxSuggestions     uint64 `toml:"maxSuggestions" usage:"The maximum number of suggestions to return"`
+			RecipientThreshold uint32 `toml:"recipientThreshold" usage:"Define the minimum amount of recipients a domain needs before allowed in the autocomplete"`
+			MaxSuggestions     uint32 `toml:"maxSuggestions" usage:"The maximum number of suggestions to return"`
 		} `toml:"autocomplete"`
 		Suggest struct {
 			Prefer Preferred `toml:"prefer" env:"-" usage:"A repeatable flag to create a preference list for common alternatives, example.com=example.org"`
@@ -85,8 +85,8 @@ type Config struct {
 	Backend struct {
 		Driver             string `toml:"driver" usage:"List a driver to use, currently supporting: 'memory' or 'postgres'"`
 		URL                string `toml:"url"`
-		MaxConnections     uint   `toml:"maxConnections"`
-		MaxIdleConnections uint   `toml:"maxIdleConnections"`
+		MaxConnections     uint16 `toml:"maxConnections"`
+		MaxIdleConnections uint16 `toml:"maxIdleConnections"`
 	} `toml:"backend"`
 	GraphQL struct {
 		PrettyOutput bool `toml:"prettyOutput" flag:"pretty" env:"PRETTY"`
@@ -94,8 +94,8 @@ type Config struct {
 		Playground   bool `toml:"playground"`
 	} `toml:"graphql" flag:"graphql" env:"GRAPHQL"`
 	RateLimiter struct {
-		Rate      int64    `toml:"rate"`
-		Capacity  int64    `toml:"capacity"`
+		Rate      int32    `toml:"rate"`
+		Capacity  int32    `toml:"capacity"`
 		ParkedTTL Duration `toml:"parkedTTL" flag:"parked-ttl"`
 	} `toml:"rateLimiter"`
 	GCP struct {
